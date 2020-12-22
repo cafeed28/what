@@ -1,0 +1,6 @@
+fxctmp9_tmp\character_ps30.inc
+fxctmp9_tmp\character_vs30.inc
+fxctmp9_tmp\character_ssao_ps30.inc
+fxctmp9_tmp\character_ssao_vs30.inc
+fxctmp9_tmp\customcharacter_vs30.inc
+fxctmp9_tmp\customcharacter_ps30.inc

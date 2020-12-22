@@ -1,0 +1,6 @@
+..\..\..\game\hl2\shaders\fxc\character_ps30.vcs
+..\..\..\game\hl2\shaders\fxc\character_vs30.vcs
+..\..\..\game\hl2\shaders\fxc\character_ssao_ps30.vcs
+..\..\..\game\hl2\shaders\fxc\character_ssao_vs30.vcs
+..\..\..\game\hl2\shaders\fxc\customcharacter_vs30.vcs
+..\..\..\game\hl2\shaders\fxc\customcharacter_ps30.vcs
