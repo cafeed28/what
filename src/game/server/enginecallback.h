@@ -71,6 +71,11 @@ void PrecacheParticleSystem( const char *pParticleSystemName );
 int GetParticleSystemIndex( const char *pParticleSystemName );
 const char *GetParticleSystemNameFromIndex( int nIndex );
 
+//-----------------------------------------------------------------------------
+// Precache-related methods for effects (used by DispatchEffect)
+//-----------------------------------------------------------------------------
+int GetEffectIndex( const char *pParticleSystemName );
+
 
 class IRecipientFilter;
 void EntityMessageBegin( CBaseEntity * entity, bool reliable = false );

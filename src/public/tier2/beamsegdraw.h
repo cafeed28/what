@@ -29,10 +29,60 @@ class IMaterial;
 struct BeamSeg_t
 {
 	Vector		m_vPos;
-	Vector		m_vColor;
+	color32		m_color;
 	float		m_flTexCoord;	// Y texture coordinate
 	float		m_flWidth;
 	float		m_flAlpha;
+
+	void SetColor( float r, float g, float b, float a )
+	{
+		// Specify the points.
+		Assert( IsFinite(r) && IsFinite(g) && IsFinite(b) && IsFinite(a) );
+		Assert( (r >= 0.0) && (g >= 0.0) && (b >= 0.0) && (a >= 0.0) );
+		Assert( (r <= 1.0) && (g <= 1.0) && (b <= 1.0) && (a <= 1.0) );
+
+		m_color.r = FastFToC( r );
+		m_color.g = FastFToC( g );
+		m_color.b = FastFToC( b );
+		m_color.a = FastFToC( a );
+	}
+
+	void SetColor( float r, float g, float b )
+	{
+		// Specify the points.
+		Assert( IsFinite(r) && IsFinite(g) && IsFinite(b) );
+		Assert( (r >= 0.0) && (g >= 0.0) && (b >= 0.0) );
+		Assert( (r <= 1.0) && (g <= 1.0) && (b <= 1.0) );
+
+		m_color.r = FastFToC( r );
+		m_color.g = FastFToC( g );
+		m_color.b = FastFToC( b );
+	}
+
+	void SetColor( const Vector &vecColor, float a )
+	{
+		SetColor( vecColor.x, vecColor.y, vecColor.z, a );
+	}
+
+	void SetColor( const Vector &vecColor )
+	{
+		SetColor( vecColor.x, vecColor.y, vecColor.z );
+	}
+
+	void GetColor( Vector4D *pColor )
+	{
+		pColor->x = m_color.r / 255.0f;
+		pColor->y = m_color.g / 255.0f;
+		pColor->z = m_color.b / 255.0f;
+		pColor->w = m_color.a / 255.0f;
+	}
+
+	void GetColor( Vector *pColor )
+	{
+		pColor->x = m_color.r / 255.0f;
+		pColor->y = m_color.g / 255.0f;
+		pColor->z = m_color.b / 255.0f;
+	}
 };
 
 class CBeamSegDraw

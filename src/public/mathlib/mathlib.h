@@ -278,6 +278,21 @@ struct matrix3x4_t
 		}
 	}
 
+	/// modify the origin
+	inline void SetOrigin( Vector const & p )
+	{
+		m_flMatVal[0][3] = p.x;
+		m_flMatVal[1][3] = p.y;
+		m_flMatVal[2][3] = p.z;
+	}
+
+	/// return the origin
+	inline Vector GetOrigin( void ) const
+	{
+		Vector vecRet( m_flMatVal[ 0 ][ 3 ], m_flMatVal[ 1 ][ 3 ], m_flMatVal[ 2 ][ 3 ] );
+		return vecRet;
+	}
+
 	float *operator[]( int i )				{ Assert(( i >= 0 ) && ( i < 3 )); return m_flMatVal[i]; }
 	const float *operator[]( int i ) const	{ Assert(( i >= 0 ) && ( i < 3 )); return m_flMatVal[i]; }
 	float *Base()							{ return &m_flMatVal[0][0]; }

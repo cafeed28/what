@@ -803,8 +803,8 @@ const char *GetMaterialNameFromIndex( int nIndex )
 //-----------------------------------------------------------------------------
 void PrecacheParticleSystem( const char *pParticleSystemName )
 {
-	g_pStringTableParticleEffectNames->AddString( false, pParticleSystemName );
-	g_pParticleSystemMgr->PrecacheParticleSystem( pParticleSystemName );
+	int nIndex = g_pStringTableParticleEffectNames->AddString( false, pParticleSystemName );
+	g_pParticleSystemMgr->PrecacheParticleSystem( nIndex, pParticleSystemName );
 }
 
 
@@ -1660,9 +1660,6 @@ void CHLClient::LevelInitPreEntity( char const* pMapName )
 
 	vieweffects->LevelInit();
 	
-	//Tony; loadup per-map manifests.
-	ParseParticleEffectsMap( pMapName, true );
-	
 	// Tell mode manager that map is changing
 	modemanager->LevelInit( pMapName );
 	ParticleMgr()->LevelInit();
@@ -1929,7 +1926,7 @@ void OnMaterialStringTableChanged( void *object, INetworkStringTable *stringTabl
 void OnParticleSystemStringTableChanged( void *object, INetworkStringTable *stringTable, int stringNumber, const char *newString, void const *newData )
 {
 	// Make sure this puppy is precached
-	g_pParticleSystemMgr->PrecacheParticleSystem( newString );
+	g_pParticleSystemMgr->PrecacheParticleSystem( stringNumber, newString );
 	RequestCacheUsedMaterials();
 }
 
@@ -2612,7 +2609,7 @@ void ReloadSoundEntriesInList( IFileList *pFilesToReload );
 //-----------------------------------------------------------------------------
 void CHLClient::ReloadFilesInList( IFileList *pFilesToReload )
 {
-	ReloadParticleEffectsInList( pFilesToReload );
+	//ReloadParticleEffectsInList( pFilesToReload );
 	ReloadSoundEntriesInList( pFilesToReload );
 }
 

@@ -1,4 +1,4 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
+//========= Copyright © 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: This module implements all the proxies used by the particle systems.
 //
@@ -74,4 +74,3 @@ private:
 };
 
 EXPOSE_INTERFACE( ParticleSphereProxy, IMaterialProxy, "ParticleSphereProxy" IMATERIAL_PROXY_INTERFACE_VERSION );
-

@@ -182,6 +182,7 @@ extern const ALIGN16 int32 g_SIMD_Low16BitsMask[] ALIGN16_POST;			// 0xffff x 4
 // to mask out the tail, g_SIMD_SkipTailMask[N & 3] what you want to use for the last iteration.
 extern const int32 ALIGN16 g_SIMD_SkipTailMask[4][4] ALIGN16_POST;
 
+extern const int32 ALIGN16 g_SIMD_EveryOtherMask[];				// 0, ~0, 0, ~0
 // Define prefetch macros.
 // The characteristics of cache and prefetch are completely 
 // different between the different platforms, so you DO NOT
@@ -2345,6 +2346,22 @@ FORCEINLINE void StoreUnalignedIntSIMD( int32 * RESTRICT pSIMD, const fltx4 & a 
 	_mm_storeu_ps( reinterpret_cast<float *>(pSIMD), a );
 }
 
+// a={ a.x, a.z, b.x, b.z }
+// combine two fltx4s by throwing away every other field.
+FORCEINLINE fltx4 CompressSIMD( fltx4 const & a, fltx4 const &b )
+{
+	return _mm_shuffle_ps( a, b, MM_SHUFFLE_REV( 0, 2, 0, 2 ) );
+}
+
+// a={ a.x, b.x, c.x, d.x }
+// combine 4 fltx4s by throwing away 3/4s of the fields
+FORCEINLINE fltx4 Compress4SIMD( fltx4 const a, fltx4 const &b, fltx4 const &c, fltx4 const &d )
+{
+	fltx4 aacc = _mm_shuffle_ps( a, c, MM_SHUFFLE_REV( 0, 0, 0, 0 ) );
+	fltx4 bbdd = _mm_shuffle_ps( b, d, MM_SHUFFLE_REV( 0, 0, 0, 0 ) );
+	return MaskedAssign( LoadAlignedSIMD( g_SIMD_EveryOtherMask ), bbdd, aacc );
+}
+
 
 // CHRISG: the conversion functions all seem to operate on m64's only...
 // how do we make them work here?
@@ -2420,6 +2437,56 @@ FORCEINLINE void ConvertStoreAsIntsSIMD(intx4 * RESTRICT pDest, const fltx4 &vSr
 
 #endif
 
+// // Some convenience operator overloads, which are just aliasing the functions above.
+// Unneccessary on 360, as you already have them from xboxmath.h (same for PS3 PPU and SPU)
+#if !defined(PLATFORM_PPC) && !defined( POSIX ) && !defined(SPU)
+#if 1  // TODO: verify generation of non-bad code. 
+// Componentwise add
+FORCEINLINE fltx4 operator+( FLTX4 a, FLTX4 b )
+{
+	return AddSIMD( a, b );
+}
+
+// Componentwise subtract
+FORCEINLINE fltx4 operator-( FLTX4 a, FLTX4 b )
+{
+	return SubSIMD( a, b );
+}
+
+// Componentwise multiply
+FORCEINLINE fltx4 operator*( FLTX4 a, FLTX4 b )
+{
+	return MulSIMD( a, b );
+}
+
+// No divide. You need to think carefully about whether you want a reciprocal
+// or a reciprocal estimate.
+
+// bitwise and
+FORCEINLINE fltx4 operator&( FLTX4 a, FLTX4 b )
+{
+	return AndSIMD( a ,b );
+}
+
+// bitwise or
+FORCEINLINE fltx4 operator|( FLTX4 a, FLTX4 b )
+{
+	return OrSIMD( a, b );
+}
+
+// bitwise xor
+FORCEINLINE fltx4 operator^( FLTX4 a, FLTX4 b )
+{
+	return XorSIMD( a, b );
+}
+
+// unary negate
+FORCEINLINE fltx4 operator-( FLTX4 a )
+{
+	return NegSIMD( a );
+}
+#endif // 0
+#endif
 
 
 /// class FourVectors stores 4 independent vectors for use in SIMD processing. These vectors are
@@ -2542,6 +2609,9 @@ public:
 	/// output buffer, which must not overlap the pVectors buffer. 
 	/// This is an in-place transformation.
 	static void TransformManyBy(FourVectors * RESTRICT pVectors, unsigned int numVectors, const matrix3x4_t& rotationMatrix );
+
+	static void CalcClosestPointOnLineSIMD( const FourVectors &P, const FourVectors &vLineA, const FourVectors &vLineB, FourVectors &vClosest, fltx4 *outT = 0 );
+	static fltx4 CalcClosestPointToLineTSIMD( const FourVectors &P, const FourVectors &vLineA, const FourVectors &vLineB, FourVectors &vDir );
 
 	// X(),Y(),Z() - get at the desired component of the i'th (0..3) vector.
 	FORCEINLINE const float & X(int idx) const
@@ -2971,6 +3041,19 @@ FORCEINLINE fltx4 RandSignedSIMD( void )					// -1..1
 }
 
 
+FORCEINLINE fltx4 LerpSIMD ( const fltx4 &percent, const fltx4 &a, const fltx4 &b)
+{
+	return AddSIMD( a, MulSIMD( SubSIMD( b, a ), percent ) );
+}
+
+FORCEINLINE fltx4 RemapValClampedSIMD(const fltx4 &val, const fltx4 &a, const fltx4 &b, const fltx4 &c, const fltx4 &d) // Remap val from clamped range between a and b to new range between c and d
+{
+	fltx4 range = MaskedAssign( CmpEqSIMD( a, b ), Four_Ones, SubSIMD( b, a ) ); //make sure range > 0
+	fltx4 cVal = MaxSIMD( Four_Zeros, MinSIMD( Four_Ones, DivSIMD( SubSIMD( val, a ), range ) ) ); //saturate
+	return LerpSIMD( cVal, c, d );
+}
+
+
 // SIMD versions of mathlib simplespline functions
 // hermite basis function for smooth interpolation
 // Similar to Gain() above, but very cheap to call
@@ -3076,6 +3159,17 @@ FORCEINLINE fltx4 Sin01SIMD( const fltx4 &val )
 	fl4Sin = XorSIMD( fl4Sin, AndSIMD( LoadAlignedSIMD( g_SIMD_signmask ), XorSIMD( val, fl4OddMask ) ) );
 	return fl4Sin;
 
+}
+
+FORCEINLINE fltx4 NatExpSIMD( const fltx4 &val )			// why is ExpSimd( x ) defined to be 2^x?
+{
+	// need to write this. just stub with normal float implementation for now
+	fltx4 fl4Result;
+	SubFloat( fl4Result, 0 ) = exp( SubFloat( val, 0 ) );
+	SubFloat( fl4Result, 1 ) = exp( SubFloat( val, 1 ) );
+	SubFloat( fl4Result, 2 ) = exp( SubFloat( val, 2 ) );
+	SubFloat( fl4Result, 3 ) = exp( SubFloat( val, 3 ) );
+	return fl4Result;
 }
 
 // Schlick style Bias approximation see graphics gems 4 : bias(t,a)= t/( (1/a-2)*(1-t)+1)

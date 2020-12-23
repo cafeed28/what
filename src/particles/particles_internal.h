@@ -1,4 +1,4 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
+//===== Copyright � 1996-2006, Valve Corporation, All rights reserved. ======//
 //
 // Purpose: sheet code for particles and other sprite functions
 //
@@ -22,6 +22,12 @@
 #define COLLISION_MODE_PER_FRAME_PLANESET 1
 #define COLLISION_MODE_INITIAL_TRACE_DOWN 2
 #define COLLISION_MODE_USE_NEAREST_TRACE 3
+
+#define PARTICLEBLEND_DEFAULT 0
+#define PARTICLEBLEND_OVERLAY 1
+#define PARTICLEBLEND_DARKEN 2
+#define PARTICLEBLEND_LIGHTEN 3
+#define PARTICLEBLEND_MULTIPLY 4
 
 struct CWorldCollideContextData
 {

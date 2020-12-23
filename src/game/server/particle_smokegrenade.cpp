@@ -16,6 +16,8 @@ IMPLEMENT_SERVERCLASS_ST(ParticleSmokeGrenade, DT_ParticleSmokeGrenade)
 	SendPropTime( SENDINFO(m_flSpawnTime) ),
 	SendPropFloat( SENDINFO(m_FadeStartTime), 0, SPROP_NOSCALE),
 	SendPropFloat( SENDINFO(m_FadeEndTime), 0, SPROP_NOSCALE),
+	SendPropVector( SENDINFO(m_MinColor), 0, SPROP_NOSCALE),
+	SendPropVector( SENDINFO(m_MaxColor), 0, SPROP_NOSCALE),
 	SendPropInt( SENDINFO(m_CurrentStage), 1, SPROP_UNSIGNED),
 END_SEND_TABLE()
 
@@ -26,6 +28,8 @@ BEGIN_DATADESC( ParticleSmokeGrenade )
 	DEFINE_FIELD( m_CurrentStage, FIELD_CHARACTER ),
 	DEFINE_FIELD( m_FadeStartTime, FIELD_TIME ),
 	DEFINE_FIELD( m_FadeEndTime, FIELD_TIME ),
+	DEFINE_FIELD( m_MinColor, FIELD_VECTOR ),
+	DEFINE_FIELD( m_MaxColor, FIELD_VECTOR ),
 	DEFINE_FIELD( m_flSpawnTime, FIELD_TIME ),
 
 END_DATADESC()
@@ -36,6 +40,9 @@ ParticleSmokeGrenade::ParticleSmokeGrenade()
 	m_CurrentStage = 0;
 	m_FadeStartTime = 17;
 	m_FadeEndTime = 22;
+	
+	m_MinColor = Vector(MIN_SMOKE_TINT, MIN_SMOKE_TINT, MIN_SMOKE_TINT);
+	m_MaxColor = Vector(MAX_SMOKE_TINT, MAX_SMOKE_TINT, MAX_SMOKE_TINT);
 
 	m_flSpawnTime = gpGlobals->curtime;
 }
@@ -59,6 +66,17 @@ void ParticleSmokeGrenade::Spawn()
 	BaseClass::Spawn();
 
 	SetNextThink( gpGlobals->curtime );
+	m_creatorPlayer = NULL;
+}
+
+void ParticleSmokeGrenade::SetCreator(CBasePlayer *creator)
+{
+	m_creatorPlayer = creator;
+}
+
+CBasePlayer* ParticleSmokeGrenade::GetCreator()
+{
+	return (CBasePlayer*)m_creatorPlayer.Get();
 }
 
 void ParticleSmokeGrenade::FillVolume()
@@ -81,6 +99,13 @@ void ParticleSmokeGrenade::SetRelativeFadeTime(float startTime, float endTime)
 
 	m_FadeStartTime = flCurrentTime + startTime;
 	m_FadeEndTime = flCurrentTime + endTime;
+}
+
+// Fade start and end are relative to current time
+void ParticleSmokeGrenade::SetSmokeColor( Vector color )
+{
+	m_MinColor = color * MIN_SMOKE_TINT;
+	m_MaxColor = color * MAX_SMOKE_TINT;
 }
 
 void ParticleSmokeGrenade::Think()

@@ -58,6 +58,8 @@ const int32 ALIGN16 g_SIMD_SkipTailMask[4][4] ALIGN16_POST =
 	{ 0xffffffff, 0xffffffff, 0xffffffff, 0x00000000 },
 };
 
+const int32 ALIGN16 g_SIMD_EveryOtherMask[4] = { 0, ~0, 0, ~0 };
+
 
 	// FUNCTIONS
 	// NOTE: WHY YOU **DO NOT** WANT TO PUT FUNCTIONS HERE
@@ -81,7 +83,37 @@ const int32 ALIGN16 g_SIMD_SkipTailMask[4][4] ALIGN16_POST =
 // function is more than one screen long, yours is probably not one
 // of those occasions.
 
+// Get the closest point from P to the (infinite) line through vLineA and vLineB and
+// calculate the shortest distance from P to the line.
+// If you pass in a value for t, it will tell you the t for (A + (B-A)t) to get the closest point.
+// If the closest point lies on the segment between A and B, then 0 <= t <= 1.
+void FourVectors::CalcClosestPointOnLineSIMD( const FourVectors &P, const FourVectors &vLineA, const FourVectors &vLineB, FourVectors &vClosest, fltx4 *outT)
+{
+	FourVectors vDir;
+	fltx4 t = CalcClosestPointToLineTSIMD( P, vLineA, vLineB, vDir );
+	if ( outT ) *outT = t;
+	vClosest =  vDir;
+	vClosest *= t;
+	vClosest += vLineA;
+}
 
+fltx4 FourVectors::CalcClosestPointToLineTSIMD( const FourVectors &P, const FourVectors &vLineA, const FourVectors &vLineB, FourVectors &vDir )
+{
+	Assert( s_bMathlibInitialized );
+	vDir = vLineB;
+	vDir -= vLineA;
+
+	fltx4 div = vDir * vDir;
+	fltx4 Mask;
+	fltx4 Compare = ReplicateX4( 0.00001f );
+	fltx4 result;
+	Mask = CmpLtSIMD( div, Compare );
+
+	result = DivSIMD( SubSIMD( vDir * P, vDir * vLineA ), div );
+
+	MaskedAssign( Mask, Four_Zeros, result );
+	return result;
+}
 
 /// You can use this to rotate a long array of FourVectors all by the same
 /// matrix. The first parameter is the head of the array. The second is the

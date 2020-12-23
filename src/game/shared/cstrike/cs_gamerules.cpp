@@ -1519,7 +1519,7 @@ ConVar snd_music_selection(
 		else
 			falloff = 1.0;
 
-		int bInWater = (UTIL_PointContents ( vecSrc ) & MASK_WATER) ? true : false;
+		//int bInWater = (UTIL_PointContents ( vecSrc ) & MASK_WATER) ? true : false;
 		
 		vecSrc.z += 1;// in case grenade is lying on the ground
 
@@ -1547,15 +1547,15 @@ ConVar snd_music_selection(
 				{// houndeyes don't hurt other houndeyes with their attack
 					continue;
 				}
-
-				// blasts don't travel into or out of water
-				if ( !bIgnoreWorld )
-				{
-					if (bInWater && pEntity->GetWaterLevel() == 0)
-						continue;
-					if (!bInWater && pEntity->GetWaterLevel() == 3)
-						continue;
-				}
+				
+                // blasts used to not travel into or out of water, users assumed it was a bug. Fix is not to run this check -wills
+				//if ( !bIgnoreWorld )
+				//{
+				//	if (bInWater && pEntity->GetWaterLevel() == 0)
+				//		continue;
+				//	if (!bInWater && pEntity->GetWaterLevel() == 3)
+				//		continue;
+				//s}
 
 				// radius damage can only be blocked by the world
 				vecSpot = pEntity->BodyTarget( vecSrc );

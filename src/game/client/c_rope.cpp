@@ -1695,7 +1695,7 @@ void C_RopeKeyframe::BuildRope( RopeSegData_t *pSegmentData, const Vector &vCurr
 	for( int iNode = 0; iNode < nodeCount; ++iNode )
 	{
 		pSegmentData->m_Segments[nSegmentCount].m_vPos = pPredictedPositions[iNode];
-		pSegmentData->m_Segments[nSegmentCount].m_vColor = pLightValues[iNode] * vColorMod;
+		pSegmentData->m_Segments[nSegmentCount].SetColor( pLightValues[iNode] * vColorMod );
 
 		CEffectData data;
 
@@ -1730,7 +1730,9 @@ void C_RopeKeyframe::BuildRope( RopeSegData_t *pSegmentData, const Vector &vCurr
 				pPredictedPositions[iNext], pPredictedPositions[iNextNext], spline );
 			for( int iSubdiv = 0; iSubdiv < nSubdivCount; ++iSubdiv )
 			{
-				pSegmentData->m_Segments[nSegmentCount].m_vColor = pSegmentData->m_Segments[nSegmentCount-1].m_vColor + vecColorInc;
+				Vector tmp;
+				pSegmentData->m_Segments[nSegmentCount - 1].GetColor( &tmp );
+				pSegmentData->m_Segments[nSegmentCount].SetColor( tmp + vecColorInc );
 				// simple eval using precomputed basis
 				Catmull_Rom_Eval( spline, pSubdivVecList[iSubdiv], pSegmentData->m_Segments[nSegmentCount].m_vPos );
 

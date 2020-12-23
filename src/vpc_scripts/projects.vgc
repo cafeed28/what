@@ -8,6 +8,11 @@
 // Project definitions //
 /////////////////////////
 
+$Project "bitmap"
+{
+	"bitmap\bitmap.vpc" [$WINDOWS||$X360||$POSIX]
+}
+
 $Project "captioncompiler"
 {
 	"utils\captioncompiler\captioncompiler.vpc" [$WIN32]
@@ -18,6 +23,11 @@ $Project "client"
 {
 	"game\client\client_hl2mp.vpc"		[($WIN32||$POSIX) && $HL2MP]
 	"game\client\client_csso.vpc"		[($WIN32||$POSIX) && $CSSO]
+}
+
+$Project "dmxloader"
+{
+	"dmxloader\dmxloader.vpc" [$WINDOWS||$X360||$POSIX]
 }
 
 $Project "engine"
@@ -104,6 +114,11 @@ $Project "tgadiff"
 $Project "tier1"
 {
 	"tier1\tier1.vpc" 	[$WINDOWS || $X360||$POSIX]
+}
+
+$Project "tier2"
+{
+	"tier2\tier2.vpc" 	[$WINDOWS||$X360||$POSIX]
 }
 
 $Project "particles"

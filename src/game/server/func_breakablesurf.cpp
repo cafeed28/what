@@ -417,7 +417,7 @@ void CBreakableSurface::TraceAttack( const CTakeDamageInfo &info, const Vector &
 			// client cannot trace against triggers
 			filter.SetIgnorePredictionCull( true );
 
-			te->DispatchEffect( filter, 0.0, data.m_vOrigin, "GlassImpact", data );
+			DispatchEffect( filter, 0.0, "GlassImpact", data );
 		}
 
 		if (m_nSurfaceType == SHATTERSURFACE_GLASS)

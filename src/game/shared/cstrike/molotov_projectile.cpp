@@ -366,7 +366,7 @@ void CMolotovProjectile::Detonate( void )
 			Vector vecAbsOrigin = GetAbsOrigin();
 			CPASFilter filter( vecAbsOrigin );
 			te->Explosion( filter, -1.0, // don't apply cl_interp delay
-				&vecAbsOrigin,
+				vecAbsOrigin,
 				0,
 				32,
 				25,

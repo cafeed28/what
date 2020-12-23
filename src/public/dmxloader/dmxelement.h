@@ -71,6 +71,10 @@ struct DmxElementUnpackStructure_t
 #define DMXELEMENT_UNPACK_FIELD_STRING( _attributeName, _defaultString, _varName )	\
 	{ _attributeName, _defaultString, AT_STRING, offsetof( DestStructType_t, _varName ), sizeof( ((DestStructType_t *)0)->_varName), NULL },
 
+// NOTE: DMXELEMENT_UNPACK_FIELD_ARRAY is for fixed-size arrays, not pointers or CUtlVectors (TODO: doesn't work for strings or bitfields yet!)
+#define DMXELEMENT_UNPACK_FIELD_ARRAY( _attributeName, _defaultString, _type, _varName )	\
+	{ _attributeName, _defaultString, CDmAttributeInfo< CUtlVector< _type > >::AttributeType(), offsetof( DestStructType_t, _varName ), sizeof( ((DestStructType_t *)0)->_varName[0]), NULL },
+
 #define DMXELEMENT_UNPACK_FIELD_USERDATA( _attributeName, _defaultString, _type, _varName, _userData )	\
 	{ _attributeName, _defaultString, CDmAttributeInfo<_type>::AttributeType(), offsetof( DestStructType_t, _varName ), sizeof( ((DestStructType_t *)0)->_varName), _userData },
 #define DMXELEMENT_UNPACK_FIELD_STRING_USERDATA( _attributeName, _defaultString, _varName, _userData )	\

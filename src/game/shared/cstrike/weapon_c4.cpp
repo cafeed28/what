@@ -697,7 +697,7 @@ END_PREDICTION_DATA()
 			// add an explosion TE so it affects clientside physics
 			CPASFilter filter( pos );
 			te->Explosion( filter, 0.0,
-				&pos, 
+				pos, 
 				g_sModelIndexFireball,
 				50.0, 
 				25,

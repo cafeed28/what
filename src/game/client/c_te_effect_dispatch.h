@@ -1,9 +1,9 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
+//========= Copyright © 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //
 // $NoKeywords: $
-//=============================================================================//
+//===========================================================================//
 
 #ifndef C_TE_EFFECT_DISPATCH_H
 #define C_TE_EFFECT_DISPATCH_H
@@ -11,9 +11,8 @@
 #pragma once
 #endif
 
-
 #include "effect_dispatch_data.h"
-
+#include "precache_register.h"
 
 typedef void (*ClientEffectCallback)( const CEffectData &data );
 
@@ -42,5 +41,7 @@ public:
 
 void DispatchEffectToCallback( const char *pEffectName, const CEffectData &m_EffectData );
 void DispatchEffect( const char *pName, const CEffectData &data );
+void DispatchEffect( IRecipientFilter& filter, float flDelay, const char *pName, const CEffectData &data );
+void DispatchEffect( IRecipientFilter& filter, float delay, KeyValues *pKeyValues );
 
 #endif // C_TE_EFFECT_DISPATCH_H

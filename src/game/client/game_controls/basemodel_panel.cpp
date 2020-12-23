@@ -1,4 +1,4 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
+//====== Copyright Valve Corporation, All rights reserved. =======
 //
 // Purpose: 
 //
@@ -10,48 +10,23 @@
 #include "animation.h"
 #include "vgui/IInput.h"
 #include "matsys_controls/manipulator.h"
-#include "bone_setup.h"
+
+// NOTE: This has to be the last file included!
+#include "tier0/memdbgon.h"
 
 using namespace vgui;
-//-----------------------------------------------------------------------------
-// Purpose: Keeps a global clock to autoplay sequences to run from
-//			Also deals with speedScale changes
-//-----------------------------------------------------------------------------
-float GetAutoPlayTime( void )
-{
-	static int g_prevTicks;
-	static float g_time;
-
-	int ticks = Plat_MSTime();
-
-	// limit delta so that float time doesn't overflow
-	if ( g_prevTicks == 0 )
-	{
-		g_prevTicks = ticks;
-	}
-
-	g_time += ( ticks - g_prevTicks ) / 1000.0f;
-	g_prevTicks = ticks;
-
-	return g_time;
-}
 DECLARE_BUILD_FACTORY( CBaseModelPanel );
 
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-CBaseModelPanel::CBaseModelPanel( vgui::Panel *pParent, const char *pName )
-	: BaseClass( pParent, pName )
-	, m_nActiveSequence( ACT_INVALID )
-	, m_flActiveSequenceDuration( 0.f )
+CBaseModelPanel::CBaseModelPanel( vgui::Panel *pParent, const char *pName ): BaseClass( pParent, pName )
 {
 	m_bForcePos = false;
 	m_bMousePressed = false;
 	m_bAllowRotation = false;
-	m_bAllowPitch = false;
-	m_bAllowFullManipulation = false;
-	m_bApplyManipulators = false;
-	m_bForcedCameraPosition = false;
+
+	vgui::SETUP_PANEL( this );
 }
 
 //-----------------------------------------------------------------------------
@@ -68,21 +43,13 @@ void CBaseModelPanel::ApplySettings( KeyValues *inResourceData )
 {
 	BaseClass::ApplySettings( inResourceData );
 
-	// Set whether we render to texture
-	m_bRenderToTexture = inResourceData->GetBool( "render_texture", true );
-	m_bUseParticle = inResourceData->GetBool( "use_particle", false );
-
 	// Grab and set the camera FOV.
 	float flFOV = GetCameraFOV();
 	m_BMPResData.m_flFOV = inResourceData->GetInt( "fov", flFOV );
 	SetCameraFOV( m_BMPResData.m_flFOV );
 
 	// Do we allow rotation on these panels.
-	m_bAllowRotation = inResourceData->GetBool( "allow_rot", false );
-	m_bAllowPitch = inResourceData->GetBool( "allow_pitch", false );
-
-	// Do we allow full manipulation on these panels.
-	m_bAllowFullManipulation = inResourceData->GetBool( "allow_manip", false );
+	m_bAllowRotation = ( inResourceData->GetInt( "allow_rot", 0 ) == 1 );
 
 	// Parse our resource file and apply all necessary updates to the MDL.
  	for ( KeyValues *pData = inResourceData->GetFirstSubKey() ; pData != NULL ; pData = pData->GetNextKey() )
@@ -93,7 +60,7 @@ void CBaseModelPanel::ApplySettings( KeyValues *inResourceData )
  		}
  	}
 
-	SetMouseInputEnabled( m_bAllowFullManipulation || m_bAllowRotation || m_bAllowPitch );
+	SetMouseInputEnabled( m_bAllowRotation );
 }
 
 //-----------------------------------------------------------------------------
@@ -111,6 +78,7 @@ void CBaseModelPanel::ParseModelResInfo( KeyValues *inResourceData )
 	m_BMPResData.m_vecViewportOffset.Init();
 	m_BMPResData.m_nSkin = inResourceData->GetInt( "skin", -1 );
 	m_BMPResData.m_bUseSpotlight = ( inResourceData->GetInt( "spotlight", 0 ) == 1 );
+	m_BMPResData.m_pszModelCameraAttachment = ReadAndAllocStringValue( inResourceData, "model_camera_attachment" );
 
 	m_angPlayer = m_BMPResData.m_angModelPoseRot;
 	m_vecPlayerPos = m_BMPResData.m_vecOriginOffset;
@@ -126,8 +94,6 @@ void CBaseModelPanel::ParseModelResInfo( KeyValues *inResourceData )
 			ParseModelAttachInfo( pData );
 		}
 	}
-
-	SetupModelDefaults();
 }
 
 //-----------------------------------------------------------------------------
@@ -145,7 +111,7 @@ void CBaseModelPanel::ParseModelAnimInfo( KeyValues *inResourceData )
 	m_BMPResData.m_aAnimations[iAnim].m_pszName = ReadAndAllocStringValue( inResourceData, "name" );
 	m_BMPResData.m_aAnimations[iAnim].m_pszSequence = ReadAndAllocStringValue( inResourceData, "sequence" );
 	m_BMPResData.m_aAnimations[iAnim].m_pszActivity = ReadAndAllocStringValue( inResourceData, "activity" );
-	m_BMPResData.m_aAnimations[iAnim].m_bDefault = inResourceData->GetBool( "default" );
+	m_BMPResData.m_aAnimations[iAnim].m_bDefault = ( inResourceData->GetInt( "default", 0 ) == 1 );
 
 	for ( KeyValues *pAnimData = inResourceData->GetFirstSubKey(); pAnimData != NULL; pAnimData = pAnimData->GetNextKey() )
 	{
@@ -185,9 +151,6 @@ void CBaseModelPanel::SetupModelDefaults( void )
 //-----------------------------------------------------------------------------
 void CBaseModelPanel::SetupModelAnimDefaults( void )
 {
-	// Set the move_x parameter so the run activity works
-	SetPoseParameterByName( "move_x", 1.0f );
-
 	// Verify that we have animations for this model.
 	int nAnimCount = m_BMPResData.m_aAnimations.Count();
 	if ( nAnimCount == 0 )
@@ -198,7 +161,7 @@ void CBaseModelPanel::SetupModelAnimDefaults( void )
 	if ( iIndex == -1 )
 		return;
 
-	SetModelAnim( iIndex );
+	SetModelAnim( iIndex, true );
 }
 
 //-----------------------------------------------------------------------------
@@ -224,9 +187,7 @@ int CBaseModelPanel::FindDefaultAnim( void )
 int CBaseModelPanel::FindAnimByName( const char *pszName )
 {
 	int iIndex = -1;
-	if ( !pszName )
-		return iIndex;
-	
+
 	int nAnimCount = m_BMPResData.m_aAnimations.Count();
 	for ( int iAnim = 0; iAnim < nAnimCount; ++iAnim )
 	{
@@ -242,13 +203,13 @@ int CBaseModelPanel::FindAnimByName( const char *pszName )
 //-----------------------------------------------------------------------------
 int CBaseModelPanel::FindSequenceFromActivity( CStudioHdr *pStudioHdr, const char *pszActivity )
 {
-	if ( !pStudioHdr )
+	if ( !pStudioHdr || !pszActivity )
 		return -1;
 
 	for ( int iSeq = 0; iSeq < pStudioHdr->GetNumSeq(); ++iSeq )
 	{
 		mstudioseqdesc_t &seqDesc = pStudioHdr->pSeqdesc( iSeq );
-		if ( !V_stricmp( seqDesc.pszActivityName(), pszActivity ) )
+		if ( !stricmp( seqDesc.pszActivityName(), pszActivity ) )
 		{
 			return iSeq;
 		}
@@ -260,13 +221,46 @@ int CBaseModelPanel::FindSequenceFromActivity( CStudioHdr *pStudioHdr, const cha
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void CBaseModelPanel::SetModelAnim( int iAnim )
+void CBaseModelPanel::SetModelAnim( int iAnim, bool bUseSequencePlaybackFPS )
 {
 	int nAnimCount = m_BMPResData.m_aAnimations.Count();
 	if ( nAnimCount == 0 || !m_BMPResData.m_aAnimations.IsValidIndex( iAnim ) )
 		return;
 
+	// Do we have an activity or a sequence?
+	if ( m_BMPResData.m_aAnimations[iAnim].m_pszActivity && m_BMPResData.m_aAnimations[iAnim].m_pszActivity[0] )
+	{
+		SetModelAnim( m_BMPResData.m_aAnimations[iAnim].m_pszActivity, bUseSequencePlaybackFPS );
+	}
+	else if ( m_BMPResData.m_aAnimations[iAnim].m_pszSequence && m_BMPResData.m_aAnimations[iAnim].m_pszSequence[0] )
+	{
+		SetModelAnim( m_BMPResData.m_aAnimations[iAnim].m_pszSequence, bUseSequencePlaybackFPS );
+	}
+}
+
+
+void CBaseModelPanel::SetMdlSkinIndex( int nNewSkinIndex )
+{
 	MDLCACHE_CRITICAL_SECTION();
+
+	CMDL *pMDL = &m_RootMDL.m_MDL;
+
+	if ( !pMDL )
+		return;
+
+	pMDL->m_nSkin = nNewSkinIndex;
+
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CBaseModelPanel::SetModelAnim( const char *pszName, bool bUseSequencePlaybackFPS )
+{
+	MDLCACHE_CRITICAL_SECTION();
+
+	if ( !pszName )
+		return;
 
 	// Get the studio header of the root model.
 	studiohdr_t *pStudioHdr = m_RootMDL.m_MDL.GetStudioHdr();
@@ -275,53 +269,27 @@ void CBaseModelPanel::SetModelAnim( int iAnim )
 
 	CStudioHdr studioHdr( pStudioHdr, g_pMDLCache );
 
-	// Do we have an activity or a sequence?
 	int iSequence = ACT_INVALID;
-	if ( m_BMPResData.m_aAnimations[iAnim].m_pszActivity && m_BMPResData.m_aAnimations[iAnim].m_pszActivity[0] )
+
+	iSequence = FindSequenceFromActivity( &studioHdr, pszName );
+
+	if ( iSequence == ACT_INVALID )
 	{
-		iSequence = FindSequenceFromActivity( &studioHdr, m_BMPResData.m_aAnimations[iAnim].m_pszActivity );
-	}
-	else if ( m_BMPResData.m_aAnimations[iAnim].m_pszSequence && m_BMPResData.m_aAnimations[iAnim].m_pszSequence[0] )
-	{
-		iSequence = LookupSequence( &studioHdr, m_BMPResData.m_aAnimations[iAnim].m_pszSequence );
+		iSequence = LookupSequence( &studioHdr, pszName );
 	}
 
 	if ( iSequence != ACT_INVALID )
 	{
-		SetSequence( iSequence, true );
+		SetSequence( iSequence, bUseSequencePlaybackFPS );
 	}
 }
+
 
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CBaseModelPanel::SetMDL( MDLHandle_t handle, void *pProxyData )
 {
-	MDLCACHE_CRITICAL_SECTION();
-	studiohdr_t *pHdr = g_pMDLCache->GetStudioHdr( handle );
-
-	if ( pHdr )
-	{
-		// SetMDL will cause the base CMdl code to set our localtoglobal indices if they aren't set.
-		// We set them up here so that they're left alone by that code.
-		CStudioHdr studioHdr( pHdr, g_pMDLCache );
-		if (studioHdr.numflexcontrollers() > 0 && studioHdr.pFlexcontroller( LocalFlexController_t(0) )->localToGlobal == -1)
-		{
-			for (LocalFlexController_t i = LocalFlexController_t(0); i < studioHdr.numflexcontrollers(); i++)
-			{
-				int j = C_BaseFlex::AddGlobalFlexController( studioHdr.pFlexcontroller( i )->pszName() );
-				studioHdr.pFlexcontroller( i )->localToGlobal = j;
-			}
-		}
-	}
-	else 
-	{
-		handle = MDLHANDLE_INVALID;
-	}
-
-	// Clear our current sequence
-	SetSequence( ACT_IDLE );
-
 	BaseClass::SetMDL( handle, pProxyData );
 
 	SetupModelDefaults();
@@ -333,20 +301,10 @@ void CBaseModelPanel::SetMDL( MDLHandle_t handle, void *pProxyData )
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void CBaseModelPanel::SetModelAnglesAndPosition( const QAngle &angRot, const Vector &vecPos )
-{
-	BaseClass::SetModelAnglesAndPosition( angRot, vecPos );
-
-	// Cache
-	m_vecPlayerPos = vecPos;
-	m_angPlayer = angRot;
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
 void CBaseModelPanel::SetMDL( const char *pMDLName, void *pProxyData )
 {
+	SetSequence( 0, true );
+
 	BaseClass::SetMDL( pMDLName, pProxyData );
 
 	// Need to invalidate the layout so the panel will adjust is LookAt for the new model.
@@ -359,38 +317,6 @@ void CBaseModelPanel::SetMDL( const char *pMDLName, void *pProxyData )
 void CBaseModelPanel::PerformLayout()
 {
 	BaseClass::PerformLayout();
-
-	if ( m_bForcedCameraPosition )
-	{
-		return;
-	}
-
-	if ( m_bAllowFullManipulation )
-	{
-		// Set this to true if you want to keep the current rotation when changing models or poses
-		const bool bPreserveManipulation = false;
-
-		// Need to look at the target so we can rotate around it
-		const Vector kVecFocalPoint( 0.0f, 0.0f, 60.0f );
-		ResetCameraPivot();
-		SetCameraOffset( -(m_vecPlayerPos + kVecFocalPoint) );
-		SetCameraPositionAndAngles( kVecFocalPoint, vec3_angle, !bPreserveManipulation );
-
-		// We want to move the player to the origin and facing the correct way,
-		// but don't clobber m_angPlayer and m_vecPlayerPos, so use BaseClass.
-		BaseClass::SetModelAnglesAndPosition( m_angPlayer, vec3_origin );
-
-		// Once a manual transform has been done we want to apply it
-		if ( m_bApplyManipulators )
-		{
-			ApplyManipulation();
-		}
-		else
-		{
-			SyncManipulation();
-		}
-		return;
-	}
 
 	if ( m_bForcePos )
 	{
@@ -413,69 +339,28 @@ void CBaseModelPanel::PerformLayout()
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-void CBaseModelPanel::OnTick()
-{
-	// Cycle stuff gets handled in mdlpanel::OnTick, so we want to fix up
-	// what our sequence is before it gets called.
-
-	// Check if we have a active sequence, and if it's expired and we need
-	// to run our default
-	if ( m_nActiveSequence != ACT_INVALID )
-	{
-		float flElapsedTime = GetAutoPlayTime() - m_RootMDL.m_flCycleStartTime;
-		if ( flElapsedTime >= m_flActiveSequenceDuration )
-		{
-			m_nActiveSequence = ACT_INVALID;
-			m_flActiveSequenceDuration = 0.f;
-
-			SetupModelDefaults();
-		}
-	}
-
-	BaseClass::OnTick();
-}
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
 void CBaseModelPanel::OnKeyCodePressed ( vgui::KeyCode code )
 {
-	if ( m_bAllowFullManipulation )
-	{
-		BaseClass::OnKeyCodePressed( code );
-		return;
-	}
+	return;
 }
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 void CBaseModelPanel::OnKeyCodeReleased( vgui::KeyCode code )
 {
-	if ( m_bAllowFullManipulation )
-	{
-		BaseClass::OnKeyCodeReleased( code );
-		return;
-	}
+	return;
 }
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 void CBaseModelPanel::OnMousePressed ( vgui::MouseCode code )
 {
-	if ( m_bAllowFullManipulation )
-	{
-		BaseClass::OnMousePressed( code );
-		return;
-	}
-
-	if ( !m_bAllowRotation && !m_bAllowPitch )
+	if ( !m_bAllowRotation )
 		return;
 
 	RequestFocus();
 
 	EnableMouseCapture( true, code );
-
-	// Save where they clicked
-	input()->GetCursorPosition( m_nClickStartX, m_nClickStartY );
 
 	// Warp the mouse to the center of the screen
 	int width, height;
@@ -498,65 +383,50 @@ void CBaseModelPanel::OnMousePressed ( vgui::MouseCode code )
 //-----------------------------------------------------------------------------
 void CBaseModelPanel::OnMouseReleased( vgui::MouseCode code )
 {
-	if ( m_bAllowFullManipulation )
-	{
-		BaseClass::OnMouseReleased( code );
-		return;
-	}
-
-	if ( !m_bAllowRotation && !m_bAllowPitch )
+	if ( !m_bAllowRotation )
 		return;
 
 	EnableMouseCapture( false );
 	m_bMousePressed = false;
-
-	// Restore the cursor to where the clicked
-	input()->SetCursorPos( m_nClickStartX, m_nClickStartY );
 }
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 void CBaseModelPanel::OnCursorMoved( int x, int y )
 {
-	if ( m_bAllowFullManipulation )
-	{
-		if ( m_pCurrentManip )
-		{
-			m_bApplyManipulators = true;
-		}
-		BaseClass::OnCursorMoved( x, y );
-		return;
-	}
-
-	if ( !m_bAllowRotation && !m_bAllowPitch )
+	if ( !m_bAllowRotation )
 		return;
 
 	if ( m_bMousePressed )
 	{
 		WarpMouse( x, y );
+
 		int xpos, ypos;
 		input()->GetCursorPos( xpos, ypos );
 
-		if ( m_bAllowRotation )
+		// Only want the x delta.
+		float flDelta = xpos - m_nManipStartX;
+
+		// Apply the delta and rotate the player.
+		m_angPlayer.y += flDelta;
+		if ( m_angPlayer.y > 360.0f )
 		{
-			// Only want the x delta.
-			float flDelta = xpos - m_nManipStartX;
-
-
-			// Apply the delta and rotate the player.
-			RotateYaw( flDelta );
+			m_angPlayer.y = m_angPlayer.y - 360.0f;
+		}
+		else if ( m_angPlayer.y < -360.0f )
+		{
+			m_angPlayer.y = m_angPlayer.y + 360.0f;
 		}
 
-		if ( m_bAllowPitch )
-		{
-			// Only want the y delta.
-			float flDelta = ypos - m_nManipStartY;
-
-
-			// Apply the delta and rotate the player.
-			RotatePitch( flDelta );
-		}
+		SetModelAnglesAndPosition( m_angPlayer, m_vecPlayerPos );
 	}
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+void CBaseModelPanel::OnMouseWheeled( int delta )
+{
+	return;
 }
 
 //-----------------------------------------------------------------------------
@@ -574,62 +444,6 @@ void CBaseModelPanel::RotateYaw( float flDelta )
 	}
 
 	SetModelAnglesAndPosition( m_angPlayer, m_vecPlayerPos );
-}
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-void CBaseModelPanel::RotatePitch( float flDelta )
-{
-	m_angPlayer.x += flDelta;
-	if ( m_angPlayer.x > m_flMaxPitch )
-	{
-		m_angPlayer.x = m_flMaxPitch;
-	}
-	else if ( m_angPlayer.x < -m_flMaxPitch )
-	{
-		m_angPlayer.x = -m_flMaxPitch;
-	}
-
-	SetModelAnglesAndPosition( m_angPlayer, m_vecPlayerPos );
-}
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-Vector CBaseModelPanel::GetPlayerPos() const
-{
-	return m_vecPlayerPos;
-}
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-QAngle CBaseModelPanel::GetPlayerAngles() const
-{
-	return m_angPlayer;
-}
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-void CBaseModelPanel::PlaySequence( const char *pszSequenceName )
-{
-	CStudioHdr studioHDR( GetStudioHdr(), g_pMDLCache );
-	int iSeq = ::LookupSequence( &studioHDR, pszSequenceName );
-	if ( iSeq != ACT_INVALID )
-	{
-		m_nActiveSequence = iSeq;
-		m_flActiveSequenceDuration = Studio_Duration( &studioHDR, iSeq, NULL );
-		SetSequence( m_nActiveSequence, true );
-	}
-}
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-void CBaseModelPanel::OnMouseWheeled( int delta )
-{
-	if ( m_bAllowFullManipulation )
-	{
-		BaseClass::OnMouseWheeled( delta );
-		return;
-	}
 }
 
 //-----------------------------------------------------------------------------
@@ -655,9 +469,6 @@ void CBaseModelPanel::LookAtBounds( const Vector &vecBoundsMin, const Vector &ve
 	aBoundsPoints[6].Init( vecMax.x, vecMin.y, vecMin.z ); 
 	aBoundsPoints[7].Init( vecMin.x, vecMin.y, vecMin.z ); 
 
-	// Translated center point (offset from camera center).
-	Vector vecTranslateCenter = -vecCenter;
-
 	// Build the rotation matrix.
 	matrix3x4_t matRotation;
 	AngleMatrix( m_BMPResData.m_angModelPoseRot, matRotation );
@@ -669,7 +480,7 @@ void CBaseModelPanel::LookAtBounds( const Vector &vecBoundsMin, const Vector &ve
 	}
 
 	Vector vecXFormCenter;
-	VectorTransform( -vecTranslateCenter, matRotation, vecXFormCenter );
+	VectorTransform( vecCenter, matRotation, vecXFormCenter );
 
 	int w, h;
 	GetSize( w, h );
@@ -727,7 +538,6 @@ void CBaseModelPanel::LookAtBounds( const Vector &vecBoundsMin, const Vector &ve
 	vecModelPos.y = -vecXFormCenter.y;
 	vecModelPos.z = -vecXFormCenter.z;
 	SetModelAnglesAndPosition( m_BMPResData.m_angModelPoseRot, vecModelPos );
-	m_vecPlayerPos = vecModelPos;
 
 	// Back project to figure out the camera offset to center the model.
 	Vector2D vecPanelCenter( ( flW * 0.5f ), ( flH * 0.5f ) );
@@ -749,158 +559,7 @@ void CBaseModelPanel::LookAtBounds( const Vector &vecBoundsMin, const Vector &ve
 
 	// Clear the camera pivot and set position matrix.
 	ResetCameraPivot();
-	if (m_bAllowRotation || m_bAllowPitch )
-	{
-		vecCameraOffset.x = 0.0f;
-	}
 	SetCameraOffset( Vector( 0.0f, -vecCameraOffset.x, -vecCameraOffset.y ) );
 	UpdateCameraTransform();
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-CBaseModelPanel::particle_data_t::~particle_data_t()
-{
-	if ( m_pParticleSystem )
-	{
-		delete m_pParticleSystem;
-		m_pParticleSystem = NULL;
-	}
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose: Allocate particle data
-//-----------------------------------------------------------------------------
-void CBaseModelPanel::particle_data_t::UpdateControlPoints( CStudioHdr *pStudioHdr, matrix3x4_t *pWorldMatrix, const CUtlVector< int >& vecAttachments, int iDefaultBone /*= 0*/, const Vector& vecParticleOffset /*= vec3_origin*/ )
-{
-	if ( m_pParticleSystem )
-	{
-		// Update control points which is updating the position of the particles
-		matrix3x4_t matAttachToWorld;
-		Vector vecPosition, vecForward, vecRight, vecUp;
-		if ( vecAttachments.Count() )
-		{
-			for ( int i = 0; i < vecAttachments.Count(); ++i )
-			{
-				const mstudioattachment_t& attach = pStudioHdr->pAttachment( vecAttachments[i] ); 
-				MatrixMultiply( pWorldMatrix[ attach.localbone ], attach.local, matAttachToWorld );
-
-				MatrixVectors( matAttachToWorld, &vecForward, &vecRight, &vecUp );
-				MatrixPosition( matAttachToWorld, vecPosition );
-
-				m_pParticleSystem->SetControlPointOrientation( i, vecForward, vecRight, vecUp );
-				m_pParticleSystem->SetControlPoint( i, vecPosition + vecParticleOffset );
-			}
-		}
-		else
-		{
-			matAttachToWorld = pWorldMatrix[iDefaultBone];
-			MatrixVectors( matAttachToWorld, &vecForward, &vecRight, &vecUp );
-			MatrixPosition( matAttachToWorld, vecPosition );
-			
-			m_pParticleSystem->SetControlPointOrientation( 0, vecForward, vecRight, vecUp );
-			m_pParticleSystem->SetControlPoint( 0, vecPosition + vecParticleOffset );
-		}
-	}
-
-	m_bIsUpdateToDate = true;
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose: Allocate particle data
-//-----------------------------------------------------------------------------
-CBaseModelPanel::particle_data_t *CBaseModelPanel::CreateParticleData( const char *pszParticleName )
-{
-	Assert( m_bUseParticle );
-	if ( !m_bUseParticle )
-		return NULL;
-
-	CParticleCollection *pParticle = g_pParticleSystemMgr->CreateParticleCollection( pszParticleName );
-	if ( !pParticle )
-		return NULL;
-
-	particle_data_t *pData = new particle_data_t;
-	pData->m_bIsUpdateToDate = false;
-	pData->m_pParticleSystem = pParticle;
-
-	m_particleList.AddToTail( pData );
-
-	return pData;
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose: remove and delete particle data
-//-----------------------------------------------------------------------------
-bool CBaseModelPanel::SafeDeleteParticleData( particle_data_t **pData )
-{
-	if ( !m_bUseParticle )
-		return false;
-
-	if ( *pData )
-	{
-		FOR_EACH_VEC( m_particleList, i )
-		{
-			if ( *pData == m_particleList[i] )
-			{
-				delete *pData;
-				*pData = NULL;
-				m_particleList.FastRemove( i );
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CBaseModelPanel::PrePaint3D( IMatRenderContext *pRenderContext )
-{
-	if ( !m_bUseParticle )
-		return;
-
-	// mark all effects need to be updated
-	FOR_EACH_VEC( m_particleList, i )
-	{
-		m_particleList[i]->m_bIsUpdateToDate = false;
-	}
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CBaseModelPanel::PostPaint3D( IMatRenderContext *pRenderContext )
-{
-	if ( !m_bUseParticle )
-		return;
-
-	// This needs calling to reset various counters.
-	g_pParticleSystemMgr->SetLastSimulationTime( gpGlobals->curtime );
-
-	// Render Particles
-	pRenderContext->MatrixMode( MATERIAL_MODEL );
-	pRenderContext->PushMatrix();
-	pRenderContext->LoadIdentity( );
-
-	FOR_EACH_VEC( m_particleList, i )
-	{
-		if ( m_particleList[i]->m_bIsUpdateToDate )
-		{
-			m_particleList[i]->m_pParticleSystem->Simulate( gpGlobals->frametime, false );
-			m_particleList[i]->m_pParticleSystem->Render( pRenderContext );
-			m_particleList[i]->m_bIsUpdateToDate = false;
-		}
-	}
-
-	pRenderContext->MatrixMode( MATERIAL_MODEL );
-	pRenderContext->PopMatrix();
 }
 

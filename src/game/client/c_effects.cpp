@@ -38,7 +38,6 @@ float g_flSplashLifetime = 0.5f;
 float g_flSplashAlpha = 0.3f;
 ConVar r_RainSplashPercentage( "r_RainSplashPercentage", "20", FCVAR_CHEAT ); // N% chance of a rain particle making a splash.
 ConVar r_RainParticleDensity( "r_RainParticleDensity", "1", FCVAR_NONE, "Density of Particle Rain 0-1" );
-ConVar r_RainAllowInSplitScreen( "r_RainAllowInSplitScreen", "0", FCVAR_NONE, "Allows rain in splitscreen" );
 
 float GUST_INTERVAL_MIN = 1;
 float GUST_INTERVAL_MAX = 2;
@@ -1889,8 +1888,6 @@ public:
 		SNOWFALL_AROUND_PLAYER,
 		SNOWFALL_IN_ENTITY,
 	};
-
-	void	SetSplitScreenPlayerSlot( int nSlot );
 
 private:
 	bool CreateSnowFallEmitter( void );

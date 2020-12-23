@@ -164,6 +164,9 @@ typedef enum _D3DFORMAT
 //-----------------------------------------------------------------------------
 // Color structures
 //-----------------------------------------------------------------------------
+struct BGRA8888_t;
+struct BGRX8888_t;
+struct RGB888_t;
 
 struct BGRA8888_t
 {
@@ -178,20 +181,28 @@ struct BGRA8888_t
 	}
 };
 
+struct BGRX8888_t
+{
+	unsigned char b;		// change the order of names to change the 
+	unsigned char g;		//  order of the output ARGB or BGRA, etc...
+	unsigned char r;		//  Last one is MSB, 1st is LSB.
+	unsigned char x;
+	inline BGRX8888_t& operator=( const BGRX8888_t& in )
+	{
+		*( unsigned int * )this = *( unsigned int * ) &in;
+		return *this;
+	}
+};
+
 struct RGBA8888_t
 {
 	unsigned char r;		// change the order of names to change the 
 	unsigned char g;		//  order of the output ARGB or BGRA, etc...
 	unsigned char b;		//  Last one is MSB, 1st is LSB.
 	unsigned char a;
-	inline RGBA8888_t& operator=( const BGRA8888_t& in )
-	{
-		r = in.r;
-		g = in.g;
-		b = in.b;
-		a = in.a;
-		return *this;
-	}
+	inline RGBA8888_t& operator=( const BGRA8888_t& in );
+	inline RGBA8888_t& operator=( const RGB888_t& in );
+	inline RGBA8888_t& operator=( const BGRX8888_t& in );
 };
 
 struct RGB888_t
@@ -304,6 +315,36 @@ struct RGBX5551_t
 		return *this;
 	}
 };
+
+//-----------------------------------------------------------------------------
+// Conversion assignments
+//-----------------------------------------------------------------------------
+RGBA8888_t& RGBA8888_t::operator=( const BGRA8888_t& in )
+{
+	r = in.r;
+	g = in.g;
+	b = in.b;
+	a = in.a;
+	return *this;
+}
+
+RGBA8888_t& RGBA8888_t::operator=( const RGB888_t& in )
+{
+	r = in.r;
+	g = in.g;
+	b = in.b;
+	a = 0xFF;
+	return *this;
+}
+
+RGBA8888_t& RGBA8888_t::operator=( const BGRX8888_t& in )
+{
+	r = in.r;
+	g = in.g;
+	b = in.b;
+	a = 0xFF;
+	return *this;
+}
 
 //-----------------------------------------------------------------------------
 // some important constants

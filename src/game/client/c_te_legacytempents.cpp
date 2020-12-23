@@ -1097,7 +1097,7 @@ void CTempEnts::BreakModel( const Vector &pos, const QAngle &angles, const Vecto
 	}
 }
 
-void CTempEnts::PhysicsProp( int modelindex, int skin, const Vector& pos, const QAngle &angles, const Vector& vel, int physFlags, int physEffects )
+void CTempEnts::PhysicsProp( int modelindex, int skin, const Vector& pos, const QAngle &angles, const Vector& vel, int flags, int effects, color24 renderColor)
 {
 	C_PhysPropClientside *pEntity = C_PhysPropClientside::CreateNew();
 	
@@ -1117,7 +1117,28 @@ void CTempEnts::PhysicsProp( int modelindex, int skin, const Vector& pos, const 
 	pEntity->SetAbsOrigin( pos );
 	pEntity->SetAbsAngles( angles );
 	pEntity->SetPhysicsMode( PHYSICS_MULTIPLAYER_CLIENTSIDE );
-	pEntity->SetEffects( physEffects );
+	pEntity->SetEffects( effects );
+	pEntity->SetRenderColor( renderColor.r, renderColor.g, renderColor.b );
+
+	if ( flags & 1 )
+	{
+		// We are not calling initialize on this entity here, so we need to manually set some of the required values otherwise set in initialize.
+		pEntity->SetModelIndex( modelindex );
+		pEntity->SetCollisionGroup( COLLISION_GROUP_PUSHAWAY );
+		pEntity->SetAbsVelocity( vel );
+		const model_t *mod = pEntity->GetModel();
+		if ( mod )
+		{
+			Vector mins, maxs;
+			modelinfo->GetModelBounds( mod, mins, maxs );
+			pEntity->SetCollisionBounds( mins, maxs );
+		}
+
+		pEntity->Spawn();
+		pEntity->SetHealth( 0 );
+		pEntity->Break();
+		return;
+	}
 
 	if ( !pEntity->Initialize() )
 	{
@@ -1138,10 +1159,10 @@ void CTempEnts::PhysicsProp( int modelindex, int skin, const Vector& pos, const 
 		return;
 	}
 
-	if ( physFlags & 1 )
+	if ( flags & 2 )
 	{
-		pEntity->SetHealth( 0 );
-		pEntity->Break();
+		int numBodygroups = pEntity->GetBodygroupCount( 0 );
+		pEntity->SetBodygroup( 0, RandomInt( 0, numBodygroups - 1 ) );
 	}
 }
 

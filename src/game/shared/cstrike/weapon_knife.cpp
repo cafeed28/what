@@ -10,10 +10,12 @@
 
 #if defined( CLIENT_DLL )
 	#include "c_cs_player.h"
+	#include "c_te_effect_dispatch.h"
 #else
 	#include "cs_player.h"
 	#include "ilagcompensationmanager.h"
 	#include "cs_gamestats.h"
+	#include "te_effect_dispatch.h"
 #endif
 
 
@@ -291,7 +293,7 @@ void CKnife::Smack( void )
 
 	data.m_vAngles = GetPlayerOwner()->GetAbsAngles();
 	data.m_fFlags = 0x1;	//IMPACT_NODECAL;
-	te->DispatchEffect( filter, 0.0, data.m_vOrigin, "KnifeSlash", data );
+	DispatchEffect( filter, 0.0, "KnifeSlash", data );
 }
 
 void CKnife::WeaponIdle()
@@ -513,7 +515,7 @@ bool CKnife::SwingOrStab( CSWeaponMode weaponMode )
 
 		data.m_vAngles = pPlayer->GetAbsAngles();
 		data.m_fFlags = 0x1;	//IMPACT_NODECAL;
-		te->DispatchEffect( filter, 0.0, data.m_vOrigin, "KnifeSlash", data );
+		DispatchEffect( filter, 0.0, "KnifeSlash", data );
 	}
 	else
 	{

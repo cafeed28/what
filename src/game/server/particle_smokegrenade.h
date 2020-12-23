@@ -31,6 +31,8 @@ public:
 
 	virtual void		Spawn( void );
 	virtual int			UpdateTransmitState( void );
+	void				SetCreator(CBasePlayer *creator);
+	CBasePlayer*		GetCreator();
 
 public:
 
@@ -42,6 +44,9 @@ public:
 
 	// Set time to fade out relative to current time
 	void				SetRelativeFadeTime(float startTime, float endTime);
+
+	// Set the tint color of the grenade smoke.
+	void				SetSmokeColor(Vector color);
 
 	void				Think( void );
 
@@ -56,6 +61,8 @@ public:
 	// When to fade in and out.
 	CNetworkVar( float, m_FadeStartTime );
 	CNetworkVar( float, m_FadeEndTime );
+	CNetworkVar( Vector, m_MinColor );
+	CNetworkVar( Vector, m_MaxColor );
 
 protected:
     

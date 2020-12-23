@@ -311,7 +311,7 @@ int C_Hairball::DrawModel( int flags )
 		{
 			BeamSeg_t seg;
 			seg.m_vPos = pBase[i].m_vPredicted;
-			seg.m_vColor.Init( 0, 0, 0 );
+			seg.m_color.r = seg.m_color.g = seg.m_color.b = seg.m_color.a = 0;
 			seg.m_flTexCoord = 0;
 			static float flHairWidth = 1;
 			seg.m_flWidth = flHairWidth;

@@ -804,6 +804,7 @@ public:
 	// was pev->rendercolor
 	CNetworkColor32( m_clrRender );
 	const color32 GetRenderColor() const;
+	const color24 GetRenderColor24() const;
 	void SetRenderColor( byte r, byte g, byte b );
 	void SetRenderColor( byte r, byte g, byte b, byte a );
 	void SetRenderColorR( byte r );
@@ -2322,6 +2323,12 @@ inline void CBaseEntity::SetWaterLevel( int nLevel )
 inline const color32 CBaseEntity::GetRenderColor() const
 {
 	return m_clrRender.Get();
+}
+
+inline const color24 CBaseEntity::GetRenderColor24() const
+{
+	color24 c = { m_clrRender->r, m_clrRender->g, m_clrRender->b };
+	return c;
 }
 
 inline void CBaseEntity::SetRenderColor( byte r, byte g, byte b )
