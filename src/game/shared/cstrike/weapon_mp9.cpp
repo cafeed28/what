@@ -46,9 +46,9 @@ END_NETWORK_TABLE()
 BEGIN_PREDICTION_DATA( CWeaponMP9 )
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( weapon_mp9, CWeaponMP9 );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_mp9, WeaponMP9 );
 #ifdef GAME_DLL
-LINK_ENTITY_TO_CLASS( weapon_tmp, CWeaponMP9 ); // for backwards compatibility
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_tmp, WeaponMP9 ); // for backwards compatibility
 #endif
 PRECACHE_WEAPON_REGISTER( weapon_mp9 );
 

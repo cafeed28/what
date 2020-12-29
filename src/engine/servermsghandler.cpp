@@ -199,6 +199,7 @@ void CClientState::PacketEnd()
 
 	// Highest command parsed from messages
 	last_command_ack = command_ack;
+	last_server_tick = GetServerTickCount();
 	
 	// Let prediction copy off pristine data and report any errors, etc.
 	g_pClientSidePrediction->PostNetworkDataReceived( commands_acknowledged );

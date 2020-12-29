@@ -58,9 +58,9 @@ END_NETWORK_TABLE()
 BEGIN_PREDICTION_DATA( CWeaponSG556 )
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( weapon_sg556, CWeaponSG556 );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_sg556, WeaponSG556 );
 #ifdef GAME_DLL
-LINK_ENTITY_TO_CLASS( weapon_sg552, CWeaponSG556 ); // for backwards compatibility
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_sg552, WeaponSG556 ); // for backwards compatibility
 #endif
 PRECACHE_WEAPON_REGISTER( weapon_sg556 );
 

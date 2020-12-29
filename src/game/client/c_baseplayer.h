@@ -247,6 +247,7 @@ public:
 
 	// Prediction stuff
 	virtual bool				ShouldPredict( void );
+	virtual C_BasePlayer		*GetPredictionOwner( void );
 
 	virtual void				PreThink( void );
 	virtual void				PostThink( void );
@@ -314,6 +315,10 @@ public:
 
 	float					GetTimeBase( void ) const;
 	float					GetFinalPredictedTime() const;
+	float					PredictedServerTime() const;
+
+	float					m_fLastUpdateServerTime;
+	int						m_nLastUpdateTickBase;
 
 	bool					IsInVGuiInputMode() const;
 	bool					IsInViewModelVGuiInputMode() const;
@@ -362,6 +367,9 @@ public:
 
 	virtual void ExitLadder() {}
 	surfacedata_t *GetLadderSurface( const Vector &origin );
+
+	void	ForceButtons( int nButtons );
+	void	UnforceButtons( int nButtons );
 
 	surfacedata_t *GetSurfaceData( void ) { return m_pSurfaceData; }
 
@@ -428,6 +436,7 @@ public:
 	int						m_iDefaultFOV;		// default FOV if no other zooms are occurring
 	EHANDLE					m_hZoomOwner;		// This is a pointer to the entity currently controlling the player's zoom
 												// Only this entity can change the zoom state once it has ownership
+	int						m_afButtonForced;	// These are forced onto the player's inputs
 
 	// For weapon prediction
 	bool			m_fOnTarget;		//Is the crosshair on a target?

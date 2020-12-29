@@ -77,7 +77,7 @@ BEGIN_PREDICTION_DATA( CWeaponGlock )
 END_PREDICTION_DATA()
 #endif
 
-LINK_ENTITY_TO_CLASS( weapon_glock, CWeaponGlock );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_glock, WeaponGlock );
 PRECACHE_WEAPON_REGISTER( weapon_glock );
 
 const float kGlockBurstCycleTime = 0.06f;

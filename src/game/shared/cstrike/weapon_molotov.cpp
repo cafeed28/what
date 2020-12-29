@@ -31,7 +31,7 @@ END_NETWORK_TABLE()
 BEGIN_PREDICTION_DATA( CMolotovGrenade )
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( weapon_molotov, CMolotovGrenade );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_molotov, MolotovGrenade );
 PRECACHE_REGISTER( weapon_molotov );
 
 #if !defined( CLIENT_DLL )
@@ -146,7 +146,7 @@ END_NETWORK_TABLE()
 BEGIN_PREDICTION_DATA( CIncendiaryGrenade )
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( weapon_incgrenade, CIncendiaryGrenade );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_incgrenade, IncendiaryGrenade );
 PRECACHE_REGISTER( weapon_incgrenade );
 
 #if !defined( CLIENT_DLL )

@@ -152,8 +152,8 @@ BEGIN_NETWORK_TABLE_NOBASE( CCSGameRules, DT_CSGameRules )
 END_NETWORK_TABLE()
 
 
-LINK_ENTITY_TO_CLASS( cs_gamerules, CCSGameRulesProxy );
 IMPLEMENT_NETWORKCLASS_ALIASED( CSGameRulesProxy, DT_CSGameRulesProxy )
+LINK_ENTITY_TO_CLASS_ALIASED( cs_gamerules, CSGameRulesProxy );
 
 
 #ifdef CLIENT_DLL

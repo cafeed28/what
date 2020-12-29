@@ -53,9 +53,14 @@ BEGIN_PREDICTION_DATA( CWeaponP250 )
 END_PREDICTION_DATA()
 #endif
 
-LINK_ENTITY_TO_CLASS( weapon_p250, CWeaponP250 );
+IMPLEMENT_NETWORKCLASS_ALIASED( WeaponP250, DT_WeaponP250 )
+
+BEGIN_NETWORK_TABLE( CWeaponP250, DT_WeaponP250 )
+END_NETWORK_TABLE()
+
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_p250, WeaponP250 );
 #ifdef GAME_DLL
-LINK_ENTITY_TO_CLASS( weapon_p228, CWeaponP250 ); // for backwards compatibility
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_p228, WeaponP250 ); // for backwards compatibility
 #endif
 PRECACHE_WEAPON_REGISTER( weapon_p250 );
 
@@ -82,11 +87,6 @@ bool CWeaponP250::Deploy()
 
 	return BaseClass::Deploy();
 }
-
-IMPLEMENT_NETWORKCLASS_ALIASED( WeaponP250, DT_WeaponP250 )
-
-BEGIN_NETWORK_TABLE( CWeaponP250, DT_WeaponP250 )
-END_NETWORK_TABLE()
 
 void CWeaponP250::PrimaryAttack( void )
 {

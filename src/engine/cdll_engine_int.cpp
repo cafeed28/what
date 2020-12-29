@@ -82,6 +82,7 @@
 #include "iachievementmgr.h"
 #include "profile.h"
 #include "cl_steamauth.h"
+#include "world.h"
 #include "download.h"
 #include "replay/iclientreplay.h"
 #include "demofile.h"
@@ -569,6 +570,9 @@ public:
 	virtual bool	StartDemoRecording( const char *pszFilename, const char *pszFolder = NULL );
 	virtual void	StopDemoRecording( void );
 	virtual void	TakeScreenshot( const char *pszFilename, const char *pszFolder = NULL );
+
+	virtual void SolidMoved( IClientEntity *pSolidEnt, ICollideable *pSolidCollide, const Vector* pPrevAbsOrigin, bool accurateBboxTriggerChecks );
+	virtual void TriggerMoved( IClientEntity *pTriggerEnt, bool accurateBboxTriggerChecks );
 };
 
 
@@ -2211,4 +2215,17 @@ void CEngineClient::TakeScreenshot( const char *pszFilename, const char *pszFold
 	{
 		Shader_SwapBuffers();
 	}
+}
+
+//-----------------------------------------------------------------------------
+// Adds a handle to the list of entities to update when a partition query occurs
+//-----------------------------------------------------------------------------
+void CEngineClient::SolidMoved( IClientEntity *pSolidEnt, ICollideable *pSolidCollide, const Vector* pPrevAbsOrigin, bool accurateBboxTriggerChecks )
+{
+	CL_SolidMoved( pSolidEnt, pSolidCollide, pPrevAbsOrigin, accurateBboxTriggerChecks );
+}
+
+void CEngineClient::TriggerMoved( IClientEntity *pTriggerEnt, bool accurateBboxTriggerChecks )
+{
+	CL_TriggerMoved( pTriggerEnt, accurateBboxTriggerChecks );
 }

@@ -44,7 +44,7 @@ END_NETWORK_TABLE()
 BEGIN_PREDICTION_DATA( CAK47 )
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( weapon_ak47, CAK47 );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_ak47, AK47 );
 PRECACHE_WEAPON_REGISTER( weapon_ak47 );
 
 // ---------------------------------------------------------------------------- //

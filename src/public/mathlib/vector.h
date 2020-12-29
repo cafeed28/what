@@ -208,7 +208,8 @@ private:
 #endif
 };
 
-FORCEINLINE void NetworkVarConstruct( Vector &v ) { v.Zero(); }
+// Zero the object -- necessary for CNetworkVar and possibly other cases.
+inline void EnsureValidValue( Vector &x ) { x.Zero(); }
 
 
 #define USE_M64S ( ( !defined( _X360 ) ) )
@@ -1835,7 +1836,8 @@ private:
 #endif
 };
 
-FORCEINLINE void NetworkVarConstruct( QAngle &q ) { q.x = q.y = q.z = 0.0f; }
+// Zero the object -- necessary for CNetworkVar and possibly other cases.
+inline void EnsureValidValue( QAngle &x ) { x.Init(); }
 
 //-----------------------------------------------------------------------------
 // Allows us to specifically pass the vector by value when we need to

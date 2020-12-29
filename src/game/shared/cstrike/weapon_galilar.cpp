@@ -50,9 +50,9 @@ END_NETWORK_TABLE()
 BEGIN_PREDICTION_DATA( CWeaponGalilAR )
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( weapon_galilar, CWeaponGalilAR );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_galilar, WeaponGalilAR );
 #ifdef GAME_DLL
-LINK_ENTITY_TO_CLASS( weapon_galil, CWeaponGalilAR ); // for backwards compatibility
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_galil, WeaponGalilAR ); // for backwards compatibility
 #endif
 PRECACHE_WEAPON_REGISTER( weapon_galilar );
 

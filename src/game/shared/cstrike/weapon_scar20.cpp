@@ -58,9 +58,9 @@ BEGIN_PREDICTION_DATA( CWeaponSCAR20 )
 END_PREDICTION_DATA()
 #endif
 
-LINK_ENTITY_TO_CLASS( weapon_scar20, CWeaponSCAR20 );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_scar20, WeaponSCAR20 );
 #ifdef GAME_DLL
-LINK_ENTITY_TO_CLASS( weapon_sg550, CWeaponSCAR20 ); // for backwards compatibility
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_sg550, WeaponSCAR20 ); // for backwards compatibility
 #endif
 PRECACHE_WEAPON_REGISTER( weapon_scar20 );
 

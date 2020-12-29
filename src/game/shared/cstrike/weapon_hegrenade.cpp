@@ -35,7 +35,7 @@ END_NETWORK_TABLE()
 BEGIN_PREDICTION_DATA( CHEGrenade )
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( weapon_hegrenade, CHEGrenade );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_hegrenade, HEGrenade );
 PRECACHE_WEAPON_REGISTER( weapon_hegrenade );
 
 

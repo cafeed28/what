@@ -59,7 +59,7 @@ BEGIN_PREDICTION_DATA( CWeaponFiveSeven )
 END_PREDICTION_DATA()
 #endif
 
-LINK_ENTITY_TO_CLASS( weapon_fiveseven, CWeaponFiveSeven );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_fiveseven, WeaponFiveSeven );
 PRECACHE_WEAPON_REGISTER( weapon_fiveseven );
 
 

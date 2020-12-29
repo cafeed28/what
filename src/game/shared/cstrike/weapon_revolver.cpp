@@ -59,7 +59,7 @@ BEGIN_PREDICTION_DATA( CRevolver )
 END_PREDICTION_DATA()
 #endif
 
-LINK_ENTITY_TO_CLASS( weapon_revolver, CRevolver );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_revolver, Revolver );
 PRECACHE_WEAPON_REGISTER( weapon_revolver );
 
 

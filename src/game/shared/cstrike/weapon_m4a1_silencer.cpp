@@ -69,9 +69,9 @@ END_NETWORK_TABLE()
 BEGIN_PREDICTION_DATA( CWeaponM4A1 )
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( weapon_m4a1_silencer, CWeaponM4A1 );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_m4a1_silencer, WeaponM4A1 );
 #ifdef GAME_DLL
-LINK_ENTITY_TO_CLASS( weapon_m4a1, CWeaponM4A1 ); // for backwards compatibility
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_m4a1, WeaponM4A1 ); // for backwards compatibility
 #endif
 PRECACHE_WEAPON_REGISTER( weapon_m4a1_silencer );
 

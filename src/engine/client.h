@@ -143,6 +143,7 @@ public:
 	int			lastoutgoingcommand;// Sequence number of last outgoing command
 	int			chokedcommands;		// number of choked commands
 	int			last_command_ack;	// last command sequence number acknowledged by server
+	int			last_server_tick;	// same update pattern as last_command_ack, but with server ticks
 	int			command_ack;		// current command sequence acknowledged by server
 	int			m_nSoundSequence;	// current processed reliable sound sequence number
 	

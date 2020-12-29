@@ -2591,6 +2591,10 @@ bool CPhysicsProp::CreateVPhysics()
 		if ( HasSpawnFlags( SF_PHYSPROP_MOTIONDISABLED ) || m_damageToEnableMotion > 0 || m_flForceToEnableMotion > 0 )
 		{
 			pPhysicsObject->EnableMotion( false );
+			if ( m_damageToEnableMotion <= 0 && m_flForceToEnableMotion <= 0 )
+			{
+				AddSolidFlags( FSOLID_NOT_MOVEABLE );
+			}
 		}
 	}
 

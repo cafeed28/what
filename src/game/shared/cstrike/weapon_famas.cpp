@@ -68,7 +68,7 @@ DEFINE_PRED_FIELD( m_fNextBurstShot, FIELD_FLOAT, 0 ),
 END_PREDICTION_DATA()
 #endif
 
-LINK_ENTITY_TO_CLASS( weapon_famas, CWeaponFamas );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_famas, WeaponFamas );
 PRECACHE_WEAPON_REGISTER( weapon_famas );
 
 

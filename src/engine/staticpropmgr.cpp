@@ -170,7 +170,7 @@ public:
 
 	virtual void			WorldSpaceTriggerBounds( Vector* pVecWorldMins, Vector *pVecWorldMaxs ) const;
 	virtual void			WorldSpaceSurroundingBounds( Vector* pVecWorldMins, Vector *pVecWorldMaxs );
-	virtual bool			ShouldTouchTrigger( int triggerSolidFlags ) const { return false; }
+	virtual uint			GetRequiredTriggerFlags() const { return 0; }
 	virtual const matrix3x4_t	*GetRootParentToWorldTransform() const { return NULL; }
 
 	// IClientRenderable overrides.

@@ -58,19 +58,19 @@ BEGIN_SEND_TABLE_NOBASE( CPlayerLocalData, DT_Local )
 	SendPropInt		(SENDINFO(m_bAllowAutoMovement),1, SPROP_UNSIGNED ),
 
 	// 3d skybox data
-	SendPropInt(SENDINFO_STRUCTELEM(m_skybox3d.scale), 12),
-	SendPropVector	(SENDINFO_STRUCTELEM(m_skybox3d.origin),      -1,  SPROP_COORD),
-	SendPropInt	(SENDINFO_STRUCTELEM(m_skybox3d.area),	8, SPROP_UNSIGNED ),
-	SendPropInt( SENDINFO_STRUCTELEM( m_skybox3d.fog.enable ), 1, SPROP_UNSIGNED ),
-	SendPropInt( SENDINFO_STRUCTELEM( m_skybox3d.fog.blend ), 1, SPROP_UNSIGNED ),
-	SendPropVector( SENDINFO_STRUCTELEM(m_skybox3d.fog.dirPrimary), -1, SPROP_COORD),
-	SendPropInt( SENDINFO_STRUCTELEM( m_skybox3d.fog.colorPrimary ), 32, SPROP_UNSIGNED ),
-	SendPropInt( SENDINFO_STRUCTELEM( m_skybox3d.fog.colorSecondary ), 32, SPROP_UNSIGNED ),
-	SendPropFloat( SENDINFO_STRUCTELEM( m_skybox3d.fog.start ), 0, SPROP_NOSCALE ),
-	SendPropFloat( SENDINFO_STRUCTELEM( m_skybox3d.fog.end ), 0, SPROP_NOSCALE ),
-	SendPropFloat( SENDINFO_STRUCTELEM( m_skybox3d.fog.maxdensity ), 0, SPROP_NOSCALE ),
+	SendPropInt(SENDINFO_STRUCTELEM( sky3dparams_t, m_skybox3d, scale), 12),
+	SendPropVector	(SENDINFO_STRUCTELEM(sky3dparams_t, m_skybox3d, origin),      -1,  SPROP_COORD),
+	SendPropInt	(SENDINFO_STRUCTELEM(sky3dparams_t, m_skybox3d, area),	8, SPROP_UNSIGNED ),
+	SendPropInt( SENDINFO_STRUCTELEM( fogparams_t, m_skybox3d.fog, enable ), 1, SPROP_UNSIGNED ),
+	SendPropInt( SENDINFO_STRUCTELEM( fogparams_t, m_skybox3d.fog, blend ), 1, SPROP_UNSIGNED ),
+	SendPropVector( SENDINFO_STRUCTELEM(fogparams_t, m_skybox3d.fog, dirPrimary), -1, SPROP_COORD),
+	SendPropInt( SENDINFO_STRUCTELEM( fogparams_t, m_skybox3d.fog, colorPrimary ), 32, SPROP_UNSIGNED, SendProxy_Color32ToInt32 ),
+	SendPropInt( SENDINFO_STRUCTELEM( fogparams_t, m_skybox3d.fog, colorSecondary ), 32, SPROP_UNSIGNED, SendProxy_Color32ToInt32 ),
+	SendPropFloat( SENDINFO_STRUCTELEM( fogparams_t, m_skybox3d.fog, start ), 0, SPROP_NOSCALE ),
+	SendPropFloat( SENDINFO_STRUCTELEM( fogparams_t, m_skybox3d.fog, end ), 0, SPROP_NOSCALE ),
+	SendPropFloat( SENDINFO_STRUCTELEM( fogparams_t, m_skybox3d.fog, maxdensity ), 0, SPROP_NOSCALE ),
 
-	SendPropEHandle( SENDINFO_STRUCTELEM( m_PlayerFog.m_hCtrl ) ),
+	SendPropEHandle( SENDINFO_STRUCTELEM( fogplayerparams_t, m_PlayerFog, m_hCtrl ) ),
 
 	// audio data
 	SendPropVector( SENDINFO_STRUCTARRAYELEM( m_audio.localSound, 0 ), -1, SPROP_COORD),
@@ -81,9 +81,9 @@ BEGIN_SEND_TABLE_NOBASE( CPlayerLocalData, DT_Local )
 	SendPropVector( SENDINFO_STRUCTARRAYELEM( m_audio.localSound, 5 ), -1, SPROP_COORD),
 	SendPropVector( SENDINFO_STRUCTARRAYELEM( m_audio.localSound, 6 ), -1, SPROP_COORD),
 	SendPropVector( SENDINFO_STRUCTARRAYELEM( m_audio.localSound, 7 ), -1, SPROP_COORD),
-	SendPropInt( SENDINFO_STRUCTELEM( m_audio.soundscapeIndex ), 17, 0 ),
-	SendPropInt( SENDINFO_STRUCTELEM( m_audio.localBits ), NUM_AUDIO_LOCAL_SOUNDS, SPROP_UNSIGNED ),
-	SendPropEHandle( SENDINFO_STRUCTELEM( m_audio.ent ) ),
+	SendPropInt( SENDINFO_STRUCTELEM( audioparams_t, m_audio, soundscapeIndex ), 17, 0 ),
+	SendPropInt( SENDINFO_STRUCTELEM( audioparams_t, m_audio, localBits ), NUM_AUDIO_LOCAL_SOUNDS, SPROP_UNSIGNED ),
+	SendPropInt( SENDINFO_STRUCTELEM( audioparams_t, m_audio, ent ) ),
 END_SEND_TABLE()
 
 BEGIN_SIMPLE_DATADESC( fogplayerparams_t )

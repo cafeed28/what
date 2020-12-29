@@ -1572,4 +1572,8 @@ enum
 	VEHICLE_ANALOG_BIAS_REVERSE,
 };
 
+// Used on player entities - only sends the data to the local player (objectID-1).
+void* SendProxy_SendLocalDataTable( const SendProp *pProp, const void *pStruct, const void *pVarData, CSendProxyRecipients *pRecipients, int objectID );
+void* SendProxy_SendNonLocalDataTable( const SendProp *pProp, const void *pStruct, const void *pVarData, CSendProxyRecipients *pRecipients, int objectID );
+
 #endif // PLAYER_H

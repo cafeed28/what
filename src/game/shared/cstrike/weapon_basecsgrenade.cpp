@@ -66,7 +66,7 @@ BEGIN_PREDICTION_DATA( CBaseCSGrenade )
 END_PREDICTION_DATA()
 #endif
 
-LINK_ENTITY_TO_CLASS( weapon_basecsgrenade, CBaseCSGrenade );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_basecsgrenade, BaseCSGrenade );
 
 #ifndef CLIENT_DLL
 ConVar sv_ignoregrenaderadio( "sv_ignoregrenaderadio", "0", 0, "Turn off Fire in the hole messages" );

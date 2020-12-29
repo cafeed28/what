@@ -96,35 +96,16 @@ static CUtlLinkedList<C_BaseEntity*, unsigned short> g_InterpolationList;
 static CUtlLinkedList<C_BaseEntity*, unsigned short> g_TeleportList;
 
 #if !defined( NO_ENTITY_PREDICTION )
-//-----------------------------------------------------------------------------
-// Purpose: Maintains a list of predicted or client created entities
-//-----------------------------------------------------------------------------
-class CPredictableList : public IPredictableList
-{
-public:
-	virtual C_BaseEntity *GetPredictable( int slot );
-	virtual int GetPredictableCount( void );
-
-protected:
-	void	AddToPredictableList( ClientEntityHandle_t add );
-	void	RemoveFromPredictablesList( ClientEntityHandle_t remove );
-
-private:
-	CUtlVector< ClientEntityHandle_t >	m_Predictables;
-
-	friend class C_BaseEntity;
-};
 
 // Create singleton
 static CPredictableList g_Predictables;
-IPredictableList *predictables = &g_Predictables;
-
+CPredictableList *predictables = &g_Predictables;
 //-----------------------------------------------------------------------------
 // Purpose: Add entity to list
 // Input  : add - 
 // Output : int
 //-----------------------------------------------------------------------------
-void CPredictableList::AddToPredictableList( ClientEntityHandle_t add )
+void CPredictableList::AddToPredictableList( C_BaseEntity *add )
 {
 	// This is a hack to remap slot to index
 	if ( m_Predictables.Find( add ) != m_Predictables.InvalidIndex() )
@@ -132,73 +113,17 @@ void CPredictableList::AddToPredictableList( ClientEntityHandle_t add )
 		return;
 	}
 
-	// Add to general list
-	m_Predictables.AddToTail( add );
-
-	// Maintain sort order by entindex
-	int count = m_Predictables.Size();
-	if ( count < 2 )
-		return;
-
-	int i, j;
-	for ( i = 0; i < count; i++ )
-	{
-		for ( j = i + 1; j < count; j++ )
-		{
-			ClientEntityHandle_t h1 = m_Predictables[ i ];
-			ClientEntityHandle_t h2 = m_Predictables[ j ];
-
-			C_BaseEntity *p1 = cl_entitylist->GetBaseEntityFromHandle( h1 );
-			C_BaseEntity *p2 = cl_entitylist->GetBaseEntityFromHandle( h2 );
-
-			if ( !p1 || !p2 )
-			{
-				Assert( 0 );
-				continue;
-			}
-
-			if ( p1->entindex() != -1 && 
-				 p2->entindex() != -1 )
-			{
-				if ( p1->entindex() < p2->entindex() )
-					continue;
-			}
-
-			if ( p2->entindex() == -1 )
-				continue;
-
-			m_Predictables[ i ] = h2;
-			m_Predictables[ j ] = h1;
-		}
-	}
+	// Add to general sorted list
+	m_Predictables.Insert( add );
 }
 
 //-----------------------------------------------------------------------------
 // Purpose: 
 // Input  : remove - 
 //-----------------------------------------------------------------------------
-void CPredictableList::RemoveFromPredictablesList( ClientEntityHandle_t remove )
+void CPredictableList::RemoveFromPredictablesList( C_BaseEntity *remove )
 {
 	m_Predictables.FindAndRemove( remove );
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-// Input  : slot - 
-// Output : C_BaseEntity
-//-----------------------------------------------------------------------------
-C_BaseEntity *CPredictableList::GetPredictable( int slot )
-{
-	return cl_entitylist->GetBaseEntityFromHandle( m_Predictables[ slot ] );
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-// Output : int
-//-----------------------------------------------------------------------------
-int CPredictableList::GetPredictableCount( void )
-{
-	return m_Predictables.Count();
 }
 
 //-----------------------------------------------------------------------------
@@ -208,6 +133,7 @@ int CPredictableList::GetPredictableCount( void )
 //-----------------------------------------------------------------------------
 static C_BaseEntity *FindPreviouslyCreatedEntity( CPredictableId& testId )
 {
+#if defined( USE_PREDICTABLEID )
 	int c = predictables->GetPredictableCount();
 
 	int i;
@@ -223,7 +149,7 @@ static C_BaseEntity *FindPreviouslyCreatedEntity( CPredictableId& testId )
 			return e;
 		}
 	}
-
+#endif
 	return NULL;
 }
 #endif
@@ -421,7 +347,7 @@ BEGIN_RECV_TABLE_NOBASE( C_BaseEntity, DT_AnimTimeMustBeFirst )
 END_RECV_TABLE()
 
 
-#ifndef NO_ENTITY_PREDICTION
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 BEGIN_RECV_TABLE_NOBASE( C_BaseEntity, DT_PredictableId )
 	RecvPropPredictableId( RECVINFO( m_PredictableID ) ),
 	RecvPropInt( RECVINFO( m_bIsPlayerSimulated ) ),
@@ -465,7 +391,7 @@ BEGIN_RECV_TABLE_NOBASE(C_BaseEntity, DT_BaseEntity)
 	RecvPropDataTable( RECVINFO_DT( m_Collision ), 0, &REFERENCE_RECV_TABLE(DT_CollisionProperty) ),
 	
 	RecvPropInt( RECVINFO ( m_iTextureFrameIndex ) ),
-#if !defined( NO_ENTITY_PREDICTION )
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 	RecvPropDataTable( "predictable_id", 0, 0, &REFERENCE_RECV_TABLE( DT_PredictableId ) ),
 #endif
 
@@ -539,8 +465,12 @@ BEGIN_PREDICTION_DATA_NO_BASE( C_BaseEntity )
 //	DEFINE_FIELD( m_ModelInstance, FIELD_SHORT ),
 	DEFINE_FIELD( m_flProxyRandomValue, FIELD_FLOAT ),
 
+	DEFINE_FIELD( m_bEverHadPredictionErrorsForThisCommand, FIELD_BOOLEAN ),
+
+#if defined( USE_PREDICTABLEID )
 //	DEFINE_FIELD( m_PredictableID, FIELD_INTEGER ),
 //	DEFINE_FIELD( m_pPredictionContext, FIELD_POINTER ),
+#endif
 	// Stuff specific to rendering and therefore not to be copied back and forth
 	// DEFINE_PRED_FIELD( m_clrRender, color32, FTYPEDESC_INSENDTABLE  ),
 	// DEFINE_FIELD( m_bReadyToDraw, FIELD_BOOLEAN ),
@@ -942,7 +872,7 @@ C_BaseEntity::C_BaseEntity() :
 	m_flProxyRandomValue = 0.0f;
 
 	m_fBBoxVisFlags = 0;
-#if !defined( NO_ENTITY_PREDICTION )
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 	m_pPredictionContext = NULL;
 #endif
 	
@@ -967,6 +897,8 @@ C_BaseEntity::C_BaseEntity() :
 #endif
 
 	ParticleProp()->Init( this );
+
+	m_spawnflags = 0;
 }
 
 
@@ -979,7 +911,7 @@ C_BaseEntity::~C_BaseEntity()
 {
 	Term();
 	ClearDataChangedEvent( m_DataChangeEventRef );
-#if !defined( NO_ENTITY_PREDICTION )
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 	delete m_pPredictionContext;
 #endif
 	RemoveFromInterpolationList();
@@ -1036,7 +968,7 @@ void C_BaseEntity::Clear( void )
 #endif
 
 	// Remove prediction context if it exists
-#if !defined( NO_ENTITY_PREDICTION )
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 	delete m_pPredictionContext;
 	m_pPredictionContext = NULL;
 #endif
@@ -1168,7 +1100,7 @@ void C_BaseEntity::Term()
 	// Remove from the predictables list
 	if ( GetPredictable() || IsClientCreated() )
 	{
-		g_Predictables.RemoveFromPredictablesList( GetClientHandle() );
+		g_Predictables.RemoveFromPredictablesList( this );
 	}
 
 	// If it's play simulated, remove from simulation list if the player still exists...
@@ -2059,7 +1991,7 @@ void C_BaseEntity::NotifyShouldTransmit( ShouldTransmitState_t state )
 			
 			UpdatePartitionListEntry();
 
-#if !defined( NO_ENTITY_PREDICTION )
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 			// Note that predictables get a chance to hook up to their server counterparts here
 			if ( m_PredictableID.IsActive() )
 			{
@@ -2647,33 +2579,37 @@ void C_BaseEntity::OnDataUnchangedInPVS()
 void C_BaseEntity::CheckInitPredictable( const char *context )
 {
 #if !defined( NO_ENTITY_PREDICTION )
+	if ( !ShouldPredict() )
+		return;
+
 	// Prediction is disabled
 	if ( !cl_predict->GetInt() )
 		return;
 
-	C_BasePlayer *player = C_BasePlayer::GetLocalPlayer();
-
-	if ( !player )
+	if ( !C_BasePlayer::GetLocalPlayer() )
 		return;
 
 	if ( !GetPredictionEligible() )
 	{
+		bool bOkay = false;
+#if defined( USE_PREDICTABLEID )
+		int nIndex = engine->GetSplitScreenPlayer( i );
+
 		if ( m_PredictableID.IsActive() &&
-			( player->index - 1 ) == m_PredictableID.GetPlayer() )
+			 (nIndex - 1) == m_PredictableID.GetPlayer() )
 		{
 			// If it comes through with an ID, it should be eligible
 			SetPredictionEligible( true );
+			bOkay = true;
 		}
-		else
+#endif
+		if ( !bOkay )
 		{
 			return;
 		}
 	}
 
 	if ( IsClientCreated() )
-		return;
-
-	if ( !ShouldPredict() )
 		return;
 
 	if ( IsIntermediateDataAllocated() )
@@ -2683,6 +2619,47 @@ void C_BaseEntity::CheckInitPredictable( const char *context )
 
 	InitPredictable();
 #endif
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: See if a predictable should stop predicting
+// Input  : *context - 
+//-----------------------------------------------------------------------------
+void C_BaseEntity::CheckShutdownPredictable( const char *context )
+{
+	if ( IsClientCreated() )
+		return;
+
+	if ( !ShouldPredict() || 
+		!GetPredictionEligible() ||
+		(GetPredictionOwner() == NULL) )
+	{
+		if( IsIntermediateDataAllocated() )
+		{
+			ShutdownPredictable();
+		}
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Return the player who will predict this entity
+//-----------------------------------------------------------------------------
+C_BasePlayer* C_BaseEntity::GetPredictionOwner()
+{
+	C_BasePlayer *pOwner = ToBasePlayer( this );
+	if ( !pOwner )
+	{
+		pOwner = ToBasePlayer( GetOwnerEntity() );
+		if ( !pOwner )
+		{
+			C_BaseViewModel *vm = dynamic_cast<C_BaseViewModel*>(this);
+			if ( vm )
+			{
+				pOwner = ToBasePlayer( vm->GetOwner() );
+			}
+		}
+	}
+	return pOwner;
 }
 
 bool C_BaseEntity::IsSelfAnimating()
@@ -3246,7 +3223,7 @@ void C_BaseEntity::InterpolateServerEntities()
 // (static function)
 void C_BaseEntity::AddVisibleEntities()
 {
-#if !defined( NO_ENTITY_PREDICTION )
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 	VPROF_BUDGET( "C_BaseEntity::AddVisibleEntities", VPROF_BUDGETGROUP_WORLD_RENDERING );
 
 	// Let non-dormant client created predictables get added, too
@@ -4527,7 +4504,7 @@ void C_BaseEntity::ShutdownPredictable( void )
 #if !defined( NO_ENTITY_PREDICTION )
 	Assert( GetPredictable() );
 
-	g_Predictables.RemoveFromPredictablesList( GetClientHandle() );
+	g_Predictables.RemoveFromPredictablesList( this );
 	DestroyIntermediateData();
 	SetPredictable( false );
 #endif
@@ -4546,7 +4523,7 @@ void C_BaseEntity::InitPredictable( void )
 	// Allocate buffers into which we copy data
 	AllocateIntermediateData();
 	// Add to list of predictables
-	g_Predictables.AddToPredictableList( GetClientHandle() );
+	g_Predictables.AddToPredictableList( this );
 	// Copy everything from "this" into the original_state_data
 	//  object.  Don't care about client local stuff, so pull from slot 0 which
 
@@ -4669,26 +4646,18 @@ bool C_BaseEntity::PostNetworkDataReceived( int commands_acknowledged )
 
 	if ( errorcheck )
 	{
-		void *predicted_state_data = GetPredictedFrame( commands_acknowledged - 1 );	
+		byte *predicted_state_data = (byte *)GetPredictedFrame( commands_acknowledged - 1 );	
 		Assert( predicted_state_data );												
-		const void *original_state_data = GetOriginalNetworkDataObject();
+		const byte *original_state_data =  (const byte *)GetOriginalNetworkDataObject();
 		Assert( original_state_data );
 
-		bool counterrors = true;
-		bool reporterrors = showthis;
-		bool copydata	= false;
-
 		CPredictionCopy errorCheckHelper( PC_NETWORKED_ONLY, 
-			predicted_state_data, PC_DATA_PACKED, 
-			original_state_data, PC_DATA_PACKED, 
-			counterrors, reporterrors, copydata );
-		// Suppress debugging output
-		int ecount = errorCheckHelper.TransferData( "", -1, GetPredDescMap() );
-		if ( ecount > 0 )
-		{
-			haderrors = true;
-		//	Msg( "%i errors %i on entity %i %s\n", gpGlobals->tickcount, ecount, index, IsClientCreated() ? "true" : "false" );
-		}
+			predicted_state_data, TD_OFFSET_PACKED, 
+			original_state_data, TD_OFFSET_PACKED, 
+			showthis ? 
+				CPredictionCopy::TRANSFERDATA_ERRORCHECK_SPEW : 
+				CPredictionCopy::TRANSFERDATA_ERRORCHECK_NOSPEW );
+		haderrors = errorCheckHelper.TransferData( "", entindex(), GetPredDescMap() ) > 0 ? true : false;
 	}
 #endif
 	return haderrors;
@@ -4860,7 +4829,7 @@ CON_COMMAND_F( dlight_debug, "Creates a dlight in front of the player", FCVAR_CH
 //-----------------------------------------------------------------------------
 bool C_BaseEntity::IsClientCreated( void ) const
 {
-#ifndef NO_ENTITY_PREDICTION
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 	if ( m_pPredictionContext != NULL )
 	{
 		// For now can't be both
@@ -4880,7 +4849,7 @@ bool C_BaseEntity::IsClientCreated( void ) const
 //-----------------------------------------------------------------------------
 C_BaseEntity *C_BaseEntity::CreatePredictedEntityByName( const char *classname, const char *module, int line, bool persist /*= false */ )
 {
-#if !defined( NO_ENTITY_PREDICTION )
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 	C_BasePlayer *player = C_BaseEntity::GetPredictionPlayer();
 
 	Assert( player );
@@ -4941,7 +4910,7 @@ C_BaseEntity *C_BaseEntity::CreatePredictedEntityByName( const char *classname, 
 	ClientEntityList().AddNonNetworkableEntity( ent );
 
 	//  and predictables
-	g_Predictables.AddToPredictableList( ent->GetClientHandle() );
+	g_Predictables.AddToPredictableList( ent );
 
 	// Duhhhh..., but might as well be safe
 	Assert( !ent->GetPredictable() );
@@ -4973,7 +4942,7 @@ C_BaseEntity *C_BaseEntity::CreatePredictedEntityByName( const char *classname, 
 //-----------------------------------------------------------------------------
 bool C_BaseEntity::OnPredictedEntityRemove( bool isbeingremoved, C_BaseEntity *predicted )
 {
-#if !defined( NO_ENTITY_PREDICTION )
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 	// Nothing right now, but in theory you could look at the error in origins and set
 	//  up something to smooth out the error
 	PredictionContext *ctx = predicted->m_pPredictionContext;
@@ -5167,13 +5136,24 @@ void C_BaseEntity::AllocateIntermediateData( void )
 
 	m_pOriginalData = new unsigned char[ allocsize ];
 	Q_memset( m_pOriginalData, 0, allocsize );
-	for ( int i = 0; i < MULTIPLAYER_BACKUP; i++ )
+	for ( int i = 0; i < ARRAYSIZE( m_pIntermediateData ); i++ )
 	{
 		m_pIntermediateData[ i ] = new unsigned char[ allocsize ];
 		Q_memset( m_pIntermediateData[ i ], 0, allocsize );
 	}
 
-	m_nIntermediateDataCount = 0;
+	if( !physenv ) //either predicted physics or don't know if we're predicting physics
+	{
+		for ( int i = 0; i < ARRAYSIZE( m_pIntermediateData_FirstPredicted ); i++ )
+		{
+			m_pIntermediateData_FirstPredicted[i] = new unsigned char[ allocsize ];
+			Q_memset( m_pIntermediateData_FirstPredicted[ i ], 0, allocsize );
+		}
+
+		m_nIntermediateData_FirstPredictedShiftMarker = -1;
+	}
+
+	m_nIntermediateDataCount = -1;
 #endif
 }
 
@@ -5185,15 +5165,25 @@ void C_BaseEntity::DestroyIntermediateData( void )
 #if !defined( NO_ENTITY_PREDICTION )
 	if ( !m_pOriginalData )
 		return;
-	for ( int i = 0; i < MULTIPLAYER_BACKUP; i++ )
+	for ( int i = 0; i < ARRAYSIZE( m_pIntermediateData ); i++ )
 	{
 		delete[] m_pIntermediateData[ i ];
 		m_pIntermediateData[ i ] = NULL;
 	}
+
+	if( m_pIntermediateData_FirstPredicted[0] != NULL )
+	{
+		for ( int i = 0; i < ARRAYSIZE( m_pIntermediateData_FirstPredicted ); i++ )
+		{
+			delete[] m_pIntermediateData_FirstPredicted[ i ];
+			m_pIntermediateData_FirstPredicted[ i ] = NULL;
+		}		
+	}
+
 	delete[] m_pOriginalData;
 	m_pOriginalData = NULL;
 
-	m_nIntermediateDataCount = 0;
+	m_nIntermediateDataCount = -1;
 #endif
 }
 
@@ -5237,6 +5227,54 @@ void C_BaseEntity::ShiftIntermediateDataForward( int slots_to_remove, int number
 #endif
 }
 
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Input  : slots_to_remove -  
+//-----------------------------------------------------------------------------
+void C_BaseEntity::ShiftFirstPredictedIntermediateDataForward( int slots_to_remove )
+{
+#if !defined( NO_ENTITY_PREDICTION )
+	if ( !m_pIntermediateData_FirstPredicted[0] || m_nIntermediateData_FirstPredictedShiftMarker == -1 )
+		return;
+
+	if( m_nIntermediateData_FirstPredictedShiftMarker <= slots_to_remove ) //acknowledged more commands than we predicted, early out
+	{
+		m_nIntermediateData_FirstPredictedShiftMarker = 0;
+		return;
+	}
+
+	// Just moving pointers, yeah
+	byte *saved_FirstPredicted[ ARRAYSIZE( m_pIntermediateData_FirstPredicted ) ];
+
+	// Remember first slots
+	int i = 0;
+	for ( ; i < slots_to_remove; i++ )
+	{
+		saved_FirstPredicted[ i ] = m_pIntermediateData_FirstPredicted[ i ];
+	}
+
+	// Move rest of slots forward up to last slot
+	for ( ; i <= m_nIntermediateData_FirstPredictedShiftMarker; i++ )
+	{
+		m_pIntermediateData_FirstPredicted[ i - slots_to_remove ] = m_pIntermediateData_FirstPredicted[ i ];
+	}
+
+	int iEndBase = (m_nIntermediateData_FirstPredictedShiftMarker + 1) - slots_to_remove;
+
+	Assert( iEndBase >= 0 );
+
+	// Put remembered slots onto end
+	for ( i = 0; i < slots_to_remove; i++ )
+	{
+		m_pIntermediateData_FirstPredicted[ iEndBase + i ] = saved_FirstPredicted[ i ];
+	}
+
+	m_nIntermediateData_FirstPredictedShiftMarker -= slots_to_remove;
+	
+#endif
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 // Input  : framenumber - 
@@ -5252,6 +5290,18 @@ void *C_BaseEntity::GetPredictedFrame( int framenumber )
 		return NULL;
 	}
 	return (void *)m_pIntermediateData[ framenumber % MULTIPLAYER_BACKUP ];
+#else
+	return NULL;
+#endif
+}
+
+void *C_BaseEntity::GetFirstPredictedFrame( int framenumber )
+{
+#if !defined( NO_ENTITY_PREDICTION )
+	Assert( framenumber >= 0 );
+	Assert( m_pIntermediateData_FirstPredicted[0] != 0 );
+
+	return (void *)m_pIntermediateData_FirstPredicted[ framenumber % ARRAYSIZE( m_pIntermediateData_FirstPredicted ) ];
 #else
 	return NULL;
 #endif
@@ -5281,15 +5331,9 @@ void C_BaseEntity::ComputePackedOffsets( void )
 {
 #if !defined( NO_ENTITY_PREDICTION )
 	datamap_t *map = GetPredDescMap();
-	if ( !map )
+	if ( !map || map->m_pOptimizedDataMap )
 		return;
-
-	if ( map->packed_offsets_computed )
-		return;
-
-	ComputePackedSize_R( map );
-
-	Assert( map->packed_offsets_computed );
+	CPredictionCopy::PrepareDataMap( map );
 #endif
 }
 
@@ -5304,9 +5348,9 @@ int C_BaseEntity::GetIntermediateDataSize( void )
 
 	const datamap_t *map = GetPredDescMap();
 
-	Assert( map->packed_offsets_computed );
+	Assert( map->m_pOptimizedDataMap );
 
-	int size = map->packed_size;
+	int size = map->m_nPackedSize;
 
 	Assert( size > 0 );	
 
@@ -5357,125 +5401,6 @@ static int g_FieldSizes[FIELD_TYPECOUNT] =
 	sizeof(interval_t), // FIELD_INTERVAL
 	sizeof(int),		// FIELD_MODELINDEX
 };
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-// Input  : *map - 
-// Output : int
-//-----------------------------------------------------------------------------
-int C_BaseEntity::ComputePackedSize_R( datamap_t *map )
-{
-	if ( !map )
-	{
-		Assert( 0 );
-		return 0;
-	}
-
-	// Already computed
-	if ( map->packed_offsets_computed )
-	{
-		return map->packed_size;
-	}
-
-	int current_position = 0;
-
-	// Recurse to base classes first...
-	if ( map->baseMap )
-	{
-		current_position += ComputePackedSize_R( map->baseMap );
-	}
-
-	int c = map->dataNumFields;
-	int i;
-	typedescription_t *field;
-
-	for ( i = 0; i < c; i++ )
-	{
-		field = &map->dataDesc[ i ];
-
-		// Always descend into embedded types...
-		if ( field->fieldType != FIELD_EMBEDDED )
-		{
-			// Skip all private fields
-			if ( field->flags & FTYPEDESC_PRIVATE )
-				continue;
-		}
-
-		switch ( field->fieldType )
-		{
-		default:
-		case FIELD_MODELINDEX:
-		case FIELD_MODELNAME:
-		case FIELD_SOUNDNAME:
-		case FIELD_TIME:
-		case FIELD_TICK:
-		case FIELD_CUSTOM:
-		case FIELD_CLASSPTR:
-		case FIELD_EDICT:
-		case FIELD_POSITION_VECTOR:
-		case FIELD_FUNCTION:
-			Assert( 0 );
-			break;
-
-		case FIELD_EMBEDDED:
-			{
-				Assert( field->td != NULL );
-
-				int embeddedsize = ComputePackedSize_R( field->td );
-
-				field->fieldOffset[ TD_OFFSET_PACKED ] = current_position;
-
-				current_position += embeddedsize;
-			}
-			break;
-
-		case FIELD_FLOAT:
-		case FIELD_VECTOR:
-		case FIELD_QUATERNION:
-		case FIELD_INTEGER:
-		case FIELD_EHANDLE:
-			{
-				// These should be dword aligned
-				current_position = (current_position + 3) & ~3;
-				field->fieldOffset[ TD_OFFSET_PACKED ] = current_position;
-				Assert( field->fieldSize >= 1 );
-				current_position += g_FieldSizes[ field->fieldType ] * field->fieldSize;
-			}
-			break;
-
-		case FIELD_SHORT:
-			{
-				// This should be word aligned
-				current_position = (current_position + 1) & ~1;
-				field->fieldOffset[ TD_OFFSET_PACKED ] = current_position;
-				Assert( field->fieldSize >= 1 );
-				current_position += g_FieldSizes[ field->fieldType ] * field->fieldSize;
-			}
-			break;
-
-		case FIELD_STRING:
-		case FIELD_COLOR32:
-		case FIELD_BOOLEAN:
-		case FIELD_CHARACTER:
-			{
-				field->fieldOffset[ TD_OFFSET_PACKED ] = current_position;
-				Assert( field->fieldSize >= 1 );
-				current_position += g_FieldSizes[ field->fieldType ] * field->fieldSize;
-			}
-			break;
-		case FIELD_VOID:
-			{
-				// Special case, just skip it
-			}
-			break;
-		}
-	}
-
-	map->packed_size = current_position;
-	map->packed_offsets_computed = true;
-
-	return current_position;
-}
 
 // Convenient way to delay removing oneself
 void C_BaseEntity::SUB_Remove( void )
@@ -5701,41 +5626,21 @@ RenderGroup_t C_BaseEntity::GetRenderGroup()
 //			NULL - 
 // Output : int
 //-----------------------------------------------------------------------------
-int C_BaseEntity::SaveData( const char *context, int slot, int type )
+void C_BaseEntity::SaveData( const char *context, int slot, int type )
 {
 #if !defined( NO_ENTITY_PREDICTION )
 	VPROF( "C_BaseEntity::SaveData" );
 
 	void *dest = ( slot == SLOT_ORIGINALDATA ) ? GetOriginalNetworkDataObject() : GetPredictedFrame( slot );
 	Assert( dest );
-
-	char sz[ 64 ];
-	sz[0] = 0;
-	// don't build debug strings per entity per frame, unless we are watching the entity
-	static ConVarRef pwatchent( "pwatchent" );
-	if ( pwatchent.GetInt() == entindex() )
-	{
-		if ( slot == SLOT_ORIGINALDATA )
-		{
-			Q_snprintf( sz, sizeof( sz ), "%s SaveData(original)", context );
-		}
-		else
-		{
-			Q_snprintf( sz, sizeof( sz ), "%s SaveData(slot %02i)", context, slot );
-		}
-	}
-
 	if ( slot != SLOT_ORIGINALDATA )
 	{
 		// Remember high water mark so that we can detect below if we are reading from a slot not yet predicted into...
 		m_nIntermediateDataCount = slot;
 	}
 
-	CPredictionCopy copyHelper( type, dest, PC_DATA_PACKED, this, PC_DATA_NORMAL );
-	int error_count = copyHelper.TransferData( sz, entindex(), GetPredDescMap() );
-	return error_count;
-#else
-	return 0;
+	CPredictionCopy copyHelper( type, (byte *)dest, TD_OFFSET_PACKED, (const byte *)this, TD_OFFSET_NORMAL, CPredictionCopy::TRANSFERDATA_COPYONLY );
+	copyHelper.TransferData( "C_BaseEntity::SaveData", entindex(), GetPredDescMap() );
 #endif
 }
 
@@ -5750,65 +5655,24 @@ int C_BaseEntity::SaveData( const char *context, int slot, int type )
 //			NULL - 
 // Output : int
 //-----------------------------------------------------------------------------
-int C_BaseEntity::RestoreData( const char *context, int slot, int type )
+void C_BaseEntity::RestoreData( const char *context, int slot, int type )
 {
 #if !defined( NO_ENTITY_PREDICTION )
 	VPROF( "C_BaseEntity::RestoreData" );
 
 	const void *src = ( slot == SLOT_ORIGINALDATA ) ? GetOriginalNetworkDataObject() : GetPredictedFrame( slot );
 	Assert( src );
-
-	// This assert will fire if the server ack'd a CUserCmd which we hadn't predicted yet...
-	// In that case, we'd be comparing "old" data from this "unused" slot with the networked data and reporting all kinds of prediction errors possibly.
-	Assert( slot == SLOT_ORIGINALDATA || slot <= m_nIntermediateDataCount );
-
-	char sz[ 64 ];
-	sz[0] = 0;
-	// don't build debug strings per entity per frame, unless we are watching the entity
-	static ConVarRef pwatchent( "pwatchent" );
-	if ( pwatchent.GetInt() == entindex() )
-	{
-		if ( slot == SLOT_ORIGINALDATA )
-		{
-			Q_snprintf( sz, sizeof( sz ), "%s RestoreData(original)", context );
-		}
-		else
-		{
-			Q_snprintf( sz, sizeof( sz ), "%s RestoreData(slot %02i)", context, slot );
-		}
-	}
-
+	
 	// some flags shouldn't be predicted - as we find them, add them to the savedEFlagsMask
-	const int savedEFlagsMask = EFL_DIRTY_SHADOWUPDATE;
+	const int savedEFlagsMask = EFL_DIRTY_SHADOWUPDATE | EFL_DIRTY_SPATIAL_PARTITION;
 	int savedEFlags = GetEFlags() & savedEFlagsMask;
 
-	// model index needs to be set manually for dynamic model refcounting purposes
-	int oldModelIndex = m_nModelIndex;
-
-	CPredictionCopy copyHelper( type, this, PC_DATA_NORMAL, src, PC_DATA_PACKED );
-	int error_count = copyHelper.TransferData( sz, entindex(), GetPredDescMap() );
+	CPredictionCopy copyHelper( type, (byte *)this, TD_OFFSET_NORMAL, (const byte *)src, TD_OFFSET_PACKED, CPredictionCopy::TRANSFERDATA_COPYONLY  );
+	copyHelper.TransferData( "C_BaseEntity::RestoreData", entindex(), GetPredDescMap() );
 
 	// set non-predicting flags back to their prior state
 	RemoveEFlags( savedEFlagsMask );
 	AddEFlags( savedEFlags );
-
-	// restore original model index and change via SetModelIndex
-	int newModelIndex = m_nModelIndex;
-	m_nModelIndex = oldModelIndex;
-	int overrideModelIndex = CalcOverrideModelIndex();
-	if( overrideModelIndex != -1 )
-		newModelIndex = overrideModelIndex;
-	if ( oldModelIndex != newModelIndex )
-	{
-		MDLCACHE_CRITICAL_SECTION(); // ???
-		SetModelIndex( newModelIndex );
-	}
-
-	OnPostRestoreData();
-
-	return error_count;
-#else
-	return 0;
 #endif
 }
 

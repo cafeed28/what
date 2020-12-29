@@ -366,7 +366,7 @@ void CIronSightAmountProxy::OnBind(void *pC_BaseEntity)
 		C_BaseViewModel *pViewModel = dynamic_cast<C_BaseViewModel*>(pEntity);
 		if (pViewModel)
 		{
-			C_CSPlayer *pPlayer = ToCSPlayer(pViewModel->GetOwner());
+			C_CSPlayer *pPlayer = ToCSPlayer(pViewModel->GetPredictionOwner());
 			if (pPlayer)
 			{
 				CWeaponCSBase *pWeapon = pPlayer->GetActiveCSWeapon();

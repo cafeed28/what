@@ -20,6 +20,9 @@ public:
 	DECLARE_CLIENTCLASS();
 
 	C_BreakableProp();
+
+	virtual C_BasePlayer *GetPredictionOwner( void );
+	virtual bool PredictionErrorShouldResetLatchedForAllPredictables( void ) { return false; }
 	
 	virtual void SetFadeMinMax( float fademin, float fademax );
 

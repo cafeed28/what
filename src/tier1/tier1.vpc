@@ -133,6 +133,7 @@ $Project "tier1"
 		$File	"$SRCDIR\public\tier1\strtools.h"
 		$File	"$SRCDIR\public\tier1\tier1.h"
 		$File	"$SRCDIR\public\tier1\tokenreader.h"
+		$File	"$SRCDIR\public\tier1\tokenset.h"
 		$File	"$SRCDIR\public\tier1\uniqueid.h"				[$WINDOWS]
 		$File	"$SRCDIR\public\tier1\utlbidirectionalset.h"
 		$File	"$SRCDIR\public\tier1\utlblockmemory.h"

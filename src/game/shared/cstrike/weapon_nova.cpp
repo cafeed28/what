@@ -65,9 +65,9 @@ DEFINE_PRED_FIELD( m_reloadState, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 END_PREDICTION_DATA()
 #endif
 
-LINK_ENTITY_TO_CLASS( weapon_nova, CWeaponNova );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_nova, WeaponNova );
 #ifdef GAME_DLL
-LINK_ENTITY_TO_CLASS( weapon_m3, CWeaponNova );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_m3, WeaponNova );
 #endif
 PRECACHE_WEAPON_REGISTER( weapon_nova );
 

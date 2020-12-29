@@ -44,3 +44,12 @@ void C_BreakableProp::CopyFadeFrom( C_BreakableProp *pSource )
 {
 	m_flFadeScale = pSource->m_flFadeScale;
 }
+
+C_BasePlayer *C_BreakableProp::GetPredictionOwner( void )
+{
+#ifdef PORTAL
+	return GetPlayerHoldingEntity( this );
+#else
+	return NULL;
+#endif
+}

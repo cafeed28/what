@@ -715,6 +715,8 @@ public:
 
 	virtual void			InvalidateMdlCache();
 
+	virtual void			MarkEntitiesAsTouching( IClientEntity *e1, IClientEntity *e2 );
+
 	virtual void			ReloadFilesInList( IFileList *pFilesToReload );
 
 	// Let the client handle UI toggle - if this function returns false, the UI will toggle, otherwise it will not.
@@ -1633,6 +1635,24 @@ void CHLClient::InvalidateMdlCache()
 		{
 			pAnimating->InvalidateMdlCache();
 		}
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Marks entities as touching
+// Input  : *e1 - 
+//			*e2 - 
+//-----------------------------------------------------------------------------
+void CHLClient::MarkEntitiesAsTouching( IClientEntity *e1, IClientEntity *e2 )
+{
+	CBaseEntity *entity = e1->GetBaseEntity();
+	CBaseEntity *entityTouched = e2->GetBaseEntity();
+	if ( entity && entityTouched )
+	{
+		trace_t tr;
+		UTIL_ClearTrace( tr );
+		tr.endpos = (entity->GetAbsOrigin() + entityTouched->GetAbsOrigin()) * 0.5;
+		entity->PhysicsMarkEntitiesAsTouching( entityTouched, tr );
 	}
 }
 

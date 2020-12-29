@@ -581,6 +581,14 @@ void C_BaseViewModel::PostDataUpdate( DataUpdateType_t updateType )
 	OnLatchInterpolatedVariables( LATCH_ANIMATION_VAR );
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: Return the player who will predict this entity
+//-----------------------------------------------------------------------------
+CBasePlayer *C_BaseViewModel::GetPredictionOwner()
+{
+	return ToBasePlayer( GetOwner() );
+}
+
 
 //-----------------------------------------------------------------------------
 // Purpose: Add entity to visible view models list

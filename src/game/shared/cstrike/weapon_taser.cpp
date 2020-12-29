@@ -50,7 +50,7 @@ END_NETWORK_TABLE()
 BEGIN_PREDICTION_DATA( CWeaponTaser )
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( weapon_taser, CWeaponTaser );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_taser, WeaponTaser );
 
 CWeaponTaser::CWeaponTaser() :
 	m_fFireTime(0.0f)

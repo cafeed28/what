@@ -89,7 +89,7 @@ public:
 	virtual IClientUnknown*	GetIClientUnknown();
 	virtual int				GetCollisionGroup() const;
 	virtual void			WorldSpaceSurroundingBounds( Vector *pVecMins, Vector *pVecMaxs );
-	virtual bool			ShouldTouchTrigger( int triggerSolidFlags ) const;
+	virtual uint			GetRequiredTriggerFlags() const;
 	virtual const matrix3x4_t *GetRootParentToWorldTransform() const;
 
 public:

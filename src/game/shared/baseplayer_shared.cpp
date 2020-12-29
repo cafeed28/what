@@ -2428,3 +2428,20 @@ bool fogparams_t::operator !=( const fogparams_t& other ) const
 	return false;
 }
 
+
+//-----------------------------------------------------------------------------
+// Purpose: Strips off IN_xxx flags from the player's input
+//-----------------------------------------------------------------------------
+void CBasePlayer::ForceButtons( int nButtons )
+{
+	m_afButtonForced |= nButtons;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Re-enables stripped IN_xxx flags to the player's input
+//-----------------------------------------------------------------------------
+void CBasePlayer::UnforceButtons( int nButtons )
+{
+	m_afButtonForced &= ~nButtons;
+}
+

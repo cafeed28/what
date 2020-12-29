@@ -1,4 +1,4 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
+//========= Copyright © 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: implements various common send proxies
 //
@@ -9,7 +9,6 @@
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
-#include "cdll_client_int.h"
 #include "proto_version.h"
 
 void RecvProxy_IntToColor32( const CRecvProxyData *pData, void *pStruct, void *pOut )
@@ -25,19 +24,19 @@ void RecvProxy_IntToColor32( const CRecvProxyData *pData, void *pStruct, void *p
 
 void RecvProxy_IntSubOne( const CRecvProxyData *pData, void *pStruct, void *pOut )
 {
-	int *pInt = (int *)pOut;
-	
+	int *pInt = (int *) pOut;
+
 	*pInt = pData->m_Value.m_Int - 1;
 }
 
 void RecvProxy_ShortSubOne( const CRecvProxyData *pData, void *pStruct, void *pOut )
 {
-	short *pInt = (short *)pOut;
-	
+	short *pInt = (short *) pOut;
+
 	*pInt = pData->m_Value.m_Int - 1;
 }
 
-RecvProp RecvPropIntWithMinusOneFlag( const char *pVarName, int offset, int sizeofVar, RecvVarProxyFn proxyFn )
+RecvProp RecvPropIntWithMinusOneFlag( char *pVarName, int offset, int sizeofVar, RecvVarProxyFn proxyFn )
 {
 	return RecvPropInt( pVarName, offset, sizeofVar, 0, proxyFn );
 }
@@ -79,24 +78,24 @@ void RecvProxy_IntToModelIndex32_BackCompatible( const CRecvProxyData *pData, vo
 
 void RecvProxy_IntToEHandle( const CRecvProxyData *pData, void *pStruct, void *pOut )
 {
-	CBaseHandle *pEHandle = (CBaseHandle*)pOut;
-	
+	CBaseHandle *pEHandle = (CBaseHandle*) pOut;
+
 	if ( pData->m_Value.m_Int == INVALID_NETWORKED_EHANDLE_VALUE )
 	{
-		*pEHandle = INVALID_EHANDLE_INDEX;
+		*pEHandle = 0;
 	}
 	else
 	{
 		int iEntity = pData->m_Value.m_Int & ((1 << MAX_EDICT_BITS) - 1);
 		int iSerialNum = pData->m_Value.m_Int >> MAX_EDICT_BITS;
-		
+
 		pEHandle->Init( iEntity, iSerialNum );
 	}
 }
 
 RecvProp RecvPropEHandle(
-	const char *pVarName, 
-	int offset, 
+	char *pVarName,
+	int offset,
 	int sizeofVar,
 	RecvVarProxyFn proxyFn )
 {
@@ -105,8 +104,8 @@ RecvProp RecvPropEHandle(
 
 
 RecvProp RecvPropBool(
-	const char *pVarName, 
-	int offset, 
+	char *pVarName,
+	int offset,
 	int sizeofVar )
 {
 	Assert( sizeofVar == sizeof( bool ) );
@@ -120,14 +119,14 @@ RecvProp RecvPropBool(
 void RecvProxy_IntToMoveParent( const CRecvProxyData *pData, void *pStruct, void *pOut )
 {
 	CHandle<C_BaseEntity> *pHandle = (CHandle<C_BaseEntity>*)pOut;
-	RecvProxy_IntToEHandle( pData, pStruct, (CBaseHandle*)pHandle );
+	RecvProxy_IntToEHandle( pData, pStruct, (CBaseHandle*) pHandle );
 }
 
 
 void RecvProxy_InterpolationAmountChanged( const CRecvProxyData *pData, void *pStruct, void *pOut )
 {
 	// m_bSimulatedEveryTick & m_bAnimatedEveryTick are boolean
-	if ( *((bool*)pOut) != (pData->m_Value.m_Int != 0) )
+	if ( *((bool*) pOut) != (pData->m_Value.m_Int != 0) )
 	{
 		// Have the regular proxy store the data.
 		RecvProxy_Int32ToInt8( pData, pStruct, pOut );
@@ -152,7 +151,7 @@ static void RecvProxy_Time( const CRecvProxyData *pData, void *pStruct, void *pO
 	float	offset;
 
 	// Get msec offset
-	offset	= ( float )pData->m_Value.m_Int / 1000.0f;
+	offset = (float) pData->m_Value.m_Int / 1000.0f;
 
 	// Get base
 	clock_base = floor( engine->GetLastTimeStamp() );
@@ -161,7 +160,7 @@ static void RecvProxy_Time( const CRecvProxyData *pData, void *pStruct, void *pO
 	t = ClampToMsec( clock_base + offset );
 
 	// Store decoded value
-	*( float * )pOut = t;
+	*(float *) pOut = t;
 }
 
 //-----------------------------------------------------------------------------
@@ -171,11 +170,11 @@ static void RecvProxy_Time( const CRecvProxyData *pData, void *pStruct, void *pO
 // Output : RecvProp
 //-----------------------------------------------------------------------------
 RecvProp RecvPropTime(
-	const char *pVarName, 
-	int offset, 
+	char *pVarName,
+	int offset,
 	int sizeofVar/*=SIZEOF_IGNORE*/ )
 {
-//	return RecvPropInt( pVarName, offset, sizeofVar, 0, RecvProxy_Time );
+	//	return RecvPropInt( pVarName, offset, sizeofVar, 0, RecvProxy_Time );
 	return RecvPropFloat( pVarName, offset, sizeofVar );
 };
 
@@ -191,10 +190,10 @@ RecvProp RecvPropTime(
 //			*pStruct - 
 //			*pOut - 
 //-----------------------------------------------------------------------------
-#if !defined( NO_ENTITY_PREDICTION )
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 static void RecvProxy_IntToPredictableId( const CRecvProxyData *pData, void *pStruct, void *pOut )
 {
-	CPredictableId *pId = (CPredictableId*)pOut;
+	CPredictableId *pId = (CPredictableId*) pOut;
 	Assert( pId );
 	pId->SetRaw( pData->m_Value.m_Int );
 }
@@ -206,8 +205,8 @@ static void RecvProxy_IntToPredictableId( const CRecvProxyData *pData, void *pSt
 // Output : RecvProp
 //-----------------------------------------------------------------------------
 RecvProp RecvPropPredictableId(
-	const char *pVarName, 
-	int offset, 
+	char *pVarName,
+	int offset,
 	int sizeofVar/*=SIZEOF_IGNORE*/ )
 {
 	return RecvPropInt( pVarName, offset, sizeofVar, 0, RecvProxy_IntToPredictableId );

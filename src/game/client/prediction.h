@@ -1,4 +1,4 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
+//========= Copyright © 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //
@@ -19,7 +19,7 @@
 
 class CMoveData;
 class CUserCmd;
-
+class CPDumpPanel;
 //-----------------------------------------------------------------------------
 // Purpose: Implements prediction in the client .dll
 //-----------------------------------------------------------------------------
@@ -48,20 +48,25 @@ public:
 
 	virtual void	OnReceivedUncompressedPacket( void );
 
-	virtual void	PreEntityPacketReceived( int commands_acknowledged, int current_world_update_packet );
+	virtual void	PreEntityPacketReceived( int commands_acknowledged, int current_world_update_packet, int server_ticks_elapsed );
 	virtual void	PostEntityPacketReceived( void );
 	virtual void	PostNetworkDataReceived( int commands_acknowledged );
 
 	virtual bool	InPrediction( void ) const;
 	virtual bool	IsFirstTimePredicted( void ) const;
+	virtual int		GetLastAcknowledgedCommandNumber( void ) const;
+
+#if defined( KEEP_COMMAND_REPREDICTION_COUNT )
+	virtual unsigned int GetRepredictionCount( void ) const;
+#endif
 
 #if !defined( NO_ENTITY_PREDICTION )
 	virtual int		GetIncomingPacketNumber( void ) const;
 #endif
 
-	float			GetIdealPitch( void ) const 
+	float			GetIdealPitch() const 
 	{
-		return m_flIdealPitch;
+		return m_Split.m_flIdealPitch;
 	}
 
 	// The engine needs to be able to access a few predicted values
@@ -73,6 +78,7 @@ public:
 	virtual void	GetLocalViewAngles( QAngle& ang );
 	virtual void	SetLocalViewAngles( QAngle& ang );
 
+	virtual void	CheckMovingGround( C_BasePlayer *player, double frametime );
 	virtual void	RunCommand( C_BasePlayer *player, CUserCmd *ucmd, IMoveHelper *moveHelper );
 
 // Internal
@@ -81,7 +87,7 @@ protected:
 	virtual void	FinishMove( C_BasePlayer *player, CUserCmd *ucmd, CMoveData *move );
 	virtual void	SetIdealPitch ( C_BasePlayer *player, const Vector& origin, const QAngle& angles, const Vector& viewheight );
 
-	void			CheckError( int commands_acknowledged );
+	virtual void	CheckError( C_BasePlayer *player, int commands_acknowledged );
 
 	// Called before and after any movement processing
 	void			StartCommand( C_BasePlayer *player, CUserCmd *cmd );
@@ -102,9 +108,10 @@ private:
 					);
 
 	// Actually does the prediction work, returns false if an error occurred
-	bool			PerformPrediction( bool received_new_world_update, C_BasePlayer *localPlayer, int incoming_acknowledged, int outgoing_command );
+	bool			PerformPrediction( C_BasePlayer *localPlayer, bool received_new_world_update, int incoming_acknowledged, int outgoing_command );
 
 	void			ShiftIntermediateDataForward( int slots_to_remove, int previous_last_slot );
+	void			ShiftFirstPredictedIntermediateDataForward( int slots_to_remove );
 	void			RestoreEntityToPredictedFrame( int predicted_frame );
 	int				ComputeFirstCommandToExecute( bool received_new_world_update, int incoming_acknowledged, int outgoing_command );
 
@@ -114,13 +121,17 @@ private:
 	void			ReinitPredictables( void );
 
 	void			RemoveStalePredictedEntities( int last_command_packet );
-	void			RestoreOriginalEntityState( void );
+	void			RestoreOriginalEntityState();
 	void			RunSimulation( int current_command, float curtime, CUserCmd *cmd, C_BasePlayer *localPlayer );
-	void			Untouch( void );
+	void			Untouch();
 	void			StorePredictionResults( int predicted_frame );
 	bool			ShouldDumpEntity( C_BaseEntity *ent );
 
 	void			SmoothViewOnMovingPlatform( C_BasePlayer *pPlayer, Vector& offset );
+	void			ResetSimulationTick();
+	void			ShowPredictionListEntry( int listRow, int showlist, C_BaseEntity *ent, int &totalsize, int &totalsize_intermediate );
+	void			FinishPredictionList( int listRow, int showlist, int totalsize, int totalsize_intermediate );
+	void			CheckPredictConvar();
 
 #if !defined( NO_ENTITY_PREDICTION )
 // Data
@@ -129,21 +140,56 @@ protected:
 	CHandle< C_BaseEntity > m_hLastGround;
 private:
 	bool			m_bInPrediction;
-	bool			m_bFirstTimePredicted;
 	bool			m_bOldCLPredictValue;
 	bool			m_bEnginePaused;
 
-	// Last network origin for local player
 	int				m_nPreviousStartFrame;
-
-	int				m_nCommandsPredicted;
-	int				m_nServerCommandsAcknowledged;
-	int				m_bPreviousAckHadErrors;
 	int				m_nIncomingPacketNumber;
 
-#endif
-	float			m_flIdealPitch;
+	float			m_flLastServerWorldTimeStamp;
 
+	// Last network origin for local player
+	struct Split_t
+	{
+		Split_t()
+		{
+			m_bFirstTimePredicted = false;
+			m_nCommandsPredicted = 0;
+			m_nServerCommandsAcknowledged = 0;
+			m_bPreviousAckHadErrors = false;
+			m_flIdealPitch = 0.0f;
+			m_nLastCommandAcknowledged = 0;
+			m_bPreviousAckErrorTriggersFullLatchReset = false;
+		}
+
+		bool			m_bFirstTimePredicted;
+		int				m_nCommandsPredicted;
+		int				m_nServerCommandsAcknowledged;
+		int				m_bPreviousAckHadErrors;
+		float			m_flIdealPitch;
+		int				m_nLastCommandAcknowledged;
+		bool			m_bPreviousAckErrorTriggersFullLatchReset;
+		CUtlVector< CHandle< CBaseEntity > > m_EntsWithPredictionErrorsInLastAck;
+		bool			m_bPerformedTickShift;
+
+#if defined( KEEP_COMMAND_REPREDICTION_COUNT )
+		unsigned int	m_Debug_RepredictionCount;
+#endif
+	};
+
+	Split_t				m_Split;
+
+#endif
+<<<<<<< Updated upstream
+	float			m_flIdealPitch;
+=======
+	CGlobalVarsBase	m_SavedVars;
+
+	bool			m_bPlayerOriginTypedescriptionSearched;
+	CUtlVector< const typedescription_t * >	m_PlayerOriginTypeDescription; // A vector in cases where the .x, .y, and .z are separately listed
+>>>>>>> Stashed changes
+
+	CPDumpPanel		*m_pPDumpPanel;
 };
  
 extern CPrediction *prediction;

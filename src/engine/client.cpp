@@ -103,6 +103,7 @@ CClientState::CClientState()
 #if defined( REPLAY_ENABLED )
 	isreplay = false;
 #endif
+	last_server_tick = 0;
 }
 
 CClientState::~CClientState()
@@ -696,6 +697,7 @@ void CClientState::Clear( void )
 	cdtrack = 0;
 	V_memset( serverMD5.bits, 0, MD5_DIGEST_LENGTH );
 	last_command_ack = 0;
+	last_server_tick = 0;
 	command_ack = 0;
 	m_nSoundSequence = 0;
 

@@ -360,7 +360,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_cs_base, CWeaponCSBase );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_cs_base, WeaponCSBase );
 
 
 #ifdef GAME_DLL

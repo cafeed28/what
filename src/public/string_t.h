@@ -96,7 +96,8 @@ struct castable_string_t : public string_t // string_t is used in unions, hence,
 
 //-----------------------------------------------------------------------------
 
-inline void NetworkVarConstruct( string_t &x ) { x = NULL_STRING; }
+// Zero the object -- necessary for CNetworkVar and possibly other cases.
+inline void EnsureValidValue( string_t &x ) { x = NULL_STRING; }
 
 #endif
 

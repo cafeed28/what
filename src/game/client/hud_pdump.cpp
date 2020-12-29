@@ -192,32 +192,27 @@ void CPDumpPanel::PredictionDumpColor( bool networked, bool errorchecked, bool d
 //-----------------------------------------------------------------------------
 void CPDumpPanel::DumpEntity( C_BaseEntity *ent, int commands_acknowledged )
 {
-	if ( IsXbox() )
-	{
-		return;
-	}
-
 #ifdef NO_ENTITY_PREDICTION
 	return;
 #else
 	Assert( ent );
 
-	void *original_state_data = NULL;	
-	const void *predicted_state_data	= NULL;
+	const byte *original_state_data = NULL;	
+	const byte *predicted_state_data	= NULL;
 	
-	bool data_type_original		= PC_DATA_PACKED;
-	bool data_type_predicted	= PC_DATA_PACKED;
+	bool data_type_original		= TD_OFFSET_PACKED;
+	bool data_type_predicted	= TD_OFFSET_PACKED;
 
 	if ( ent->GetPredictable() )
 	{
-		original_state_data		= ent->GetOriginalNetworkDataObject();	
-		predicted_state_data	= ent->GetPredictedFrame( commands_acknowledged - 1 );	
+		original_state_data		= (const byte *)ent->GetOriginalNetworkDataObject();	
+		predicted_state_data	= (const byte *)ent->GetPredictedFrame( commands_acknowledged - 1 );	
 	}
 	else
 	{
 		// Compare against self so that we're just dumping data to screen
-		original_state_data = ( void * )ent;
-		data_type_original = PC_DATA_NORMAL;
+		original_state_data = ( const byte * )ent;
+		data_type_original = TD_OFFSET_NORMAL;
 		predicted_state_data = original_state_data;
 		data_type_predicted = data_type_original;
 	}
@@ -228,16 +223,12 @@ void CPDumpPanel::DumpEntity( C_BaseEntity *ent, int commands_acknowledged )
 	Clear();
 
 	CPredictionCopy datacompare( PC_EVERYTHING, 
-		original_state_data, data_type_original, 
+		(byte *)original_state_data, data_type_original, 
 		predicted_state_data, data_type_predicted, 
-		true,  // counterrors
-		true,  // reporterrors
-		false, // copy data
-		true,   // describe fields
+		CPredictionCopy::TRANSFERDATA_ERRORCHECK_DESCRIBE,
 		::DumpComparision );
 	// Don't spew debugging info
-	datacompare.TransferData( "", -1, ent->GetPredDescMap() );
-
+	datacompare.TransferData( "", ent->entindex(), ent->GetPredDescMap() );
 	m_hDumpEntity = ent;
 #endif
 }

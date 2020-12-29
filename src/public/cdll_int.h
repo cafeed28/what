@@ -571,7 +571,10 @@ public:
 
 	virtual void DisconnectInternal() = 0;
 
-	virtual int GetInstancesRunningCount( ) = 0;
+	virtual int GetInstancesRunningCount() = 0;
+
+	virtual void SolidMoved( class IClientEntity *pSolidEnt, class ICollideable *pSolidCollide, const Vector* pPrevAbsOrigin, bool accurateBboxTriggerChecks ) = 0;
+	virtual void TriggerMoved( class IClientEntity *pTriggerEnt, bool accurateBboxTriggerChecks ) = 0;
 };
 
 
@@ -738,6 +741,9 @@ public:
 
 	// Gets the current view
 	virtual bool			GetPlayerView( CViewSetup &playerView ) = 0;
+
+	// The engine wants to mark two entities as touching
+	virtual void			MarkEntitiesAsTouching( IClientEntity *e1, IClientEntity *e2 ) = 0;
 
 	// Matchmaking
 	virtual void			SetupGameProperties( CUtlVector< XUSER_CONTEXT > &contexts, CUtlVector< XUSER_PROPERTY > &properties ) = 0;

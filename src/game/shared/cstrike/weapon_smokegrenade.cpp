@@ -31,7 +31,7 @@ END_NETWORK_TABLE()
 BEGIN_PREDICTION_DATA( CSmokeGrenade )
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( weapon_smokegrenade, CSmokeGrenade );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_smokegrenade, SmokeGrenade );
 PRECACHE_WEAPON_REGISTER( weapon_smokegrenade );
 
 

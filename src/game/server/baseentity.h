@@ -823,7 +823,7 @@ public:
 
 	int				m_nLastThinkTick;
 
-#if !defined( NO_ENTITY_PREDICTION )
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 	// Certain entities (projectiles) can be created on the client and thus need a matching id number
 	CNetworkVar( CPredictableId, m_PredictableID );
 #endif
@@ -1694,7 +1694,7 @@ private:
 	int				m_nPushEnumCount;
 
 	Vector			m_vecAbsOrigin;
-	CNetworkVectorForDerived( m_vecVelocity );
+	CNetworkVectorXYZForDerived( m_vecVelocity );
 	
 	//Adrian
 	CNetworkVar( unsigned char, m_iTextureFrameIndex );
@@ -1711,12 +1711,12 @@ private:
 
 	QAngle			m_angAbsRotation;
 
-	CNetworkVector( m_vecOrigin );
-	CNetworkQAngle( m_angRotation );
+	CNetworkVectorXY_SeparateZ( m_vecOrigin );
+	CNetworkQAngleXYZ( m_angRotation );
 	CBaseHandle m_RefEHandle;
 
 	// was pev->view_ofs ( FIXME:  Move somewhere up the hierarch, CBaseAnimating, etc. )
-	CNetworkVectorForDerived( m_vecViewOffset );
+	CNetworkVectorXYZForDerived( m_vecViewOffset );
 
 private:
 	// dynamic model state tracking

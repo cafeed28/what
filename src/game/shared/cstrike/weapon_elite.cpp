@@ -73,7 +73,7 @@ BEGIN_PREDICTION_DATA( CWeaponElite )
 END_PREDICTION_DATA()
 #endif
 
-LINK_ENTITY_TO_CLASS( weapon_elite, CWeaponElite );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_elite, WeaponElite );
 PRECACHE_WEAPON_REGISTER( weapon_elite );
 
 CWeaponElite::CWeaponElite()

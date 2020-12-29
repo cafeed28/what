@@ -24,26 +24,7 @@ void CLocalNetworkBackdoor::InitFastCopy()
 		return;
 
 
-	const CStandardSendProxies *pSendProxies = NULL;
-
-	// If the game server is greater than v4, then it is using the new proxy format.
-	if ( g_iServerGameDLLVersion >= 5 ) // check server version
-	{
-		pSendProxies = serverGameDLL->GetStandardSendProxies();
-	}
-	else
-	{
-		// If the game server is older than v4, it is using the old proxy; we set the new proxy members to the 
-		// engine's copy.
-		static CStandardSendProxies compatSendProxy = *serverGameDLL->GetStandardSendProxies();
-
-		compatSendProxy.m_DataTableToDataTable = g_StandardSendProxies.m_DataTableToDataTable;
-		compatSendProxy.m_SendLocalDataTable = g_StandardSendProxies.m_SendLocalDataTable;
-		compatSendProxy.m_ppNonModifiedPointerProxies = g_StandardSendProxies.m_ppNonModifiedPointerProxies;
-
-		pSendProxies = &compatSendProxy;
-	} 
-
+	const CStandardSendProxies *pSendProxies = serverGameDLL->GetStandardSendProxies();
 	const CStandardRecvProxies *pRecvProxies = g_ClientDLL->GetStandardRecvProxies();
 
 	int nFastCopyProps = 0;
@@ -70,7 +51,7 @@ void CLocalNetworkBackdoor::InitFastCopy()
 	}
 
 	int percentFast = (nFastCopyProps * 100 ) / (nSlowCopyProps + nFastCopyProps + 1);
-	if ( percentFast <= 55 )
+	if ( percentFast <= 45 )
 	{
 		// This may not be a real problem, but at the time this code was added, 67% of the
 		// properties were able to be copied without proxies. If percentFast goes to 0 or some
@@ -78,7 +59,7 @@ void CLocalNetworkBackdoor::InitFastCopy()
 		Assert( false );
 		Warning( "InitFastCopy: only %d%% fast props. Bug?\n", percentFast );
 	}
-} 
+}
 #endif
 
 void CLocalNetworkBackdoor::StartEntityStateUpdate()

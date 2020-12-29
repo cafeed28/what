@@ -624,10 +624,8 @@ static void RecvProxy_Weapon( const CRecvProxyData *pData, void *pStruct, void *
 }
 #endif
 
-
-LINK_ENTITY_TO_CLASS( viewmodel, CBaseViewModel );
-
 IMPLEMENT_NETWORKCLASS_ALIASED( BaseViewModel, DT_BaseViewModel )
+LINK_ENTITY_TO_CLASS_ALIASED( viewmodel, BaseViewModel );
 
 BEGIN_NETWORK_TABLE_NOBASE(CBaseViewModel, DT_BaseViewModel)
 #if !defined( CLIENT_DLL )
@@ -768,8 +766,8 @@ bool CBaseViewModel::GetAttachmentVelocity( int number, Vector &originVel, Quate
 
 #endif
 
-LINK_ENTITY_TO_CLASS( hands_viewmodel, CHandsViewModel );
 IMPLEMENT_NETWORKCLASS_ALIASED( HandsViewModel, DT_HandsViewModel );
+LINK_ENTITY_TO_CLASS_ALIASED( hands_viewmodel, HandsViewModel );
 
 BEGIN_NETWORK_TABLE( CHandsViewModel, DT_HandsViewModel )
 #ifndef CLIENT_DLL

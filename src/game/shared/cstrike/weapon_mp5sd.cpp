@@ -52,9 +52,9 @@ END_NETWORK_TABLE()
 BEGIN_PREDICTION_DATA( CWeaponMP5SD )
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( weapon_mp5sd, CWeaponMP5SD );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_mp5sd, WeaponMP5SD );
 #ifdef GAME_DLL
-LINK_ENTITY_TO_CLASS( weapon_mp5navy, CWeaponMP5SD ); // for backwards compatibility
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_mp5navy, WeaponMP5SD ); // for backwards compatibility
 #endif
 PRECACHE_WEAPON_REGISTER( weapon_mp5sd );
 

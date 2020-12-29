@@ -88,7 +88,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife, CKnife );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife, Knife );
 PRECACHE_WEAPON_REGISTER( weapon_knife );
 
 #ifndef CLIENT_DLL
@@ -599,7 +599,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_t, CKnifeT );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_t, KnifeT );
 PRECACHE_WEAPON_REGISTER( weapon_knife_t );
 
 #ifndef CLIENT_DLL
@@ -641,7 +641,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_css, CKnifeCSS );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_css, KnifeCSS );
 PRECACHE_WEAPON_REGISTER( weapon_knife_css );
 
 #ifndef CLIENT_DLL
@@ -683,7 +683,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_karambit, CKnifeKarambit );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_karambit, KnifeKarambit );
 PRECACHE_WEAPON_REGISTER( weapon_knife_karambit );
 
 #ifndef CLIENT_DLL
@@ -725,7 +725,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_flip, CKnifeFlip );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_flip, KnifeFlip );
 PRECACHE_WEAPON_REGISTER( weapon_knife_flip );
 
 #ifndef CLIENT_DLL
@@ -767,7 +767,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_bayonet, CKnifeBayonet );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_bayonet, KnifeBayonet );
 PRECACHE_WEAPON_REGISTER( weapon_knife_bayonet );
 
 #ifndef CLIENT_DLL
@@ -809,7 +809,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_m9_bayonet, CKnifeM9Bayonet );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_m9_bayonet, KnifeM9Bayonet );
 PRECACHE_WEAPON_REGISTER( weapon_knife_m9_bayonet );
 
 #ifndef CLIENT_DLL
@@ -851,7 +851,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_butterfly, CKnifeButterfly );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_butterfly, KnifeButterfly );
 PRECACHE_WEAPON_REGISTER( weapon_knife_butterfly );
 
 #ifndef CLIENT_DLL
@@ -893,7 +893,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_gut, CKnifeGut );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_gut, KnifeGut );
 PRECACHE_WEAPON_REGISTER( weapon_knife_gut );
 
 #ifndef CLIENT_DLL
@@ -935,7 +935,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_tactical, CKnifeTactical );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_tactical, KnifeTactical );
 PRECACHE_WEAPON_REGISTER( weapon_knife_tactical );
 
 #ifndef CLIENT_DLL
@@ -975,7 +975,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_falchion, CKnifeFalchion );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_falchion, KnifeFalchion );
 PRECACHE_WEAPON_REGISTER( weapon_knife_falchion );
 
 #ifndef CLIENT_DLL
@@ -1015,7 +1015,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_survival_bowie, CKnifeSurvivalBowie );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_survival_bowie, KnifeSurvivalBowie );
 PRECACHE_WEAPON_REGISTER( weapon_knife_survival_bowie );
 
 #ifndef CLIENT_DLL
@@ -1055,7 +1055,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_canis, CKnifeCanis );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_canis, KnifeCanis );
 PRECACHE_WEAPON_REGISTER( weapon_knife_canis );
 
 #ifndef CLIENT_DLL
@@ -1095,7 +1095,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_cord, CKnifeCord );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_cord, KnifeCord );
 PRECACHE_WEAPON_REGISTER( weapon_knife_cord );
 
 #ifndef CLIENT_DLL
@@ -1135,7 +1135,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_gypsy_jackknife, CKnifeGypsy );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_gypsy_jackknife, KnifeGypsy );
 PRECACHE_WEAPON_REGISTER( weapon_knife_gypsy_jackknife );
 
 #ifndef CLIENT_DLL
@@ -1175,7 +1175,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_outdoor, CKnifeOutdoor );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_outdoor, KnifeOutdoor );
 PRECACHE_WEAPON_REGISTER( weapon_knife_outdoor );
 
 #ifndef CLIENT_DLL
@@ -1215,7 +1215,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_skeleton, CKnifeSkeleton );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_skeleton, KnifeSkeleton );
 PRECACHE_WEAPON_REGISTER( weapon_knife_skeleton );
 
 #ifndef CLIENT_DLL
@@ -1255,7 +1255,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_stiletto, CKnifeStiletto );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_stiletto, KnifeStiletto );
 PRECACHE_WEAPON_REGISTER( weapon_knife_stiletto );
 
 #ifndef CLIENT_DLL
@@ -1295,7 +1295,7 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_ursus, CKnifeUrsus );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_ursus, KnifeUrsus );
 PRECACHE_WEAPON_REGISTER( weapon_knife_ursus );
 
 #ifndef CLIENT_DLL
@@ -1335,11 +1335,54 @@ END_PREDICTION_DATA()
 #endif
 
 
-LINK_ENTITY_TO_CLASS( weapon_knife_widowmaker, CKnifeWidowmaker );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_widowmaker, KnifeWidowmaker );
 PRECACHE_WEAPON_REGISTER( weapon_knife_widowmaker );
 
 #ifndef CLIENT_DLL
 BEGIN_DATADESC( CKnifeWidowmaker )
 		DEFINE_THINKFUNC( Smack )
 	END_DATADESC()
+<<<<<<< Updated upstream
+=======
+#endif
+
+
+// ----------------------------------------------------------------------------- //
+// CKnifePush implementation.
+// ----------------------------------------------------------------------------- //
+IMPLEMENT_NETWORKCLASS_ALIASED( KnifePush, DT_WeaponKnifePush )
+
+BEGIN_NETWORK_TABLE_NOBASE( CKnifePush, DT_LocalActiveWeaponKnifePushData )
+	#if !defined( CLIENT_DLL )
+		SendPropTime( SENDINFO( m_flSmackTime ) ),
+	#else
+		RecvPropTime( RECVINFO( m_flSmackTime ) ),
+	#endif
+END_NETWORK_TABLE()
+
+
+BEGIN_NETWORK_TABLE( CKnifePush, DT_WeaponKnifePush )
+	#if !defined( CLIENT_DLL )
+		SendPropDataTable("LocalActiveWeaponKnifeData", 0, &REFERENCE_SEND_TABLE(DT_LocalActiveWeaponKnifePushData), SendProxy_SendActiveLocalKnifeDataTable ),
+	#else
+		RecvPropDataTable("LocalActiveWeaponKnifeData", 0, 0, &REFERENCE_RECV_TABLE(DT_LocalActiveWeaponKnifePushData)),
+	#endif
+END_NETWORK_TABLE()
+
+
+#if defined CLIENT_DLL
+BEGIN_PREDICTION_DATA( CKnifePush )
+	DEFINE_PRED_FIELD( m_flSmackTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+END_PREDICTION_DATA()
+#endif
+
+
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_knife_push, KnifePush );
+PRECACHE_WEAPON_REGISTER( weapon_knife_push );
+
+#ifndef CLIENT_DLL
+BEGIN_DATADESC( CKnifePush )
+		DEFINE_THINKFUNC( Smack )
+	END_DATADESC()
+>>>>>>> Stashed changes
 #endif

@@ -30,7 +30,7 @@ END_NETWORK_TABLE()
 BEGIN_PREDICTION_DATA( CDecoyGrenade )
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( weapon_decoy, CDecoyGrenade );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_decoy, DecoyGrenade );
 PRECACHE_REGISTER( weapon_decoy );
 
 #if !defined( CLIENT_DLL )

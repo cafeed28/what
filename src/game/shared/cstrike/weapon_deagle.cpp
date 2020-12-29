@@ -80,7 +80,7 @@ BEGIN_PREDICTION_DATA( CDEagle )
 END_PREDICTION_DATA()
 #endif
 
-LINK_ENTITY_TO_CLASS( weapon_deagle, CDEagle );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_deagle, DEagle );
 PRECACHE_WEAPON_REGISTER( weapon_deagle );
 
 

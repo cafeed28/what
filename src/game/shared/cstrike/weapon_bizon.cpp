@@ -46,7 +46,7 @@ END_NETWORK_TABLE()
 BEGIN_PREDICTION_DATA( CWeaponBizon )
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( weapon_bizon, CWeaponBizon );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_bizon, WeaponBizon );
 PRECACHE_WEAPON_REGISTER( weapon_bizon );
 
 

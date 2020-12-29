@@ -159,6 +159,8 @@ bool PhysicsDLLInit( CreateInterfaceFn physicsFactory )
 	return true;
 }
 
+ConVar cl_predictphysics( "cl_predictphysics", "0", 0, "Use a prediction-friendly physics interface on the client" );
+
 #define DEFAULT_XBOX_CLIENT_VPHYSICS_TICK	0.025		// 25ms ticks on xbox ragdolls
 void PhysicsLevelInit( void )
 {
@@ -1048,4 +1050,39 @@ float PhysGetSyncCreateTime()
 		return gpGlobals->curtime + nextTime - simTime;
 	}
 	return gpGlobals->curtime;
+}
+
+void VPhysicsShadowDataChanged( bool bCreate, C_BaseEntity *pEntity )
+{
+	// client-side vphysics shadow management
+	if ( bCreate && !pEntity->VPhysicsGetObject() && !(pEntity->GetSolidFlags() & FSOLID_NOT_SOLID) )
+	{
+		if ( pEntity->GetSolid() != SOLID_BSP )
+		{
+			pEntity->SetSolid(SOLID_VPHYSICS);
+		}
+		if ( pEntity->GetSolidFlags() & FSOLID_NOT_MOVEABLE )
+		{
+			pEntity->VPhysicsInitStatic();
+		}
+		else
+		{
+			pEntity->VPhysicsInitShadow( false, false );
+		}
+	}
+	else if ( pEntity->VPhysicsGetObject() && !pEntity->VPhysicsGetObject()->IsStatic() )
+	{
+		float interpTime = pEntity->GetInterpolationAmount(LATCH_SIMULATION_VAR);
+		// this is the client time the network origin will become the entity's render origin
+		float schedTime = pEntity->m_flSimulationTime + interpTime;
+		// how far is that from now
+		float deltaTime = schedTime - gpGlobals->curtime;
+		// Compute that time on the client vphysics clock
+		float physTime = physenv->GetSimulationTime() + deltaTime + gpGlobals->frametime;
+		// arrival time is relative to the next tick
+		float arrivalTime = physTime - physenv->GetNextFrameTime();
+		if ( arrivalTime < 0 )
+			arrivalTime = 0;
+		pEntity->VPhysicsGetObject()->UpdateShadow( pEntity->GetNetworkOrigin(), pEntity->GetNetworkAngles(), false, arrivalTime );
+	}
 }

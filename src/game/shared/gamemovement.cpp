@@ -1172,6 +1172,11 @@ void CGameMovement::ProcessMovement( CBasePlayer *pPlayer, CMoveData *pMove )
 // 	player = NULL;
 }
 
+void CGameMovement::Reset( void )
+{
+	player = NULL;
+}
+
 void CGameMovement::StartTrackPredictionErrors( CBasePlayer *pPlayer )
 {
 	player = pPlayer;

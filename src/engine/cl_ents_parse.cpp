@@ -716,7 +716,7 @@ void CL_PreprocessEntities( void )
 		bLastOutgoingCommandEqualsLastAcknowledgedCommand )
 	{
 		//Msg( "%i/%i CL_ParseClientdata:  no latency server ack %i\n", 
-		//	host_framecount, cl.tickcount,
+		//	host_framecount, GetBaseLocalClient1().tickcount,
 		//	command_ack );
 		CL_RunPrediction( PREDICTION_SIMULATION_RESULTS_ARRIVING_ON_SEND_FRAME );
 	}
@@ -726,6 +726,7 @@ void CL_PreprocessEntities( void )
 	//if ( cl.last_command_ack  )
 	{
 		int number_of_commands_executed = ( cl.command_ack - cl.last_command_ack );
+		int number_of_simulation_ticks = ( cl.GetServerTickCount() - cl.last_server_tick );
 
 #if 0
 		COM_Log( "cl.log", "Receiving frame acknowledging %i commands\n",
@@ -742,7 +743,7 @@ void CL_PreprocessEntities( void )
 #endif
 
 		// Copy last set of changes right into current frame.
-		g_pClientSidePrediction->PreEntityPacketReceived( number_of_commands_executed, cl.m_nCurrentSequence );
+		g_pClientSidePrediction->PreEntityPacketReceived( number_of_commands_executed, cl.m_nCurrentSequence, number_of_simulation_ticks );
 	}
 
 	CDebugOverlay::PurgeServerOverlays();

@@ -6,6 +6,7 @@
 #include "func_nav_prerequisite.h"
 #include "ndebugoverlay.h"
 #include "modelentities.h"
+#include "triggers_shared.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"

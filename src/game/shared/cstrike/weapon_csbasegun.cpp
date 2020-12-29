@@ -23,7 +23,7 @@ END_NETWORK_TABLE()
 BEGIN_PREDICTION_DATA( CWeaponCSBaseGun )
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( weapon_csbase_gun, CWeaponCSBaseGun );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_csbase_gun, WeaponCSBaseGun );
 
 
 

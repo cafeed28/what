@@ -36,7 +36,7 @@ END_NETWORK_TABLE()
 BEGIN_PREDICTION_DATA( CFlashbang )
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( weapon_flashbang, CFlashbang );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_flashbang, Flashbang );
 PRECACHE_WEAPON_REGISTER( weapon_flashbang );
 
 

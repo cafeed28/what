@@ -75,9 +75,9 @@ BEGIN_PREDICTION_DATA( CWeaponUSP )
 END_PREDICTION_DATA()
 #endif
 
-LINK_ENTITY_TO_CLASS( weapon_usp_silencer, CWeaponUSP );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_usp_silencer, WeaponUSP );
 #ifdef GAME_DLL
-LINK_ENTITY_TO_CLASS( weapon_usp, CWeaponUSP ); // for backwards compatibility
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_usp, WeaponUSP ); // for backwards compatibility
 #endif
 PRECACHE_WEAPON_REGISTER( weapon_usp_silencer );
 

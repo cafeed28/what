@@ -46,7 +46,7 @@ END_NETWORK_TABLE()
 BEGIN_PREDICTION_DATA( CWeaponNegev )
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( weapon_negev, CWeaponNegev );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_negev, WeaponNegev );
 PRECACHE_WEAPON_REGISTER( weapon_negev );
 
 

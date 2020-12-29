@@ -83,7 +83,6 @@ edict_t *g_pForceAttachEdict = NULL;
 bool CBaseEntity::m_bDebugPause = false;		// Whether entity i/o is paused.
 int CBaseEntity::m_nDebugSteps = 1;				// Number of entity outputs to fire before pausing again.
 bool CBaseEntity::sm_bDisableTouchFuncs = false;	// Disables PhysicsTouch and PhysicsStartTouch function calls
-bool CBaseEntity::sm_bAccurateTriggerBboxChecks = true;	// set to false for legacy behavior in ep1
 
 int CBaseEntity::m_nPredictionRandomSeed = -1;
 int CBaseEntity::m_nPredictionRandomSeedServer = -1;
@@ -163,7 +162,7 @@ BEGIN_SEND_TABLE_NOBASE( CBaseEntity, DT_AnimTimeMustBeFirst )
 	SendPropInt	(SENDINFO(m_flAnimTime), 8, SPROP_UNSIGNED|SPROP_CHANGES_OFTEN|SPROP_ENCODED_AGAINST_TICKCOUNT, SendProxy_AnimTime),
 END_SEND_TABLE()
 
-#if !defined( NO_ENTITY_PREDICTION )
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 BEGIN_SEND_TABLE_NOBASE( CBaseEntity, DT_PredictableId )
 	SendPropPredictableId( SENDINFO( m_PredictableID ) ),
 	SendPropInt( SENDINFO( m_bIsPlayerSimulated ), 1, SPROP_UNSIGNED ),
@@ -293,7 +292,7 @@ IMPLEMENT_SERVERCLASS_ST_NOBASE( CBaseEntity, DT_BaseEntity )
 
 	SendPropInt		( SENDINFO( m_iTextureFrameIndex ),		8, SPROP_UNSIGNED ),
 
-#if !defined( NO_ENTITY_PREDICTION )
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 	SendPropDataTable( "predictable_id", 0, &REFERENCE_SEND_TABLE( DT_PredictableId ), SendProxy_SendPredictableId ),
 #endif
 
@@ -1261,7 +1260,7 @@ void CBaseEntity::ValidateEntityConnections()
 			typedescription_t *dataDesc = &dmap->dataDesc[i];
 			if ( ( dataDesc->fieldType == FIELD_CUSTOM ) && ( dataDesc->flags & FTYPEDESC_OUTPUT ) )
 			{
-				CBaseEntityOutput *pOutput = (CBaseEntityOutput *)((int)this + (int)dataDesc->fieldOffset[0]);
+				CBaseEntityOutput *pOutput = (CBaseEntityOutput *)((int)this + (int)dataDesc->fieldOffset);
 				if ( pOutput->NumberOfElements() )
 					return;
 			}
@@ -1294,7 +1293,7 @@ void CBaseEntity::FireNamedOutput( const char *pszOutput, variant_t variant, CBa
 			typedescription_t *dataDesc = &dmap->dataDesc[i];
 			if ( ( dataDesc->fieldType == FIELD_CUSTOM ) && ( dataDesc->flags & FTYPEDESC_OUTPUT ) )
 			{
-				CBaseEntityOutput *pOutput = ( CBaseEntityOutput * )( ( int )this + ( int )dataDesc->fieldOffset[0] );
+				CBaseEntityOutput *pOutput = ( CBaseEntityOutput * )( ( int )this + ( int )dataDesc->fieldOffset );
 				if ( !Q_stricmp( dataDesc->externalName, pszOutput ) )
 				{
 					pOutput->FireOutput( variant, pActivator, pCaller, flDelay );
@@ -1784,7 +1783,7 @@ BEGIN_DATADESC_NO_BASE( CBaseEntity )
 	DEFINE_KEYFIELD( m_fEffects, FIELD_INTEGER, "effects" ),
 	DEFINE_KEYFIELD( m_clrRender, FIELD_COLOR32, "rendercolor" ),
 	DEFINE_GLOBAL_KEYFIELD( m_nModelIndex, FIELD_SHORT, "modelindex" ),
-#if !defined( NO_ENTITY_PREDICTION )
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 	// DEFINE_FIELD( m_PredictableID, CPredictableId ),
 #endif
 	DEFINE_FIELD( touchStamp, FIELD_INTEGER ),
@@ -2597,39 +2596,6 @@ void CBaseEntity::PhysicsRelinkChildren( float dt )
 		if ( child->FirstMoveChild() )
 		{
 			child->PhysicsRelinkChildren(dt);
-		}
-	}
-}
-
-void CBaseEntity::PhysicsTouchTriggers( const Vector *pPrevAbsOrigin )
-{
-	edict_t *pEdict = edict();
-	if ( pEdict && !IsWorld() )
-	{
-		Assert(CollisionProp());
-		bool isTriggerCheckSolids = IsSolidFlagSet( FSOLID_TRIGGER );
-		bool isSolidCheckTriggers = IsSolid() && !isTriggerCheckSolids;		// NOTE: Moving triggers (items, ammo etc) are not 
-																			// checked against other triggers to reduce the number of touchlinks created
-		if ( !(isSolidCheckTriggers || isTriggerCheckSolids) )
-			return;
-
-		if ( GetSolid() == SOLID_BSP ) 
-		{
-			if ( !GetModel() && Q_strlen( STRING( GetModelName() ) ) == 0 ) 
-			{
-				Warning( "Inserted %s with no model\n", GetClassname() );
-				return;
-			}
-		}
-
-		SetCheckUntouch( true );
-		if ( isSolidCheckTriggers )
-		{
-			engine->SolidMoved( pEdict, CollisionProp(), pPrevAbsOrigin, sm_bAccurateTriggerBboxChecks );
-		}
-		if ( isTriggerCheckSolids )
-		{
-			engine->TriggerMoved( pEdict, sm_bAccurateTriggerBboxChecks );
 		}
 	}
 }
@@ -3951,7 +3917,7 @@ bool CBaseEntity::AcceptInput( const char *szInputName, CBaseEntity *pActivator,
 					else if ( dmap->dataDesc[i].flags & FTYPEDESC_KEY )
 					{
 						// set the value directly
-						Value.SetOther( ((char*)this) + dmap->dataDesc[i].fieldOffset[ TD_OFFSET_NORMAL ]);
+						Value.SetOther( ((char*)this) + dmap->dataDesc[i].fieldOffset);
 					
 						// TODO: if this becomes evil and causes too many full entity updates, then we should make
 						// a macro like this:
@@ -4036,7 +4002,7 @@ bool CBaseEntity::ReadKeyField( const char *varName, variant_t *var )
 			{
 				if ( !Q_stricmp(dmap->dataDesc[i].externalName, varName) )
 				{
-					var->Set( dmap->dataDesc[i].fieldType, ((char*)this) + dmap->dataDesc[i].fieldOffset[ TD_OFFSET_NORMAL ] );
+					var->Set( dmap->dataDesc[i].fieldType, ((char*)this) + dmap->dataDesc[i].fieldOffset );
 					return true;
 				}
 			}
@@ -6221,7 +6187,7 @@ bool CBaseEntity::IsFloating()
 //-----------------------------------------------------------------------------
 CBaseEntity *CBaseEntity::CreatePredictedEntityByName( const char *classname, const char *module, int line, bool persist /* = false */ )
 {
-#if !defined( NO_ENTITY_PREDICTION )
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 	CBasePlayer *player = CBaseEntity::GetPredictionPlayer();
 	Assert( player );
 

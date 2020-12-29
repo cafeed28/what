@@ -30,7 +30,7 @@ bool ParseKeyvalue( void *pObject, typedescription_t *pFields, int iNumFields, c
 	{
 		pField = &pFields[i];
 
-		int fieldOffset = pField->fieldOffset[ TD_OFFSET_NORMAL ];
+		int fieldOffset = pField->fieldOffset;
 
 		// Check the nested classes, but only if they aren't in array form.
 		if ((pField->fieldType == FIELD_EMBEDDED) && (pField->fieldSize == 1))
@@ -140,7 +140,7 @@ bool ExtractKeyvalue( void *pObject, typedescription_t *pFields, int iNumFields,
 	{
 		pField = &pFields[i];
 
-		int fieldOffset = pField->fieldOffset[ TD_OFFSET_NORMAL ];
+		int fieldOffset = pField->fieldOffset;
 
 		// Check the nested classes, but only if they aren't in array form.
 		if ((pField->fieldType == FIELD_EMBEDDED) && (pField->fieldSize == 1))

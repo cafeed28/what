@@ -35,6 +35,7 @@
 #include "gameinterface.h"
 #include "ilagcompensationmanager.h"
 #include "weapon_c4.h"
+#include "triggers_shared.h"
 
 #ifdef HL2_DLL
 #include "hl2_player.h"
@@ -126,10 +127,16 @@ END_DATADESC()
 
 LINK_ENTITY_TO_CLASS( trigger, CBaseTrigger );
 
+IMPLEMENT_SERVERCLASS_ST( CBaseTrigger, DT_BaseTrigger )
+	SendPropBool( SENDINFO( m_bClientSidePredicted ) ),
+	SendPropInt( SENDINFO(m_spawnflags), -1, SPROP_NOSCALE )
+END_SEND_TABLE()
+
 
 CBaseTrigger::CBaseTrigger()
 {
 	AddEFlags( EFL_USE_PARTITION_WHEN_NOT_SOLID );
+	m_bClientSidePredicted = false;
 }
 
 //------------------------------------------------------------------------------
@@ -4253,12 +4260,10 @@ int CTriggerImpact::DrawDebugTextOverlays(void)
 // Purpose: Disables auto movement on players that touch it
 //-----------------------------------------------------------------------------
 
-const int SF_TRIGGER_MOVE_AUTODISABLE				= 0x80;		// disable auto movement
-const int SF_TRIGGER_AUTO_DUCK						= 0x800;	// Duck automatically
-
 class CTriggerPlayerMovement : public CBaseTrigger
 {
 	DECLARE_CLASS( CTriggerPlayerMovement, CBaseTrigger );
+	DECLARE_SERVERCLASS();
 public:
 
 	void Spawn( void );
@@ -4266,16 +4271,15 @@ public:
 	void EndTouch( CBaseEntity *pOther );
 	
 	DECLARE_DATADESC();
-
 };
 
-BEGIN_DATADESC( CTriggerPlayerMovement )
+IMPLEMENT_SERVERCLASS_ST( CTriggerPlayerMovement, DT_TriggerPlayerMovement )
+END_SEND_TABLE()
 
+BEGIN_DATADESC( CTriggerPlayerMovement )
 END_DATADESC()
 
-
 LINK_ENTITY_TO_CLASS( trigger_playermovement, CTriggerPlayerMovement );
-
 
 //-----------------------------------------------------------------------------
 // Purpose: Called when spawning, after keyvalues have been handled.
@@ -4292,6 +4296,15 @@ void CTriggerPlayerMovement::Spawn( void )
 	BaseClass::Spawn();
 
 	InitTrigger();
+
+
+	// Bugbait 19571:  Make CTriggerPlayerMovement for AutoDuck available on client for client side prediction
+	if ( HasSpawnFlags( SF_TRIGGER_AUTO_DUCK ) ||
+		 HasSpawnFlags( SF_TRIGGER_AUTO_WALK ) )
+	{
+		m_bClientSidePredicted = true;
+		SetTransmitState( FL_EDICT_PVSCHECK );
+	}
 }
 
 
@@ -4310,6 +4323,11 @@ void CTriggerPlayerMovement::StartTouch( CBaseEntity *pOther )
 	if ( HasSpawnFlags( SF_TRIGGER_AUTO_DUCK ) )
 	{
 		pPlayer->ForceButtons( IN_DUCK );
+	}
+
+	if ( HasSpawnFlags( SF_TRIGGER_AUTO_WALK ) )
+	{
+		pPlayer->ForceButtons( IN_SPEED );
 	}
 
 	// UNDONE: Currently this is the only operation this trigger can do
@@ -4332,6 +4350,11 @@ void CTriggerPlayerMovement::EndTouch( CBaseEntity *pOther )
 	if ( HasSpawnFlags( SF_TRIGGER_AUTO_DUCK ) )
 	{
 		pPlayer->UnforceButtons( IN_DUCK );
+	}
+
+	if ( HasSpawnFlags( SF_TRIGGER_AUTO_WALK ) )
+	{
+		pPlayer->UnforceButtons( IN_SPEED );
 	}
 
 	if ( HasSpawnFlags(SF_TRIGGER_MOVE_AUTODISABLE) )

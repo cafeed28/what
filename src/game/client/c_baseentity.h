@@ -123,7 +123,7 @@ typedef C_BaseEntity* (*DISPATCHFUNCTION)( void );
 #include "touchlink.h"
 #include "groundlink.h"
 
-#if !defined( NO_ENTITY_PREDICTION )
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 //-----------------------------------------------------------------------------
 // Purpose: For fully client side entities we use this information to determine
 //  authoritatively if the server has acknowledged creating this entity, etc.
@@ -147,6 +147,48 @@ struct PredictionContext
 	// The entity to whom we are attached
 	CHandle< C_BaseEntity >		m_hServerEntity;
 };
+#endif
+
+#if !defined( NO_ENTITY_PREDICTION )
+//-----------------------------------------------------------------------------
+// Purpose: Maintains a list of predicted or client created entities
+//-----------------------------------------------------------------------------
+class CPredictableList
+{
+public:
+	C_BaseEntity	*GetPredictable( int slot );
+	int				GetPredictableCount( void ) const;
+
+protected:
+	void			AddToPredictableList( C_BaseEntity *add );
+	void			RemoveFromPredictablesList( C_BaseEntity *remove );
+
+private:
+	CUtlSortVector< C_BaseEntity * >	m_Predictables;
+
+	friend class C_BaseEntity;
+};
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Input  : slot - 
+// Output : C_BaseEntity
+//-----------------------------------------------------------------------------
+FORCEINLINE C_BaseEntity *CPredictableList::GetPredictable( int slot )
+{
+	return m_Predictables[ slot ];
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Output : int
+//-----------------------------------------------------------------------------
+FORCEINLINE int CPredictableList::GetPredictableCount( void ) const
+{
+	return m_Predictables.Count();
+}
+
+extern CPredictableList *predictables;
 #endif
 
 //-----------------------------------------------------------------------------
@@ -636,6 +678,9 @@ public:
 
 	static bool IsSimulatingOnAlternateTicks();
 
+public:
+	static bool	sm_bAccurateTriggerBboxChecks;	// SOLID_BBOX entities do a fully accurate trigger vs bbox check when this is set
+
 // C_BaseEntity local functions
 public:
 
@@ -806,12 +851,16 @@ public:
 	// Prediction stuff
 	/////////////////
 	void							CheckInitPredictable( const char *context );
+	void							CheckShutdownPredictable( const char *context );
+	virtual C_BasePlayer			*GetPredictionOwner( void );
 
 	void							AllocateIntermediateData( void );
 	void							DestroyIntermediateData( void );
 	void							ShiftIntermediateDataForward( int slots_to_remove, int previous_last_slot );
+	void							ShiftFirstPredictedIntermediateDataForward( int slots_to_remove );
 
 	void							*GetPredictedFrame( int framenumber );
+	void							*GetFirstPredictedFrame( int framenumber ); //similar to GetPredictedFrame() but only stores the results from the first prediction of each command
 	void							*GetOriginalNetworkDataObject( void );
 	bool							IsIntermediateDataAllocated( void ) const;
 
@@ -823,6 +872,7 @@ public:
 	void							PreEntityPacketReceived( int commands_acknowledged );
 	void							PostEntityPacketReceived( void );
 	bool							PostNetworkDataReceived( int commands_acknowledged );
+	virtual bool					PredictionErrorShouldResetLatchedForAllPredictables( void ) { return true; } //legacy behavior is that any prediction error causes all predictables to reset latched
 	bool							GetPredictionEligible( void ) const;
 	void							SetPredictionEligible( bool canpredict );
 
@@ -831,8 +881,8 @@ public:
 		SLOT_ORIGINALDATA = -1,
 	};
 
-	int								SaveData( const char *context, int slot, int type );
-	virtual int						RestoreData( const char *context, int slot, int type );
+	void							SaveData( const char *context, int slot, int type );
+	void							RestoreData( const char *context, int slot, int type );
 
 	virtual char const *			DamageDecal( int bitsDamageType, int gameMaterial );
 	virtual void					DecalTrace( trace_t *pTrace, char const *decalName );
@@ -1087,6 +1137,8 @@ public:
 	virtual const Vector &GetViewOffset() const;
 	virtual void		  SetViewOffset( const Vector& v );
 
+	virtual void		GetGroundVelocityToApply( Vector &vecGroundVel ) { vecGroundVel = vec3_origin; }
+
 #ifdef SIXENSE
 	const Vector&		GetEyeOffset() const;
 	void				SetEyeOffset( const Vector& v );
@@ -1101,6 +1153,8 @@ public:
 	ClientRenderHandle_t	GetRenderHandle() const;
 
 	void				SetRemovalFlag( bool bRemove );
+
+	bool				HasSpawnFlags( int nFlags ) const { return (m_spawnflags & nFlags) != 0; }
 
 	// Effects...
 	bool				IsEffectActive( int nEffectMask ) const;
@@ -1357,7 +1411,7 @@ public:
 	// Team Handling
 	int								m_iTeamNum;
 
-#if !defined( NO_ENTITY_PREDICTION )
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 	// Certain entities (projectiles) can be created on the client
 	CPredictableId					m_PredictableID;
 	PredictionContext				*m_pPredictionContext;
@@ -1437,6 +1491,8 @@ protected:
 	CUtlVector< thinkfunc_t >		m_aThinkFunctions;
 	int								m_iCurrentThinkContext;
 
+	int								m_spawnflags;
+
 	// Object eye position
 	Vector							m_vecViewOffset;
 
@@ -1498,7 +1554,6 @@ private:
 	void AddBrushModelDecal( const Ray_t& ray, const Vector& decalCenter, int decalIndex, bool doTrace, trace_t& tr );
 
 	void ComputePackedOffsets( void );
-	int ComputePackedSize_R( datamap_t *map );
 	int GetIntermediateDataSize( void );
 
 	void UnlinkChild( C_BaseEntity *pParent, C_BaseEntity *pChild );
@@ -1637,8 +1692,11 @@ private:
 #if !defined( NO_ENTITY_PREDICTION )
 	// For storing prediction results and pristine network state
 	byte							*m_pIntermediateData[ MULTIPLAYER_BACKUP ];
+	byte							*m_pIntermediateData_FirstPredicted[ MULTIPLAYER_BACKUP + 1 ]; //we store just as much as m_pIntermediateData, but also hold onto the frame from our last received packet
 	byte							*m_pOriginalData;
 	int								m_nIntermediateDataCount;
+	int								m_nIntermediateData_FirstPredictedShiftMarker; //can't use predicted commands to optimize first predicted version of ShiftIntermediateDataForward(). Use this instead for its longer lifetime
+	bool							m_bEverHadPredictionErrorsForThisCommand;
 
 	bool							m_bIsPlayerSimulated;
 #endif

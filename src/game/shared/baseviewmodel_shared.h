@@ -131,6 +131,8 @@ public:
 	virtual void			OnDataChanged( DataUpdateType_t updateType );
 	virtual void			PostDataUpdate( DataUpdateType_t updateType );
 
+	virtual C_BasePlayer	*GetPredictionOwner( void );
+
 	virtual bool			Interpolate( float currentTime );
 
 	bool					ShouldFlipViewModel();

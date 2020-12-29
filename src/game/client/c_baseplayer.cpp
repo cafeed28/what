@@ -446,6 +446,7 @@ C_BasePlayer::C_BasePlayer() : m_iv_vecViewOffset( "C_BasePlayer::m_iv_vecViewOf
 	m_pSurfaceData = NULL;
 	m_surfaceFriction = 1.0f;
 	m_chTextureType = 0;
+	m_afButtonForced = 0;
 
 	m_flNextAchievementAnnounceTime = 0;
 
@@ -942,6 +943,9 @@ void C_BasePlayer::PostDataUpdate( DataUpdateType_t updateType )
 	{
 		ResetLatched();
 	}
+
+	m_fLastUpdateServerTime = engine->GetLastTimeStamp();
+	m_nLastUpdateTickBase = m_nTickBase;
 }
 
 //-----------------------------------------------------------------------------
@@ -2306,6 +2310,14 @@ bool C_BasePlayer::ShouldPredict( void )
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: Return the player who will predict this entity
+//-----------------------------------------------------------------------------
+C_BasePlayer *C_BasePlayer::GetPredictionOwner( void )
+{
+	return this;
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: Special processing for player simulation
 // NOTE: Don't chain to BaseClass!!!!
 //-----------------------------------------------------------------------------
@@ -2606,6 +2618,11 @@ float C_BasePlayer::GetMinFOV()	const
 float C_BasePlayer::GetFinalPredictedTime() const
 {
 	return ( m_nFinalPredictedTick * TICK_INTERVAL );
+}
+
+float C_BasePlayer::PredictedServerTime() const
+{
+	return m_fLastUpdateServerTime + ((m_nTickBase - m_nLastUpdateTickBase) * TICK_INTERVAL);
 }
 
 void C_BasePlayer::NotePredictionError( const Vector &vDelta )

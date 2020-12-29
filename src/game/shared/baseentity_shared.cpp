@@ -65,6 +65,7 @@ ConVar hl2_episodic( "hl2_episodic", "0", FCVAR_REPLICATED );
 #endif
 
 bool CBaseEntity::m_bAllowPrecache = false;
+bool CBaseEntity::sm_bAccurateTriggerBboxChecks = true;	// set to false for legacy behavior in ep1
 
 // Set default max values for entities based on the existing constants from elsewhere
 float k_flMaxEntityPosCoord = MAX_COORD_FLOAT;
@@ -1255,9 +1256,18 @@ void CBaseEntity::VPhysicsSetObject( IPhysicsObject *pPhysics )
 		Warning( "Overwriting physics object for %s\n", GetClassname() );
 	}
 	m_pPhysicsObject = pPhysics;
+#ifndef CLIENT_DLL
+	RemoveSolidFlags(FSOLID_NOT_MOVEABLE);
+#endif
 	if ( m_pPhysicsObject )
 	{
 		m_flNonShadowMass = m_pPhysicsObject->GetMass();
+#ifndef CLIENT_DLL
+		if ( m_pPhysicsObject->IsStatic() )
+		{
+			AddSolidFlags(FSOLID_NOT_MOVEABLE);
+		}
+#endif
 	}
 	if ( pPhysics && !m_pPhysicsObject )
 	{
@@ -2578,3 +2588,53 @@ bool CBaseEntity::IsToolRecording() const
 #endif
 }
 #endif
+
+#if defined( CLIENT_DLL ) && !defined( PORTAL2 )
+#define FAST_TRIGGER_TOUCH
+extern void TouchTriggerPlayerMovement( C_BaseEntity *pEntity );
+#endif
+
+void CBaseEntity::PhysicsTouchTriggers( const Vector *pPrevAbsOrigin )
+{
+#if defined( CLIENT_DLL )
+#if defined( FAST_TRIGGER_TOUCH )
+	{
+		Assert( !pPrevAbsOrigin );
+		TouchTriggerPlayerMovement( this );
+		return;
+	}
+#endif // FAST_TRIGGER_TOUCH
+	IClientEntity *pEntity = this;
+#else
+	edict_t *pEntity = edict();
+#endif
+
+	if ( pEntity && !IsWorld() )
+	{
+		Assert(CollisionProp());
+		bool isTriggerCheckSolids = IsSolidFlagSet( FSOLID_TRIGGER );
+		bool isSolidCheckTriggers = IsSolid() && !isTriggerCheckSolids;		// NOTE: Moving triggers (items, ammo etc) are not 
+		// checked against other triggers ot reduce the number of touchlinks created
+		if ( !(isSolidCheckTriggers || isTriggerCheckSolids) )
+			return;
+
+		if ( GetSolid() == SOLID_BSP ) 
+		{
+			if ( !GetModel() && Q_strlen( STRING( GetModelName() ) ) == 0 ) 
+			{
+				Warning( "Inserted %s with no model\n", GetClassname() );
+				return;
+			}
+		}
+
+		SetCheckUntouch( true );
+		if ( isSolidCheckTriggers )
+		{
+			engine->SolidMoved( pEntity, CollisionProp(), pPrevAbsOrigin, sm_bAccurateTriggerBboxChecks );
+		}
+		if ( isTriggerCheckSolids )
+		{
+			engine->TriggerMoved( pEntity, sm_bAccurateTriggerBboxChecks );
+		}
+	}
+}

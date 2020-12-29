@@ -2010,7 +2010,7 @@ void Physics_SimulateEntity( CBaseEntity *pEntity )
 
 		MDLCACHE_CRITICAL_SECTION();
 
-#if !defined( NO_ENTITY_PREDICTION )
+#if !defined( NO_ENTITY_PREDICTION ) && defined( USE_PREDICTABLEID )
 		// If an object was at one point player simulated, but had that status revoked (as just
 		//  above when no packets have arrived in a while ), then we still will assume that the
 		//  owner/player will be predicting the entity locally (even if the game is playing like butt)

@@ -59,7 +59,7 @@ BEGIN_PREDICTION_DATA( CWeaponTec9 )
 END_PREDICTION_DATA()
 #endif
 
-LINK_ENTITY_TO_CLASS( weapon_tec9, CWeaponTec9 );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_tec9, WeaponTec9 );
 PRECACHE_WEAPON_REGISTER( weapon_tec9 );
 
 

@@ -651,7 +651,7 @@ bool CSave::ShouldSaveField( const void *pData, typedescription_t *pField )
 			
 				for ( ; pTestField < pLimit; ++pTestField )
 				{
-					if ( ShouldSaveField( pTestData + pTestField->fieldOffset[ TD_OFFSET_NORMAL ], pTestField ) )
+					if ( ShouldSaveField( pTestData + pTestField->fieldOffset, pTestField ) )
 						return true;
 				}
 
@@ -666,7 +666,7 @@ bool CSave::ShouldSaveField( const void *pData, typedescription_t *pField )
 			SaveRestoreFieldInfo_t fieldInfo =
 			{
 				const_cast<void *>(pData),
-				((char *)pData) - pField->fieldOffset[ TD_OFFSET_NORMAL ],
+				((char *)pData) - pField->fieldOffset,
 				pField
 			};
 			if ( pField->pSaveRestoreOps->IsEmpty( fieldInfo ) )
@@ -779,7 +779,7 @@ bool CSave::WriteBasicField( const char *pname, void *pData, datamap_t *pRootMap
 			SaveRestoreFieldInfo_t fieldInfo =
 			{
 				pData,
-				((char *)pData) - pField->fieldOffset[ TD_OFFSET_NORMAL ],
+				((char *)pData) - pField->fieldOffset,
 				pField
 			};
 			pField->pSaveRestoreOps->Save( fieldInfo, this );
@@ -838,7 +838,7 @@ int CSave::WriteFields( const char *pname, const void *pBaseData, datamap_t *pRo
 	for ( int i = 0; i < fieldCount; i++ )
 	{
 		pTest = &pFields[ i ];
-		void *pOutputData = ( (char *)pBaseData + pTest->fieldOffset[ TD_OFFSET_NORMAL ] );
+		void *pOutputData = ( (char *)pBaseData + pTest->fieldOffset );
 			
 		if ( !ShouldSaveField( pOutputData, pTest ) )
 			continue;
@@ -1454,7 +1454,7 @@ void CRestore::ReadBasicField( const SaveRestoreRecordHeader_t &header, void *pD
 			SaveRestoreFieldInfo_t fieldInfo =
 			{
 				pDest,
-				((char *)pDest) - pField->fieldOffset[ TD_OFFSET_NORMAL ],
+				((char *)pDest) - pField->fieldOffset,
 				pField
 			};
 			
@@ -1546,7 +1546,7 @@ void CRestore::EmptyFields( void *pBaseData, typedescription_t *pFields, int fie
 		if ( !ShouldEmptyField( pField ) )
 			continue;
 
-		void *pFieldData = (char *)pBaseData + pField->fieldOffset[ TD_OFFSET_NORMAL ];
+		void *pFieldData = (char *)pBaseData + pField->fieldOffset;
 		switch( pField->fieldType )
 		{
 		case FIELD_CUSTOM:
@@ -1661,7 +1661,7 @@ int CRestore::ReadFields( const char *pname, void *pBaseData, datamap_t *pRootMa
 		typedescription_t *pField = FindField( m_pData->StringFromSymbol( header.symbol ), pFields, fieldCount, &searchCookie);
 		if ( pField && ShouldReadField( pField ) )
 		{
-			ReadField( header, ((char *)pBaseData + pField->fieldOffset[ TD_OFFSET_NORMAL ]), pRootMap, pField );
+			ReadField( header, ((char *)pBaseData + pField->fieldOffset), pRootMap, pField );
 		}
 		else
 		{

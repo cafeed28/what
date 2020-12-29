@@ -62,7 +62,7 @@ DEFINE_PRED_FIELD( m_reloadState, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 END_PREDICTION_DATA()
 #endif
 
-LINK_ENTITY_TO_CLASS( weapon_sawedoff, CWeaponSawedOff );
+LINK_ENTITY_TO_CLASS_ALIASED( weapon_sawedoff, WeaponSawedOff );
 PRECACHE_WEAPON_REGISTER( weapon_sawedoff );
 
 

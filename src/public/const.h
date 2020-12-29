@@ -257,8 +257,9 @@ enum SolidFlags_t
 	FSOLID_USE_TRIGGER_BOUNDS	= 0x0080,	// Uses a special trigger bounds separate from the normal OBB
 	FSOLID_ROOT_PARENT_ALIGNED	= 0x0100,	// Collisions are defined in root parent's local coordinate space
 	FSOLID_TRIGGER_TOUCH_DEBRIS	= 0x0200,	// This trigger will touch debris objects
+	FSOLID_NOT_MOVEABLE			= 0x0400,	// Assume this object will not move
 
-	FSOLID_MAX_BITS	= 10
+	FSOLID_MAX_BITS	= 11
 };
 
 //-----------------------------------------------------------------------------
