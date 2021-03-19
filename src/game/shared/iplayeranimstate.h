@@ -66,6 +66,8 @@ public:
 	// it will change his body_yaw pose parameter before changing his rendered angle).
 	virtual const QAngle& GetRenderAngles() = 0;
 
+	virtual void SetForceAimYaw( bool bForce ) = 0;
+
 	// This is called by both the client and the server in the same way to trigger events for
 	// players firing, jumping, throwing grenades, etc.
 	virtual void DoAnimationEvent( PlayerAnimEvent_t event, int nData = 0 ) = 0;

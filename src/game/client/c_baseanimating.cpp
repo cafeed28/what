@@ -66,6 +66,8 @@
 static ConVar cl_SetupAllBones( "cl_SetupAllBones", "0" );
 ConVar r_sequence_debug( "r_sequence_debug", "" );
 
+bool C_BaseAnimating::s_bEnableInvalidateBoneCache = true;
+
 // If an NPC is moving faster than this, he should play the running footstep sound
 const float RUN_SPEED_ESTIMATE_SQR = 150.0f * 150.0f;
 
@@ -682,6 +684,14 @@ C_BaseAnimating::C_BaseAnimating() :
 	m_iv_flPoseParameter( "C_BaseAnimating::m_iv_flPoseParameter" ),
 	m_iv_flEncodedController("C_BaseAnimating::m_iv_flEncodedController")
 {
+	m_nCustomBlendingRuleMask = -1;
+
+	ClearAnimLODflags();
+	m_nComputedLODframe = 0;
+	m_flDistanceFromCamera = 0;
+
+	m_bMaintainSequenceTransitions = true;
+
 	m_vecForce.Init();
 	m_nForceBone = -1;
 	
@@ -753,6 +763,12 @@ C_BaseAnimating::C_BaseAnimating() :
 	Q_memset(&m_mouth, 0, sizeof(m_mouth));
 	m_flCycle = 0;
 	m_flOldCycle = 0;
+
+	for ( int i=0; i<MAXSTUDIOBONES; i++ )
+	{
+		m_pos_cached[i].Init();
+		m_q_cached[i].Init();
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -1164,6 +1180,30 @@ void C_BaseAnimating::GetBonePosition ( int iBone, Vector &origin, QAngle &angle
 	MatrixAngles( bonetoworld, angles, origin );
 }
 
+//=========================================================
+//=========================================================
+void C_BaseAnimating::GetHitboxBonePosition ( int iBone, Vector &origin, QAngle &angles, QAngle hitboxOrientation )
+{
+	matrix3x4_t bonetoworld;
+	GetBoneTransform( iBone, bonetoworld );
+	
+	matrix3x4_t temp;
+	AngleMatrix( hitboxOrientation, temp);
+	MatrixMultiply( bonetoworld, temp, temp );
+
+	MatrixAngles( temp, angles, origin );
+}
+
+void C_BaseAnimating::GetHitboxBoneTransform( int iBone, QAngle hitboxOrientation, matrix3x4_t &pOut )
+{
+	matrix3x4_t bonetoworld;
+	GetBoneTransform( iBone, bonetoworld );
+	
+	matrix3x4_t temp;
+	AngleMatrix( hitboxOrientation, temp);
+	MatrixMultiply( bonetoworld, temp, pOut );
+}
+
 void C_BaseAnimating::GetBoneTransform( int iBone, matrix3x4_t &pBoneToWorld )
 {
 	CStudioHdr *hdr = GetModelPtr();
@@ -1325,6 +1365,20 @@ float C_BaseAnimating::GetPoseParameter( int iPoseParameter )
 		return 0.0f;
 
 	return m_flPoseParameter[iPoseParameter];
+}
+
+//-----------------------------------------------------------------------------
+
+float C_BaseAnimating::GetFirstSequenceAnimTag( int sequence, int nDesiredTag, float flStart, float flEnd )
+{
+	Assert( GetModelPtr() );
+	return ::GetFirstSequenceAnimTag( GetModelPtr(), sequence, nDesiredTag, flStart, flEnd );
+}
+
+float C_BaseAnimating::GetAnySequenceAnimTag( int sequence, int nDesiredTag, float flDefault )
+{
+	Assert( GetModelPtr() );
+	return ::GetAnySequenceAnimTag( GetModelPtr(), sequence, nDesiredTag, flDefault );
 }
 
 // FIXME: redundant?
@@ -1671,7 +1725,7 @@ void C_BaseAnimating::CreateUnragdollInfo( C_BaseAnimating *pRagdoll )
 		ConcatTransforms( inverted, pRagdoll->m_BoneAccessor.GetBone( i ), output );
 
 		MatrixAngles( output, 
-			m_pRagdollInfo->m_rgBoneQuaternion[ i ],
+			m_pRagdollInfo->m_rgQuaternion[ i ],
 			m_pRagdollInfo->m_rgBonePos[ i ] );
 	}
 }
@@ -1720,7 +1774,7 @@ void C_BaseAnimating::SaveRagdollInfo( int numbones, const matrix3x4_t &cameraTr
 		ConcatTransforms( inverted, pBoneToWorld.GetBone( i ), output );
 
 		MatrixAngles( output, 
-			m_pRagdollInfo->m_rgBoneQuaternion[ i ],
+			m_pRagdollInfo->m_rgQuaternion[ i ],
 			m_pRagdollInfo->m_rgBonePos[ i ] );
 	}
 }
@@ -1733,7 +1787,7 @@ bool C_BaseAnimating::RetrieveRagdollInfo( Vector *pos, Quaternion *q )
 	for ( int i = 0; i < m_pRagdollInfo->m_nNumBones; i++ )
 	{
 		pos[ i ] = m_pRagdollInfo->m_rgBonePos[ i ];
-		q[ i ] = m_pRagdollInfo->m_rgBoneQuaternion[ i ];
+		q[ i ] = m_pRagdollInfo->m_rgQuaternion[ i ];
 	}
 
 	return true;
@@ -1757,6 +1811,9 @@ CollideType_t C_BaseAnimating::GetCollideType( void )
 void C_BaseAnimating::MaintainSequenceTransitions( IBoneSetup &boneSetup, float flCycle, Vector pos[], Quaternion q[] )
 {
 	VPROF( "C_BaseAnimating::MaintainSequenceTransitions" );
+
+	if ( !m_bMaintainSequenceTransitions )
+		return;
 
 	if ( !boneSetup.GetStudioHdr() )
 		return;
@@ -1810,17 +1867,17 @@ void C_BaseAnimating::MaintainSequenceTransitions( IBoneSetup &boneSetup, float 
 		C_AnimationLayer *blend = &m_SequenceTransitioner.m_animationQueue[i];
 
 		float dt = (gpGlobals->curtime - blend->m_flLayerAnimtime);
-		flCycle = blend->m_flCycle + dt * blend->m_flPlaybackRate * GetSequenceCycleRate( boneSetup.GetStudioHdr(), blend->m_nSequence );
-		flCycle = ClampCycle( flCycle, IsSequenceLooping( boneSetup.GetStudioHdr(), blend->m_nSequence ) );
+		flCycle = blend->GetCycle() + dt * blend->GetPlaybackRate() * GetSequenceCycleRate( boneSetup.GetStudioHdr(), blend->GetSequence() );
+		flCycle = ClampCycle( flCycle, IsSequenceLooping( boneSetup.GetStudioHdr(), blend->GetSequence() ) );
 
 #if 1 // _DEBUG
 		if (r_sequence_debug.GetInt() == entindex())
 		{
-			DevMsgRT( "%8.4f : %30s : %5.3f : %4.2f  +\n", gpGlobals->curtime, boneSetup.GetStudioHdr()->pSeqdesc( blend->m_nSequence ).pszLabel(), flCycle, (float)blend->m_flWeight );
+			DevMsgRT( "%8.4f : %30s : %5.3f : %4.2f  +\n", gpGlobals->curtime, boneSetup.GetStudioHdr()->pSeqdesc( blend->GetSequence() ).pszLabel(), flCycle, (float)blend->GetWeight() );
 		}
 #endif
 
-		boneSetup.AccumulatePose( pos, q, blend->m_nSequence, flCycle, blend->m_flWeight, gpGlobals->curtime, m_pIk );
+		boneSetup.AccumulatePose( pos, q, blend->GetSequence(), flCycle, blend->GetWeight(), gpGlobals->curtime, m_pIk );
 	}
 }
 
@@ -1855,7 +1912,7 @@ void C_BaseAnimating::UnragdollBlend( CStudioHdr *hdr, Vector pos[], Quaternion 
 	for ( i = 0; i < hdr->numbones(); i++ )
 	{
 		VectorLerp( m_pRagdollInfo->m_rgBonePos[ i ], pos[ i ], frac, pos[ i ] );
-		QuaternionSlerp( m_pRagdollInfo->m_rgBoneQuaternion[ i ], q[ i ], frac, q[ i ] );
+		QuaternionSlerp( m_pRagdollInfo->m_rgQuaternion[ i ], q[ i ], frac, q[ i ] );
 	}
 }
 
@@ -2538,6 +2595,54 @@ void C_BaseAnimating::ThreadedBoneSetup()
 	g_PreviousBoneSetups.RemoveAll();
 }
 
+#ifdef DEBUG
+ConVar cl_limit_anim_fps("cl_limit_anim_fps", "1");
+#endif
+
+#define FPS_TO_FRAMETIME_SECS( _n ) (1000.0f / _n) * 0.001f
+bool C_BaseAnimating::ShouldSkipAnimationFrame( float currentTime )
+{
+#ifdef DEBUG
+	if ( !cl_limit_anim_fps.GetBool() )
+		return false;
+#endif
+
+	// only applies to players
+	if ( !IsPlayer() )
+		return false;
+
+	int nFrameCount = gpGlobals->framecount;
+	if ( !m_nLastNonSkippedFrame || abs( nFrameCount - m_nLastNonSkippedFrame ) >= 2 )
+		return false;
+
+	if ( gpGlobals->frametime < FPS_TO_FRAMETIME_SECS(300.0f) )
+	{
+		nFrameCount += (entindex() % 3); // offset lookups
+		if ( (nFrameCount % 3) != 0 ) // at 300+ fps, compute every third animation frame to floor animation at 100fps
+		{
+			return true;
+		}
+	}
+	else if ( gpGlobals->frametime < FPS_TO_FRAMETIME_SECS(200.0f) )
+	{
+		nFrameCount += (entindex() % 2); // offset lookups
+		if ( (nFrameCount % 2) != 0 ) // at 200+ fps, compute every other animation frame to floor animation at 100fps
+		{
+			return true;
+		}
+	}
+	else if ( gpGlobals->frametime < FPS_TO_FRAMETIME_SECS(150.0f) )
+	{
+		nFrameCount += (entindex() % 3); // offset lookups
+		if ( (nFrameCount % 3) == 0 ) // at 150+ fps, skip every third animation frame to floor animation at 100fps
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 bool C_BaseAnimating::SetupBones( matrix3x4_t *pBoneToWorldOut, int nMaxBones, int boneMask, float currentTime )
 {
 	VPROF_BUDGET( "C_BaseAnimating::SetupBones", VPROF_BUDGETGROUP_CLIENT_ANIMATION );
@@ -2565,6 +2670,9 @@ bool C_BaseAnimating::SetupBones( matrix3x4_t *pBoneToWorldOut, int nMaxBones, i
 	}
 
 	//boneMask = BONE_USED_BY_ANYTHING; // HACK HACK - this is a temp fix until we have accessors for bones to find out where problems are.
+	
+	// some bones are tagged to always setup, they get OR'd in now
+	boneMask |= BONE_ALWAYS_SETUP;
 	
 	if ( GetSequence() == -1 )
 		 return false;
@@ -2716,22 +2824,60 @@ bool C_BaseAnimating::SetupBones( matrix3x4_t *pBoneToWorldOut, int nMaxBones, i
 			memset( q, 0xFF, sizeof(q) );
 #endif
 
-			int bonesMaskNeedRecalc = boneMask | oldReadableBones; // Hack to always recalc bones, to fix the arm jitter in the new CS player anims until Ken makes the real fix
-
 			if ( m_pIk )
 			{
 				if (Teleported() || IsNoInterpolationFrame())
 					m_pIk->ClearTargets();
 
-				m_pIk->Init( hdr, GetRenderAngles(), GetRenderOrigin(), currentTime, gpGlobals->framecount, bonesMaskNeedRecalc );
+				m_pIk->Init( hdr, GetRenderAngles(), GetRenderOrigin(), currentTime, gpGlobals->framecount, boneMask );
 			}
 
 			// Let pose debugger know that we are blending
 			g_pPoseDebugger->StartBlending( this, hdr );
 
-			StandardBlendingRules( hdr, pos, q, currentTime, bonesMaskNeedRecalc );
+			bool bSkipThisFrame = ShouldSkipAnimationFrame( currentTime );
 
 			CBoneBitList boneComputed;
+
+			if ( !bSkipThisFrame )
+			{
+				int nTempMask = boneMask;
+
+				if ( m_nCustomBlendingRuleMask != -1 )
+				{
+					nTempMask &= m_nCustomBlendingRuleMask;
+				}
+
+				nTempMask |= BONE_ALWAYS_SETUP; // make sure we always set up these bones
+
+				StandardBlendingRules( hdr, pos, q, currentTime, nTempMask );
+				
+				if ( IsPlayer() && nTempMask != boneMask )
+				{
+					// restore the saved transforms of the leafy bones that got re-initialized during StandardBlendingRules.
+					// This will hold bones in their last computed pose and hide the lod pop on the way out (they may still pop on the way in)
+					for ( int i = 0; i < hdr->numbones(); ++i )
+					{
+						if ( (hdr->boneFlags(i) & (BONE_USED_BY_ATTACHMENT | BONE_USED_BY_HITBOX | BONE_ALWAYS_SETUP) ) == 0 )
+						{
+							pos[i] = m_pos_cached[i];
+							q[i] = m_q_cached[i];
+						}
+					}
+
+				}
+
+				m_nLastNonSkippedFrame = gpGlobals->framecount;
+			}
+			else
+			{
+				memcpy( pos, m_pos_cached, sizeof( Vector ) * hdr->numbones() );
+				memcpy( q, m_q_cached, sizeof( QuaternionAligned ) * hdr->numbones() );
+
+				boneComputed.ClearAll(); // because we need to re-BuildTransformations on all our bones with a new root xform
+				boneMask = m_BoneAccessor.GetWritableBones();
+			}
+
 			// don't calculate IK on ragdolls
 			if ( m_pIk && !IsRagdoll() )
 			{
@@ -2741,9 +2887,15 @@ bool C_BaseAnimating::SetupBones( matrix3x4_t *pBoneToWorldOut, int nMaxBones, i
 
 				CalculateIKLocks( currentTime );
 				m_pIk->SolveDependencies( pos, q, m_BoneAccessor.GetBoneArrayForWrite(), boneComputed );
+
+				if ( IsPlayer() && ( (BONE_USED_BY_VERTEX_LOD0 & boneMask) == BONE_USED_BY_VERTEX_LOD0 ) )
+				{
+					// only do extra bone processing when setting up bones that influence renderable vertices, and not for attachment position requests
+					DoExtraBoneProcessing( hdr, pos, q, m_BoneAccessor.GetBoneArrayForWrite(), boneComputed, m_pIk );
+				}
 			}
 
-			BuildTransformations( hdr, pos, q, parentTransform, bonesMaskNeedRecalc, boneComputed );
+			BuildTransformations( hdr, pos, q, parentTransform, boneMask, boneComputed );
 			
 			RemoveFlag( EFL_SETTING_UP_BONES );
 			ControlMouth( hdr );
@@ -2810,6 +2962,9 @@ C_BaseAnimating* C_BaseAnimating::FindFollowedEntity()
 
 void C_BaseAnimating::InvalidateBoneCache()
 {
+	if ( !s_bEnableInvalidateBoneCache )
+		return;
+
 	m_iMostRecentModelBoneCounter = g_iModelBoneCounter - 1;
 	m_flLastBoneSetupTime = -FLT_MAX; 
 }
@@ -4245,7 +4400,7 @@ void C_BaseAnimating::RagdollMoved( void )
 	SetCollisionBounds( mins, maxs );
 
 	// If the ragdoll moves, its render-to-texture shadow is dirty
-	InvalidatePhysicsRecursive( ANIMATION_CHANGED ); 
+	InvalidatePhysicsRecursive( BOUNDS_CHANGED );
 }
 
 
@@ -4355,7 +4510,16 @@ void C_BaseAnimating::PostDataUpdate( DataUpdateType_t updateType )
 	bool bScaleChanged = ( m_flOldModelScale != GetModelScale() );
 	if ( bAnimationChanged || bSequenceChanged || bScaleChanged )
 	{
-		InvalidatePhysicsRecursive( ANIMATION_CHANGED );
+		int nFlags = bAnimationChanged ? ANIMATION_CHANGED : 0;
+		if ( bSequenceChanged )
+		{
+			nFlags |= BOUNDS_CHANGED | SEQUENCE_CHANGED;
+		}
+		if ( bScaleChanged )
+		{
+			nFlags |= BOUNDS_CHANGED;
+		}
+		InvalidatePhysicsRecursive( nFlags );
 
 		if ( IsViewModel() )
 		{
@@ -4636,7 +4800,7 @@ void C_BaseAnimating::OnDataChanged( DataUpdateType_t updateType )
 	// If there's a significant change, make sure the shadow updates
 	if ( modelchanged || (GetSequence() != m_nPrevSequence))
 	{
-		InvalidatePhysicsRecursive( ANIMATION_CHANGED ); 
+		InvalidatePhysicsRecursive( BOUNDS_CHANGED | SEQUENCE_CHANGED );
 		m_nPrevSequence = GetSequence();
 	}
 
@@ -4925,8 +5089,8 @@ void C_BaseAnimating::SetSequence( int nSequence )
 		}
 		*/
 
-		m_nSequence = nSequence; 
-		InvalidatePhysicsRecursive( ANIMATION_CHANGED );
+		m_nSequence = nSequence;
+		InvalidatePhysicsRecursive( BOUNDS_CHANGED | SEQUENCE_CHANGED );
 		if ( m_bClientSideAnimation )
 		{
 			ClientSideAnimationChanged();
@@ -5068,8 +5232,8 @@ void C_BaseAnimating::GetBlendedLinearVelocity( Vector *pVec )
 	{
 		C_AnimationLayer *blend = &m_SequenceTransitioner.m_animationQueue[i];
 	
-		GetSequenceLinearMotion( blend->m_nSequence, &vecDist );
-		flDuration = SequenceDuration( blend->m_nSequence );
+		GetSequenceLinearMotion( blend->GetSequence(), &vecDist );
+		flDuration = SequenceDuration( blend->GetSequence() );
 
 		VectorScale( vecDist, 1.0 / flDuration, tmp );
 
@@ -5425,8 +5589,20 @@ void C_BaseAnimating::DrawClientHitboxes( float duration /*= 0.0f*/, bool monoco
 			b = ( int ) ( 255.0f * hullcolor[j][2] );
 		}
 
-		if ( debugoverlay )
+		if ( pbox->flCapsuleRadius > 0 )
 		{
+			matrix3x4_t temp;
+			GetHitboxBoneTransform( pbox->bone, pbox->angOffsetOrientation, temp );
+
+			Vector vecCapsuleCenters[ 2 ];
+			VectorTransform( pbox->bbmin, temp, vecCapsuleCenters[0] );
+			VectorTransform( pbox->bbmax, temp, vecCapsuleCenters[1] );
+			
+			debugoverlay->AddCapsuleOverlay( vecCapsuleCenters[0], vecCapsuleCenters[1], pbox->flCapsuleRadius, r, g, b, 255, duration );
+		}
+		else
+		{
+			GetHitboxBonePosition( pbox->bone, position, angles, pbox->angOffsetOrientation );
 			debugoverlay->AddBoxOverlay( position, pbox->bbmin, pbox->bbmax, angles, r, g, b, 0, duration );
 		}
 	}
@@ -5789,6 +5965,7 @@ void C_BaseAnimating::SetModelScale( float scale, float change_duration /*= 0.0f
 			DestroyDataObject( MODELSCALE );
 		}
 	}
+	InvalidatePhysicsRecursive( BOUNDS_CHANGED );
 }
 
 //-----------------------------------------------------------------------------

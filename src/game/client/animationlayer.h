@@ -14,6 +14,11 @@
 #include "rangecheckedvar.h"
 #include "lerp_functions.h"
 #include "networkvar.h"
+#include "ai_activity.h"
+
+#ifdef CLIENT_DLL
+class C_BaseAnimatingOverlay;
+#endif
 
 class C_AnimationLayer
 {
@@ -25,43 +30,78 @@ public:
 	C_AnimationLayer();
 	void Reset();
 
+#ifdef CLIENT_DLL
+	void SetOwner( C_BaseAnimatingOverlay *pOverlay );
+	C_BaseAnimatingOverlay *GetOwner() const;
+#endif
+
 	void SetOrder( int order );
 
 public:
 
 	bool IsActive( void );
 
-	CRangeCheckedVar<int, -1, 65535, 0>	m_nSequence;
-	CRangeCheckedVar<float, -2, 2, 0>	m_flPrevCycle;
-	CRangeCheckedVar<float, -5, 5, 0>	m_flWeight;
 	int		m_nOrder;
-
-	// used for automatic crossfades between sequence changes
-	CRangeCheckedVar<float, -50, 50, 1>		m_flPlaybackRate;
-	CRangeCheckedVar<float, -2, 2, 0>		m_flCycle;
 
 	float GetFadeout( float flCurTime );
 
 	void SetSequence( int nSequence );
 	void SetCycle( float flCycle );
+	void SetPrevCycle( float flCycle );
 	void SetPlaybackRate( float flPlaybackRate );
 	void SetWeight( float flWeight );
+	void SetWeightDeltaRate( float flDelta );
 
 	int   GetOrder() const;
 	int   GetSequence() const;
 	float GetCycle() const;
+	float GetPrevCycle() const;
 	float GetPlaybackRate() const;
 	float GetWeight() const;
+	float GetWeightDeltaRate() const;
+
+#ifdef CLIENT_DLL
+	// If the weights, cycle or sequence #s changed due to interpolation then 
+	//  we'll need to recompute the bbox
+	int GetInvalidatePhysicsBits() const;
+	void SetInvalidatePhysicsBits( int iBit ) { m_nInvalidatePhysicsBits = iBit; }
+#endif
 
 	void BlendWeight();
 
 	float	m_flLayerAnimtime;
 	float	m_flLayerFadeOuttime;
 
+	// dispatch flags
+	CStudioHdr	*m_pDispatchedStudioHdr;
+	int		m_nDispatchedSrc;
+	int		m_nDispatchedDst;
+
 	float   m_flBlendIn;
 	float   m_flBlendOut;
 
 	bool    m_bClientBlend;
+
+private:
+	CRangeCheckedVar<int, -1, 65535, 0>	m_nSequence;
+	CRangeCheckedVar<float, -2, 2, 0>	m_flPrevCycle;
+	CRangeCheckedVar<float, -5, 5, 0>	m_flWeight;
+	CRangeCheckedVar<float, -5, 5, 0>		m_flWeightDeltaRate;
+
+	// used for automatic crossfades between sequence changes
+	CRangeCheckedVar<float, -50, 50, 1>		m_flPlaybackRate;
+	CRangeCheckedVar<float, -2, 2, 0>		m_flCycle;
+
+#ifdef CLIENT_DLL
+	C_BaseAnimatingOverlay	*m_pOwner;
+	int					m_nInvalidatePhysicsBits;
+#endif
+
+	friend inline C_AnimationLayer LoopingLerp( float flPercent, C_AnimationLayer& from, C_AnimationLayer& to );
+	friend inline C_AnimationLayer Lerp( float flPercent, const C_AnimationLayer& from, const C_AnimationLayer& to );
+	friend inline C_AnimationLayer LoopingLerp_Hermite( float flPercent, C_AnimationLayer& prev, C_AnimationLayer& from, C_AnimationLayer& to );
+	friend inline C_AnimationLayer Lerp_Hermite( float flPercent, const C_AnimationLayer& prev, const C_AnimationLayer& from, const C_AnimationLayer& to );
+	friend inline void Lerp_Clamp( C_AnimationLayer &val );
 };
 #ifdef CLIENT_DLL
 	#define CAnimationLayer C_AnimationLayer
@@ -69,22 +109,25 @@ public:
 
 inline C_AnimationLayer::C_AnimationLayer()
 {
+#ifdef CLIENT_DLL
+	m_pOwner = NULL;
+	m_nInvalidatePhysicsBits = 0;
+#endif
+	m_pDispatchedStudioHdr = NULL;
+	m_nDispatchedSrc = ACT_INVALID;
+	m_nDispatchedDst = ACT_INVALID;
+
 	Reset();
 }
 
-inline void C_AnimationLayer::SetSequence( int nSequence )
+FORCEINLINE void C_AnimationLayer::SetWeightDeltaRate( float flDelta )
 {
-	m_nSequence = nSequence;
+	m_flWeightDeltaRate = flDelta;
 }
 
-inline void C_AnimationLayer::SetCycle( float flCycle )
+FORCEINLINE void C_AnimationLayer::SetPrevCycle( float flPrevCycle )
 {
-	m_flCycle = flCycle;
-}
-
-inline void C_AnimationLayer::SetWeight( float flWeight )
-{
-	m_flWeight = flWeight;
+	m_flPrevCycle = flPrevCycle;
 }
 
 FORCEINLINE void C_AnimationLayer::SetPlaybackRate( float flPlaybackRate )
@@ -102,6 +145,11 @@ FORCEINLINE float C_AnimationLayer::GetCycle( ) const
 	return m_flCycle;
 }
 
+FORCEINLINE float C_AnimationLayer::GetPrevCycle() const
+{
+	return m_flPrevCycle;
+}
+
 FORCEINLINE float C_AnimationLayer::GetPlaybackRate( ) const
 {
 	return m_flPlaybackRate;
@@ -112,30 +160,16 @@ FORCEINLINE float C_AnimationLayer::GetWeight( ) const
 	return m_flWeight;
 }
 
+FORCEINLINE float C_AnimationLayer::GetWeightDeltaRate() const
+{
+	return m_flWeightDeltaRate;
+}
+
 FORCEINLINE int C_AnimationLayer::GetOrder() const
 {
 	return m_nOrder;
 }
 
-inline void C_AnimationLayer::Reset()
-{
-	m_nSequence = 0;
-	m_flPrevCycle = 0;
-	m_flWeight = 0;
-	m_flPlaybackRate = 0;
-	m_flCycle = 0;
-	m_flLayerAnimtime = 0;
-	m_flLayerFadeOuttime = 0;
-	m_flBlendIn = 0;
-	m_flBlendOut = 0;
-	m_bClientBlend = false;
-}
-
-
-inline void C_AnimationLayer::SetOrder( int order )
-{
-	m_nOrder = order;
-}
 
 inline float C_AnimationLayer::GetFadeout( float flCurTime )
 {
@@ -163,9 +197,19 @@ inline float C_AnimationLayer::GetFadeout( float flCurTime )
 	return s;
 }
 
+#ifdef CLIENT_DLL
+FORCEINLINE int C_AnimationLayer::GetInvalidatePhysicsBits() const
+{
+	return m_nInvalidatePhysicsBits;
+}
+#endif
 
 inline C_AnimationLayer LoopingLerp( float flPercent, C_AnimationLayer& from, C_AnimationLayer& to )
 {
+#ifdef CLIENT_DLL
+	Assert( from.GetOwner() == to.GetOwner() );
+#endif
+
 	C_AnimationLayer output;
 
 	output.m_nSequence = to.m_nSequence;
@@ -176,11 +220,18 @@ inline C_AnimationLayer LoopingLerp( float flPercent, C_AnimationLayer& from, C_
 
 	output.m_flLayerAnimtime = to.m_flLayerAnimtime;
 	output.m_flLayerFadeOuttime = to.m_flLayerFadeOuttime;
+#ifdef CLIENT_DLL
+	output.SetOwner( to.GetOwner() );
+#endif
 	return output;
 }
 
 inline C_AnimationLayer Lerp( float flPercent, const C_AnimationLayer& from, const C_AnimationLayer& to )
 {
+#ifdef CLIENT_DLL
+	Assert( from.GetOwner() == to.GetOwner() );
+#endif
+
 	C_AnimationLayer output;
 
 	output.m_nSequence = to.m_nSequence;
@@ -191,11 +242,45 @@ inline C_AnimationLayer Lerp( float flPercent, const C_AnimationLayer& from, con
 
 	output.m_flLayerAnimtime = to.m_flLayerAnimtime;
 	output.m_flLayerFadeOuttime = to.m_flLayerFadeOuttime;
+#ifdef CLIENT_DLL
+	output.SetOwner( to.GetOwner() );
+#endif
 	return output;
+}
+
+inline int CheckForSequenceBoxChanges( const C_AnimationLayer& newLayer, const C_AnimationLayer& oldLayer )
+{
+	int nChangeFlags = 0;
+
+	bool bOldIsZero = ( oldLayer.GetWeight() == 0.0f );
+	bool bNewIsZero = ( newLayer.GetWeight() == 0.0f );
+
+	if ( ( newLayer.GetSequence() != oldLayer.GetSequence() ) ||
+		 ( bNewIsZero != bOldIsZero ) ) 
+	{
+		nChangeFlags |= SEQUENCE_CHANGED | BOUNDS_CHANGED;
+	}
+
+	if ( newLayer.GetCycle() != oldLayer.GetCycle() )
+	{
+		nChangeFlags |= ANIMATION_CHANGED;
+	}
+
+	if ( newLayer.GetOrder() != oldLayer.GetOrder() )
+	{
+		nChangeFlags |= BOUNDS_CHANGED;
+	}
+
+	return nChangeFlags;
 }
 
 inline C_AnimationLayer LoopingLerp_Hermite( float flPercent, C_AnimationLayer& prev, C_AnimationLayer& from, C_AnimationLayer& to )
 {
+#ifdef CLIENT_DLL
+	Assert( prev.GetOwner() == from.GetOwner() );
+	Assert( from.GetOwner() == to.GetOwner() );
+#endif
+
 	C_AnimationLayer output;
 
 	output.m_nSequence = to.m_nSequence;
@@ -206,12 +291,21 @@ inline C_AnimationLayer LoopingLerp_Hermite( float flPercent, C_AnimationLayer& 
 
 	output.m_flLayerAnimtime = to.m_flLayerAnimtime;
 	output.m_flLayerFadeOuttime = to.m_flLayerFadeOuttime;
+#ifdef CLIENT_DLL
+	output.SetOwner( to.GetOwner() );
+	output.m_nInvalidatePhysicsBits = CheckForSequenceBoxChanges( output, prev );
+#endif
 	return output;
 }
 
 // YWB:  Specialization for interpolating euler angles via quaternions...
 inline C_AnimationLayer Lerp_Hermite( float flPercent, const C_AnimationLayer& prev, const C_AnimationLayer& from, const C_AnimationLayer& to )
 {
+#ifdef CLIENT_DLL
+	Assert( prev.GetOwner() == from.GetOwner() );
+	Assert( from.GetOwner() == to.GetOwner() );
+#endif
+
 	C_AnimationLayer output;
 
 	output.m_nSequence = to.m_nSequence;
@@ -222,6 +316,10 @@ inline C_AnimationLayer Lerp_Hermite( float flPercent, const C_AnimationLayer& p
 
 	output.m_flLayerAnimtime = to.m_flLayerAnimtime;
 	output.m_flLayerFadeOuttime = to.m_flLayerFadeOuttime;
+#ifdef CLIENT_DLL
+	output.SetOwner( to.GetOwner() );
+	output.m_nInvalidatePhysicsBits = CheckForSequenceBoxChanges( output, prev );
+#endif
 	return output;
 }
 

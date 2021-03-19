@@ -590,9 +590,47 @@ CBaseEntity	*C_BasePlayer::GetObserverTarget() const	// returns players target o
 	}
 }
 
+void UpdateWorldmodelVisibility( C_BasePlayer *player )
+{
+	for ( int i = 0; i < player->WeaponCount(); i++ )
+	{
+		CBaseCombatWeapon *pWeapon = player->GetWeapon(i);
+		if ( pWeapon )
+		{
+			CBaseWeaponWorldModel *pWeaponWorldModel = pWeapon->GetWeaponWorldModel();
+			if ( pWeaponWorldModel )
+			{
+				pWeaponWorldModel->UpdateVisibility();
+			}
+		}
+	}
+}
+
+// Helper method to fix up visiblity across split screen for view models when observer target or mode changes
+void UpdateViewmodelVisibility( C_BasePlayer *player )
+{
+	// also update world models
+	UpdateWorldmodelVisibility( player );
+
+	// Update view model visibility
+	for ( int i = 0; i < MAX_VIEWMODELS; i++ )
+	{
+		CBaseViewModel *vm = player->GetViewModel( i );
+		if ( !vm )
+			continue;
+		vm->UpdateVisibility();
+	}
+}
+
 // Called from Recv Proxy, mainly to reset tone map scale
 void C_BasePlayer::SetObserverTarget( EHANDLE hObserverTarget )
 {
+	// [msmith] We need to update the view model visibility status of the player we were observing because their view models
+	// may no longer be rendering in our splitscreen viewport.
+	C_BasePlayer* pOldObserverTarget = ToBasePlayer( m_hObserverTarget );
+
+	C_BasePlayer *pNewObserverTarget = ToBasePlayer( hObserverTarget );
+
 	// If the observer target is changing to an entity that the client doesn't know about yet,
 	// it can resolve to NULL.  If the client didn't have an observer target before, then
 	// comparing EHANDLEs directly will see them as equal, since it uses Get(), and compares
@@ -615,6 +653,14 @@ void C_BasePlayer::SetObserverTarget( EHANDLE hObserverTarget )
 		{
 			ResetToneMapping(1.0);
 		}
+		UpdateViewmodelVisibility( this );
+		UpdateVisibility();	
+
+		if ( pNewObserverTarget )
+		{
+			pNewObserverTarget->UpdateVisibility();
+			UpdateViewmodelVisibility( pNewObserverTarget );
+		}
 		// NVNT notify haptics of changed player
 		if ( haptics )
 			haptics->OnPlayerChanged();
@@ -624,6 +670,16 @@ void C_BasePlayer::SetObserverTarget( EHANDLE hObserverTarget )
 			// On a change of viewing mode or target, we may want to reset both head and torso to point at the new target.
 			g_ClientVirtualReality.AlignTorsoAndViewToWeapon();
 		}
+	}
+
+	// [msmith] We need to wait until we've set a new observer target before updating the view model visibility of our
+	// old observer target.
+	// NOTE: We need to update this even if the observed target did not change because the observer mode may have changed.
+	//       If the observer mode switched to third person for example, the view model should NOT be drawn.
+	if ( pOldObserverTarget )
+	{
+		pOldObserverTarget->UpdateVisibility();
+		UpdateViewmodelVisibility( pOldObserverTarget );
 	}
 }
 

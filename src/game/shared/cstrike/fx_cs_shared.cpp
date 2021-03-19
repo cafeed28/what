@@ -175,13 +175,20 @@ void FX_FireBullets(
 	CCSWeaponInfo *pWeaponInfo = static_cast< CCSWeaponInfo* >( GetFileWeaponInfoFromHandle( hWpnInfo ) );
 
 	// Do the firing animation event.
+#ifndef CLIENT_DLL
 	if ( pPlayer && !pPlayer->IsDormant() )
 	{
 		if ( iMode == Primary_Mode )
-			pPlayer->GetPlayerAnimState()->DoAnimationEvent( PLAYERANIMEVENT_FIRE_GUN_PRIMARY );
+			pPlayer->DoAnimationEvent( PLAYERANIMEVENT_FIRE_GUN_PRIMARY );
 		else
-			pPlayer->GetPlayerAnimState()->DoAnimationEvent( PLAYERANIMEVENT_FIRE_GUN_SECONDARY );
+			pPlayer->DoAnimationEvent( PLAYERANIMEVENT_FIRE_GUN_SECONDARY );
 	}
+#else
+	if ( pPlayer && pPlayer->m_bUseNewAnimstate )
+	{
+		pPlayer->ProcessMuzzleFlashEvent();
+	}
+#endif // CLIENT_DLL
 
 #ifndef CLIENT_DLL
 	// if this is server code, send the effect over to client as temp entity
@@ -316,13 +323,13 @@ void FX_PlantBomb( int iPlayerIndex, const Vector &vOrigin, PlantBombOption_t op
 		{
 		case PLANTBOMB_PLANT:
 			{
-				pPlayer->GetPlayerAnimState()->DoAnimationEvent( PLAYERANIMEVENT_FIRE_GUN_PRIMARY );
+				pPlayer->DoAnimStateEvent( PLAYERANIMEVENT_FIRE_GUN_PRIMARY );
 			}
 			break;
 
 		case PLANTBOMB_ABORT:
 			{
-				pPlayer->GetPlayerAnimState()->DoAnimationEvent( PLAYERANIMEVENT_CLEAR_FIRING );
+				pPlayer->DoAnimStateEvent( PLAYERANIMEVENT_CLEAR_FIRING );
 			}
 			break;
 		}

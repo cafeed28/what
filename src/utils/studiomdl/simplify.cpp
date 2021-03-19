@@ -4071,6 +4071,25 @@ void TagUsedBones( )
 		{
 			UpdateBonerefRecursive( psource, k, psource->boneflags[k] );
 		}
+
+		// Tag all bones marked as being used by alwayssetup
+		// NOTE these are intentionally added without respect to parents, 
+		// because they are intended to be used on data-driving bones that are aren't 
+		// necessarily moving vertices or part of a hierarchy. They are NOT guaranteed 
+		// to be positioned correctly relative to their parents!!!
+		int nBoneAlwaysSetupCount = g_BoneAlwaysSetup.Count();
+		for ( k = 0; k < nBoneAlwaysSetupCount; ++k )
+		{
+			for ( j = 0; j < psource->numbones; j++ )
+			{
+				if ( stricmp( g_BoneAlwaysSetup[k].bonename, psource->localBone[j].name ) )
+					continue;
+
+				psource->boneflags[j] |= BONE_ALWAYS_SETUP;
+			}
+		}
+
+		// don't add more flags here! Add them up above the UpdateBonerefRecursive call, so they get propagated up their parents!
 	}
 
 	// tag all eyeball bones

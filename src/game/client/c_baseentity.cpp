@@ -2911,6 +2911,7 @@ bool C_BaseEntity::Interpolate( float currentTime )
 
 CStudioHdr *C_BaseEntity::OnNewModel()
 {
+	InvalidatePhysicsRecursive( BOUNDS_CHANGED | SEQUENCE_CHANGED );
 #ifdef TF_CLIENT_DLL
 	m_bValidatedOwner = false;
 #endif
@@ -4013,6 +4014,8 @@ void C_BaseEntity::SetDormant( bool bDormant )
 	UpdateVisibility();
 
 	ParticleProp()->OwnerSetDormantTo( bDormant );
+
+	OnSetDormant( bDormant );
 }
 
 //-----------------------------------------------------------------------------

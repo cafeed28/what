@@ -56,6 +56,10 @@ public:
 	bool IsPinPulled() const;
 	bool IsBeingThrown() const { return m_fThrowTime > 0; }
 
+#ifdef CLIENT_DLL
+	virtual int		DrawModel( int flags ) OVERRIDE;
+#endif
+
 	bool IsLoopingSoundPlaying( void ) { return m_bLoopingSoundPlaying; }
 	void SetLoopingSoundPlaying( bool bPlaying ) { m_bLoopingSoundPlaying = bPlaying; }
 
