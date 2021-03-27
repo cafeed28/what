@@ -2295,11 +2295,55 @@ int Option_Activity( s_sequence_t *psequence )
 }
 
 
+int Option_ActivityModifier( s_sequence_t *psequence )
+{
+	GetToken(false);
+
+	if (token[0] == '{')
+	{
+		while ( TokenAvailable() )
+		{
+			GetToken( true );
+			if (stricmp("}", token ) == 0)
+				break;
+			
+			strlwr(token);
+			V_strcpy_safe( psequence->activitymodifier[ psequence->numactivitymodifiers++ ].name, token );
+		}
+	}
+	else
+	{
+		strlwr(token);
+		V_strcpy_safe( psequence->activitymodifier[ psequence->numactivitymodifiers++ ].name, token );
+	}
+
+	return 0;
+}
+
+
 /*
 ===============
 ===============
 */
 
+int Option_AnimTag ( s_sequence_t *psequence )
+{
+	if (psequence->numanimtags + 1 >= MAXSTUDIOTAGS)
+	{
+		TokenError("too many animtags\n");
+	}
+
+	GetToken (false);
+	
+	strcpy( psequence->animtags[psequence->numanimtags].tagname, token );
+
+	GetToken( false );
+	psequence->animtags[psequence->numanimtags].cycle = verify_atof( token );
+
+	psequence->numanimtags++;
+
+	return 0;
+}
 
 int Option_Event ( s_sequence_t *psequence )
 {
@@ -4141,7 +4185,10 @@ int ParseSequence( s_sequence_t *pseq, bool isAppend )
 			Option_Deform( pseq );
 		}
 		*/
-
+		else if (stricmp("animtag", token ) == 0)
+		{
+			depth -= Option_AnimTag( pseq );
+		}
 		else if (stricmp("event", token ) == 0)
 		{
 			depth -= Option_Event( pseq );
@@ -4149,6 +4196,10 @@ int ParseSequence( s_sequence_t *pseq, bool isAppend )
 		else if (stricmp("activity", token ) == 0)
 		{
 			Option_Activity( pseq );
+		}
+		else if ( (stricmp("activitymodifier", token ) == 0) || (stricmp("actmod", token ) == 0) )
+		{
+			Option_ActivityModifier( pseq );
 		}
 		else if (strnicmp( token, "ACT_", 4 ) == 0)
 		{
@@ -4272,6 +4323,20 @@ int ParseSequence( s_sequence_t *pseq, bool isAppend )
 		{
 			pseq->flags |= STUDIO_WORLD;
 			pseq->flags |= STUDIO_POST;
+		}
+		else if (stricmp("worldrelative", token) == 0)
+		{
+			pseq->flags |= STUDIO_WORLD_AND_RELATIVE;
+			pseq->flags |= STUDIO_POST;
+		}
+		else if (stricmp("rootdriver", token) == 0)
+		{
+			pseq->flags |= STUDIO_ROOTXFORM;
+			
+			// get bone name
+			GetToken( false );
+
+			V_strcpy_safe( pseq->rootDriverBoneName, token );
 		}
 		else if (stricmp("post", token) == 0) // remove
 		{
@@ -6414,6 +6479,30 @@ void Cmd_Hitbox( )
 	set->hitbox[set->numhitboxes].bmax[1] = verify_atof( token );
 	GetToken (false);
 	set->hitbox[set->numhitboxes].bmax[2] = verify_atof( token );
+	
+	if ( TokenAvailable() )
+	{
+		GetToken(false);
+		set->hitbox[set->numhitboxes].angOffsetOrientation[0] = verify_atof(token);
+		GetToken(false);
+		set->hitbox[set->numhitboxes].angOffsetOrientation[1] = verify_atof(token);
+		GetToken(false);
+		set->hitbox[set->numhitboxes].angOffsetOrientation[2] = verify_atof(token);
+	}
+	else
+	{
+		set->hitbox[set->numhitboxes].angOffsetOrientation = QAngle( 0, 0, 0 );
+	}
+
+	if ( TokenAvailable() )
+	{
+		GetToken(false);
+		set->hitbox[set->numhitboxes].flCapsuleRadius = verify_atof(token);
+	}
+	else
+	{
+		set->hitbox[set->numhitboxes].flCapsuleRadius = -1;
+	}
 
 	//Scale hitboxes
 	scale_vertex( set->hitbox[set->numhitboxes].bmin );
@@ -6760,6 +6849,21 @@ void Cmd_BoneMerge( )
 	// bone name
 	GetToken (false);
 	V_strcpy_safe( g_BoneMerge[nIndex].bonename, token );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+void Cmd_BoneAlwaysSetup( )
+{
+	if( g_bCreateMakefile )
+		return;
+
+	int nIndex = g_BoneAlwaysSetup.AddToTail();
+
+	// bone name
+	GetToken (false);
+	V_strcpy_safe( g_BoneAlwaysSetup[nIndex].bonename, token );
 }
 
 
@@ -9070,6 +9174,7 @@ struct
 	{ "$jointcontents", Cmd_JointContents },
 	{ "$attachment", Cmd_Attachment },
 	{ "$bonemerge", Cmd_BoneMerge },
+	{ "$bonealwayssetup", Cmd_BoneAlwaysSetup },
 	{ "$externaltextures", Cmd_ExternalTextures },
 	{ "$cliptotextures", Cmd_ClipToTextures },
 	{ "$renamebone", Cmd_Renamebone },

@@ -75,6 +75,14 @@ void CMolotovGrenade::UpdateParticles( void )
 
 	if ( pCSWeapon->GetCSWeaponID() == WEAPON_MOLOTOV )
 	{
+		CBaseAnimating *pWeaponBaseAnimating = pCSWeapon->GetBaseAnimating();
+
+		CBaseWeaponWorldModel *pWeaponWorldModel = pCSWeapon->GetWeaponWorldModel();
+		if ( pWeaponWorldModel && pWeaponWorldModel->ShouldDraw() )
+		{
+			pWeaponBaseAnimating = pWeaponWorldModel->GetBaseAnimating();
+		}
+
 		if ( m_molotovParticleEffect.IsValid() )
 		{
 			//		m_molotovParticleEffect->SetDormant( pPlayer->GetPlayerAnimState()->ShouldHideWeapon() ); // ShouldHideWeapon is a Terror Codebase function, not CStrike15
@@ -86,12 +94,14 @@ void CMolotovGrenade::UpdateParticles( void )
 			if ( !m_molotovParticleEffect() )
 			{
 				// TEST: [mlowrance] This is to test for attachment.
-				int iAttachment = pCSWeapon->LookupAttachment( "Wick" );
+				int iAttachment = -1;
+				if ( pWeaponBaseAnimating )
+					iAttachment = pWeaponBaseAnimating->LookupAttachment( "Wick" );
 
 				if ( iAttachment >= 0 )
 				{
 					// FIXME: Precache 'Wick' attachment index
-					m_molotovParticleEffect = pCSWeapon->ParticleProp()->Create( "weapon_molotov_held", PATTACH_POINT_FOLLOW, iAttachment );
+					m_molotovParticleEffect = pWeaponBaseAnimating->ParticleProp()->Create( "weapon_molotov_held", PATTACH_POINT_FOLLOW, iAttachment );
 					EmitSound( "Molotov.IdleLoop" );
 					SetLoopingSoundPlaying( true );
 

@@ -298,6 +298,11 @@ struct matrix3x4_t
 	float *Base()							{ return &m_flMatVal[0][0]; }
 	const float *Base() const				{ return &m_flMatVal[0][0]; }
 
+	inline Vector TransformVector( const Vector &v0 ) const;
+
+	inline void InverseTR( matrix3x4_t &out ) const;
+	inline matrix3x4_t InverseTR() const;
+
 	float m_flMatVal[3][4];
 };
 
@@ -599,6 +604,12 @@ void MatrixScaleByZero ( matrix3x4_t &out );
 //void DecomposeRotation( const matrix3x4_t &mat, float *out );
 void ConcatRotations (const matrix3x4_t &in1, const matrix3x4_t &in2, matrix3x4_t &out);
 void ConcatTransforms (const matrix3x4_t &in1, const matrix3x4_t &in2, matrix3x4_t &out);
+inline const matrix3x4_t ConcatTransforms( const matrix3x4_t &in1, const matrix3x4_t &in2 )
+{
+	matrix3x4_t out;
+	ConcatTransforms( in1, in2, out );
+	return out;
+}
 
 // For identical interface w/ VMatrix
 inline void MatrixMultiply ( const matrix3x4_t &in1, const matrix3x4_t &in2, matrix3x4_t &out )
@@ -917,6 +928,15 @@ inline int VectorCompare (const Vector& v1, const Vector& v2)
 inline void VectorTransform (const Vector& in1, const matrix3x4_t &in2, Vector &out)
 {
 	VectorTransform( &in1.x, in2, &out.x );
+}
+
+// MSVC folds the return value nicely and creates no temporaries on the stack,
+//    we need more experiments with different compilers and in different circumstances
+inline const Vector VectorTransform( const Vector& in1, const matrix3x4_t &in2 )
+{
+	Vector out;
+	VectorTransform( in1, in2, out );
+	return out;
 }
 
 inline void VectorITransform (const Vector& in1, const matrix3x4_t &in2, Vector &out)
@@ -2209,6 +2229,47 @@ inline bool AlmostEqual( const Vector &a, const Vector &b, int maxUlps = 10)
 	return AlmostEqual( a.x, b.x, maxUlps ) &&
 		AlmostEqual( a.y, b.y, maxUlps ) &&
 		AlmostEqual( a.z, b.z, maxUlps );
+}
+
+inline Vector Approach( Vector target, Vector value, float speed )
+{
+	Vector diff = (target - value);
+	float delta = diff.Length();
+
+	if ( delta > speed )
+		value += diff.Normalized() * speed;
+	else if ( delta < -speed )
+		value -= diff.Normalized() * speed;
+	else
+		value = target;
+
+	return value;
+}
+
+
+inline Vector matrix3x4_t::TransformVector( const Vector &v0 ) const
+{
+	return VectorTransform( v0, *this );
+}
+
+inline void matrix3x4_t::InverseTR( matrix3x4_t &out ) const
+{
+	::MatrixInvert( *this, out );
+}
+
+inline matrix3x4_t matrix3x4_t::InverseTR() const
+{
+	matrix3x4_t out;
+	::MatrixInvert( *this, out );
+	return out;
+}
+
+
+// return a 0..1 value based on the position of x between edge0 and edge1
+inline float smoothstep_bounds(float edge0, float edge1, float x)
+{
+	x = clamp((x - edge0)/(edge1 - edge0),0,1);
+	return x*x*(3 - 2*x);
 }
 
 
