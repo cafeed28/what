@@ -389,6 +389,7 @@ BEGIN_DATADESC( CBasePlayer )
 	DEFINE_FIELD( m_vecWaterJumpVel, FIELD_VECTOR ),
 	DEFINE_FIELD( m_nImpulse, FIELD_INTEGER ),
 	DEFINE_FIELD( m_flSwimSoundTime, FIELD_TIME ),
+	DEFINE_FIELD( m_ignoreLadderJumpTime, FIELD_TIME ),
 	DEFINE_FIELD( m_vecLadderNormal, FIELD_VECTOR ),
 	DEFINE_FIELD( m_bHasWalkMovedSinceLastJump, FIELD_BOOLEAN ),
 
@@ -642,6 +643,8 @@ CBasePlayer::CBasePlayer( )
 
 	m_vecConstraintCenter = vec3_origin;
 
+	m_ignoreLadderJumpTime = 0.0f;
+
 	m_flLastUserCommandTime = 0.f;
 	m_flMovementTimeForUserCmdProcessingRemaining = 0.0f;
 
@@ -744,7 +747,7 @@ int CBasePlayer::ShouldTransmit( const CCheckTransmitInfo *pInfo )
 bool CBasePlayer::WantsLagCompensationOnEntity( const CBasePlayer *pPlayer, const CUserCmd *pCmd, const CBitVec<MAX_EDICTS> *pEntityTransmitBits ) const
 {
 	// Team members shouldn't be adjusted unless friendly fire is on.
-	if ( !friendlyfire.GetInt() && pPlayer->GetTeamNumber() == GetTeamNumber() )
+	if ( !friendlyfire.GetInt() && !mp_teammates_are_enemies.GetBool() && pPlayer->GetTeamNumber() == GetTeamNumber() )
 		return false;
 
 	// If this entity hasn't been transmitted to us and acked, then don't bother lag compensating it.

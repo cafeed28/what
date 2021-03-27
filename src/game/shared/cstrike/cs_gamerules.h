@@ -59,6 +59,9 @@ extern ConVar mp_c4timer;
 extern ConVar mp_buytime;
 extern ConVar mp_freezetime;
 extern ConVar mp_playerid;
+extern ConVar mp_death_drop_gun;
+extern ConVar mp_death_drop_grenade;
+extern ConVar mp_death_drop_defuser;
 extern ConVar ammo_grenade_limit_total;
 
 #ifndef CLIENT_DLL
@@ -113,6 +116,7 @@ namespace GameModes
 		CASUAL,
 		COMPETITIVE,
 		COMPETITIVE_2V2,
+		DEATHMATCH,
 		
 		NUM_GAMEMODES,
 	};
@@ -182,6 +186,7 @@ public:
 	bool IsIntermission() const;
 	bool IsLogoMap() const;
 	bool IsSpawnPointValid( CBaseEntity *pSpot, CBasePlayer *pPlayer );
+	bool IsSpawnPointHiddenFromOtherPlayers( CBaseEntity *pSpot, CBasePlayer *pPlayer, int nHideFromTeam = 0 );
 
 	bool IsBuyTimeElapsed();
 	bool IsMatchWaitingForResume( void );
@@ -189,12 +194,15 @@ public:
 
 	int GetGamemode( void ) { return m_iCurrentGamemode; };
 
-	int m_iCurrentGamemode;
+	CNetworkVar( int, m_iCurrentGamemode );
 	int m_iOldGamemode;
 
 #ifndef CLIENT_DLL
 	bool IsArmorFree();
 #endif
+	bool IsTeammateSolid( void ) const;				// returns true if teammates are solid obstacles in the current game mode
+
+	bool HasHalfTime( void ) const;
 
 	virtual int	DefaultFOV();
 
@@ -236,6 +244,10 @@ private:
 	int		m_iMapFactionT;
 
 	bool		m_bDontUploadStats;
+	
+	void SetPhase( GamePhase phase );
+	GamePhase GetPhase( void ) const { return m_gamePhase; }
+	GamePhase m_gamePhase;
 
 public:
 
@@ -271,7 +283,10 @@ public:
 	virtual void PlayerKilled( CBasePlayer *pVictim, const CTakeDamageInfo &info );
 	virtual void Think();
 
+	void SwitchTeamsAtRoundReset( void );
+
 	void FreezePlayers( void );
+	void UnfreezeAllPlayers( void );
 
 	// Called at the end of GameFrame (i.e. after all game logic has run this frame)
 	virtual void EndGameFrame( void );
@@ -395,6 +410,9 @@ public:
 	void CheckLevelInitialized();
 	void CheckRestartRound();
 
+	virtual bool FPlayerCanTakeDamage( CBasePlayer *pPlayer, CBaseEntity *pAttacker, const CTakeDamageInfo &info );
+	virtual int IPointsForKill( CBasePlayer *pAttacker, CBasePlayer *pKilled );
+
 	bool CanPlayerHearTalker( CBasePlayer* pListener, CBasePlayer *pSpeaker, bool bTeamOnly );
 	virtual bool PlayerCanHearChat( CBasePlayer *pListener, CBasePlayer *pSpeaker, bool bTeamOnly );
 
@@ -463,6 +481,10 @@ protected:
 public:
 
 	bool IsFriendlyFireOn();
+
+	bool	IsLastRoundBeforeHalfTime( void );
+
+	int		GetRoundsPlayed() { return m_iNumCTWins + m_iNumTerroristWins; }
 
 	virtual void	SetAllowWeaponSwitch( bool allow );
 	virtual bool	GetAllowWeaponSwitch( void );
@@ -622,6 +644,8 @@ public:
 
 	void SetBlackMarketPrices( bool bSetDefaults );
 
+	bool IsSwitchingTeamsAtRoundReset( void ) { return m_bSwitchingTeamsAtRoundReset; }
+
 	float CheckTotalSmokedLength( float flRadius, Vector vecGrenadePos, Vector from, Vector to );
 
 	// Black market
@@ -630,6 +654,9 @@ public:
 
 protected:
 	bool m_bHasTriggeredRoundStartMusic;
+
+private:
+	bool m_bSwitchingTeamsAtRoundReset;
 };
 
 //-----------------------------------------------------------------------------

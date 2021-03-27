@@ -2703,14 +2703,14 @@ public:
          X[i] = P[i];
       normalize(X);
 
-// Its y axis is perpendicular to P, so Y = unit( E - X(E·X) ).
+// Its y axis is perpendicular to P, so Y = unit( E - X(EÂ·X) ).
 
       float dDOTx = dot(D,X);
       for (i = 0 ; i < 3 ; i++)
          Y[i] = D[i] - dDOTx * X[i];
       normalize(Y);
 
-// Its z axis is perpendicular to both X and Y, so Z = X×Y.
+// Its z axis is perpendicular to both X and Y, so Z = XÃ—Y.
 
       cross(X,Y,Z);
 
@@ -4210,7 +4210,7 @@ void CIKContext::SolveDependencies( Vector pos[], Quaternion q[], matrix3x4_t bo
 		int bone = pchain->pLink( 2 )->bone;
 
 		pChainResult->target = -1;
-		pChainResult->flWeight = 0.0;
+		pChainResult->flWeight = 0.0f;
 
 		// don't bother with chain if the bone isn't going to be calculated
 		if ( !(m_pStudioHdr->boneFlags( bone ) & m_boneMask))
@@ -4250,7 +4250,7 @@ void CIKContext::SolveDependencies( Vector pos[], Quaternion q[], matrix3x4_t bo
 					}
 			
 					float flWeight = pRule->flWeight * pRule->flRuleWeight;
-					pChainResult->flWeight = pChainResult->flWeight * (1 - flWeight) + flWeight;
+					pChainResult->flWeight = pChainResult->flWeight * (1.0f - flWeight) + flWeight;
 
 					Vector p2;
 					Quaternion q2;
@@ -4261,7 +4261,7 @@ void CIKContext::SolveDependencies( Vector pos[], Quaternion q[], matrix3x4_t bo
 					// debugLine( pChainResult->pos, p2, 0, 0, 255, true, 0.1 );
 
 					// blend in position and angles
-					pChainResult->pos = pChainResult->pos * (1.0 - flWeight) + p2 * flWeight;
+					pChainResult->pos = pChainResult->pos * (1.0f - flWeight) + p2 * flWeight;
 					QuaternionSlerp( pChainResult->q, q2, flWeight, pChainResult->q );
 				}
 				break;
@@ -4318,9 +4318,9 @@ void CIKContext::SolveDependencies( Vector pos[], Quaternion q[], matrix3x4_t bo
 			//mstudioikchain_t *pchain = m_pStudioHdr->pIKChain( m_target[i].chain );
 			ikchainresult_t *pChainResult = &chainResult[ pTarget->chain ];
 
-			AngleMatrix(pTarget->offset.q, pTarget->offset.pos, local );
+			AngleMatrix( RadianEuler(pTarget->offset.q), pTarget->offset.pos, local );
 
-			AngleMatrix( pTarget->est.q, pTarget->est.pos, worldFootpad );
+			AngleMatrix( RadianEuler(pTarget->est.q), pTarget->est.pos, worldFootpad );
 
 			ConcatTransforms( worldFootpad, local, worldTarget );
 

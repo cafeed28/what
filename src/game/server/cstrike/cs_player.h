@@ -123,8 +123,8 @@ private:
 #define DHF_HOSTAGE_USED		( 1 << 4 )
 #define DHF_HOSTAGE_INJURED		( 1 << 5 )
 #define DHF_HOSTAGE_KILLED		( 1 << 6 )
-#define DHF_FRIEND_SEEN			( 1 << 7 )
-#define DHF_ENEMY_SEEN			( 1 << 8 )
+//#define DHF_FRIEND_SEEN			( 1 << 7 )
+//#define DHF_ENEMY_SEEN			( 1 << 8 )
 #define DHF_FRIEND_INJURED		( 1 << 9 )
 #define DHF_FRIEND_KILLED		( 1 << 10 )
 #define DHF_ENEMY_KILLED		( 1 << 11 )
@@ -315,6 +315,8 @@ public:
 	// from CBasePlayer
 	virtual void		SetupVisibility( CBaseEntity *pViewEntity, unsigned char *pvs, int pvssize );
 
+	virtual	bool		ShouldCollide( int collisionGroup, int contentsMask ) const;
+
 	virtual CBaseEntity* FindNextObserverTarget( bool bReverse );
 
 	virtual int 		GetNextObserverSearchStartPoint( bool bReverse );
@@ -375,6 +377,9 @@ public:
 
 	// Returns true if the player is allowed to move.
 	bool CanMove() const;
+
+	// Returns the player mask which includes the solid mask plus the team mask.
+	virtual unsigned int PhysicsSolidMaskForEntity( void ) const;
 
 	void OnJump( float fImpulse );
 	void OnLand( float fVelocity );
@@ -516,6 +521,8 @@ public:
 	float m_flGotHostageTalkTimer;
 	float m_flDefusingTalkTimer;
 	float m_flC4PlantTalkTimer;
+
+	virtual bool CanHearAndReadChatFrom( CBasePlayer *pPlayer );
 
 	void EmitPrivateSound( const char *soundName );		///< emit given sound that only we can hear
 
@@ -674,19 +681,13 @@ private:
 	int	m_iDeathFrame;
 	float m_flDeathYaw;
 
-//=============================================================================
-// HPE_BEGIN:
-// [menglish] Freeze cam function and variable declarations
-//=============================================================================
-	 
+	bool m_switchTeamsOnNextRoundReset;
+
+// [menglish] Freeze cam function and variable declarations	 
 	bool m_bAbortFreezeCam;
 
 protected:
 	void AttemptToExitFreezeCam( void );
-	 
-//=============================================================================
-// HPE_END
-//=============================================================================
 
 public:
 
@@ -805,6 +806,7 @@ public:
 	virtual Vector Weapon_ShootPosition();
 
 	bool IsInBuyZone();
+	bool IsInBuyPeriod();
 	bool CanPlayerBuy( bool display );
 
 	CNetworkVar( bool, m_bInHostageRescueZone );
@@ -853,6 +855,9 @@ public:
 	bool CanGrabLadder( const Vector& pos, const Vector& normal );
 
 	void ClearImmunity( void );
+
+	void SwitchTeamsAtRoundReset( void ) { m_switchTeamsOnNextRoundReset = true; }
+	bool WillSwitchTeamsAtRoundReset( void ) { return m_switchTeamsOnNextRoundReset; }
 
 	CNetworkVar( bool, m_bDetected );
 
@@ -1030,6 +1035,7 @@ private:
 
 //Damage record functions
 public:
+	void BuyRandom();
 
 	static void	StartNewBulletGroup();	// global function
 
@@ -1133,7 +1139,8 @@ public:
     CCSPlayer* GetLastFlashbangAttacker() { return m_lastFlashBangAttacker; }
     void SetLastFlashbangAttacker(CCSPlayer* attacker) { m_lastFlashBangAttacker = attacker; }
 	float GetKilledTime( void ) { return m_killedTime; }
-	void SetKilledTime( float time ); 
+	void SetKilledTime( float time );
+	static const CCSWeaponInfo* GetWeaponInfoFromDamageInfo( const CTakeDamageInfo &info );
 
 	static CSWeaponID GetWeaponIdCausingDamange( const CTakeDamageInfo &info );
 	static void ProcessPlayerDeathAchievements( CCSPlayer *pAttacker, CCSPlayer *pVictim, const CTakeDamageInfo &info );

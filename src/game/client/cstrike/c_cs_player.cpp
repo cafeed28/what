@@ -52,6 +52,8 @@
 
 #include "cs_loadout.h"
 
+#include <vgui/ILocalize.h>
+
 #if defined( CCSPlayer )
 	#undef CCSPlayer
 #endif
@@ -91,6 +93,8 @@ ConVar cl_min_t( "cl_min_t", "1", 0, "Controls which Terrorist model is used whe
 */
 
 ConVar cl_ragdoll_crumple( "cl_ragdoll_crumple", "1" );
+
+ConVar cl_dm_buyrandomweapons( "cl_dm_buyrandomweapons", "1", FCVAR_CLIENTDLL | FCVAR_ARCHIVE, "Player will automatically receive a random weapon on spawn in deathmatch if this is set to 1 (otherwise, they will receive the last weapon)" );
 
 const float CycleLatchTolerance = 0.15;	// amount we can diverge from the server's cycle before we're corrected
 
@@ -659,7 +663,18 @@ void C_CSRagdoll::CreateCSRagdoll()
 
 				m_pGlovesModel->FollowEntity( this ); // attach to player model
 				m_pGlovesModel->AddEffects( EF_BONEMERGE_FASTCULL ); // EF_BONEMERGE is already applied on FollowEntity()
-				m_pGlovesModel->m_nSkin = pPlayer->m_pViewmodelArmConfig ? pPlayer->m_pViewmodelArmConfig->iSkintoneIndex : 0; // set the corrent skin tone
+
+				int skin = 0;
+				if ( pPlayer->m_pViewmodelArmConfig )
+					skin = pPlayer->m_pViewmodelArmConfig->iSkintoneIndex;
+				else
+				{
+					CStudioHdr *pHdr = pPlayer->GetModelPtr();
+					if ( pHdr )
+						skin = GetPlayerViewmodelArmConfigForPlayerModel( pHdr->pszName() )->iSkintoneIndex;
+				}
+
+				m_pGlovesModel->m_nSkin = skin; // set the corrent skin tone
 			}
 			else
 			{
@@ -1161,10 +1176,14 @@ C_CSPlayer::C_CSPlayer() :
 	m_firstTaserShakeTime = 0.0f;
 	m_bKilledByTaser = false;
 
+	m_bShouldAutobuyDMWeapons = false;
+
+	ListenForGameEvent( "round_start" );
 	ListenForGameEvent( "item_pickup" );
 	ListenForGameEvent( "cs_pre_restart" );
 	ListenForGameEvent( "player_death" );
 	ListenForGameEvent( "player_spawn" );
+	ListenForGameEvent( "player_update_viewmodel" );
 
 	m_bPlayingHostageCarrySound = false;
 
@@ -1302,15 +1321,6 @@ int C_CSPlayer::GetAccount() const
 int C_CSPlayer::PlayerClass() const
 {
 	return m_iClass;
-}
-
-bool C_CSPlayer::IsInBuyZone()
-{
-	if ( mp_buy_anywhere.GetInt() == 1 ||
-		 mp_buy_anywhere.GetInt() == GetTeamNumber() )
-		 return true;
-
-	return m_bInBuyZone;
 }
 
 bool C_CSPlayer::CanShowTeamMenu() const
@@ -1854,6 +1864,11 @@ void C_CSPlayer::FireGameEvent( IGameEvent *event )
 				EmitSound( "Player.PickupWeaponSilent" );
 		}
 	}
+	else if ( Q_strcmp( "round_start", name ) == 0 )
+	{
+		if ( IsLocalPlayer() && CSGameRules() && CSGameRules()->GetGamemode() == GameModes::DEATHMATCH )
+			m_bShouldAutobuyDMWeapons = true;
+	}
 	else if ( Q_strcmp( name, "cs_pre_restart" ) == 0 )
 	{
 		if ( ( this->GetTeamNumber() == TEAM_SPECTATOR ) || ( this->IsLocalPlayer() ) )
@@ -1881,12 +1896,6 @@ void C_CSPlayer::FireGameEvent( IGameEvent *event )
 				}
 			}
 		}
-
-		if ( (Q_strcmp( "bot_takeover", name ) == 0) )
-		{
-			// update viewmodel arms when taking control of bot
-			m_pViewmodelArmConfig = NULL; // PiMoN: player model should already be updated at this time
-		}
 	}
 	else if ( Q_strcmp( "player_death", name ) == 0 )
 	{
@@ -1901,10 +1910,6 @@ void C_CSPlayer::FireGameEvent( IGameEvent *event )
 	}
 	else if ( Q_strcmp( "player_spawn", name ) == 0 )
 	{
-		// PiMoN: eh probably this is gonna work for every player once someone spawns
-		m_pViewmodelArmConfig = NULL;
-		RemoveGlovesModel(); // making sure this bitch is updating after spawning
-
 		if ( pLocalPlayer && pLocalPlayer->GetUserID() == EventUserID )
 		{
 			// we've just spawned, so reset our entity id stuff
@@ -1914,7 +1919,12 @@ void C_CSPlayer::FireGameEvent( IGameEvent *event )
 			m_holdTargetIDTimer.Reset();
 
 			UpdateAddonModels();
-			UpdateGlovesModel();
+			RemoveGlovesModel();
+
+			if ( IsLocalPlayer() && CSGameRules() && CSGameRules()->GetGamemode() == GameModes::DEATHMATCH )
+				m_bShouldAutobuyDMWeapons = true;
+
+			m_pViewmodelArmConfig = NULL;
 
 			m_flLastSpawnTimeIndex = gpGlobals->curtime;
 
@@ -1924,6 +1934,47 @@ void C_CSPlayer::FireGameEvent( IGameEvent *event )
 			}
 		}
 	}
+	else if ( Q_strcmp( "player_update_viewmodel", name ) == 0 )
+	{
+		if ( pLocalPlayer && pLocalPlayer->GetUserID() == EventUserID )
+		{
+			m_pViewmodelArmConfig = NULL;
+		}
+	}
+}
+
+CON_COMMAND_F( dm_togglerandomweapons, "Turns random weapons in deathmatch on/off", FCVAR_CLIENTCMD_CAN_EXECUTE | FCVAR_SERVER_CAN_EXECUTE )
+{
+	C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer();
+	C_CSPlayer* pPlayer = ToCSPlayer(pLocalPlayer);
+	if ( pPlayer )
+		pPlayer->ToggleRandomWeapons();
+}
+
+void C_CSPlayer::ToggleRandomWeapons( void )
+{
+	ConVarRef cl_dm_buyrandomweapons( "cl_dm_buyrandomweapons" );
+	float flTimeLeft = m_fImmuneToDamageTime - gpGlobals->curtime;
+	if ( cl_dm_buyrandomweapons.GetBool() )
+	{
+		cl_dm_buyrandomweapons.SetValue(false);
+		if ( flTimeLeft <= 0 )
+		{
+			HintMessage( "#Cstrike_TitlesTXT_DM_RandomOFF" ); // PiMoN: better to use ClientPrint but who cares you cant even display any hints from client
+		}
+	}
+	else
+	{
+		cl_dm_buyrandomweapons.SetValue(true);
+		if ( flTimeLeft <= 0 )
+		{
+			HintMessage( "#Cstrike_TitlesTXT_DM_RandomON" ); // PiMoN: better to use ClientPrint but who cares you cant even display any hints from client
+		}
+		engine->ClientCmd_Unrestricted( "buyrandom" );
+	}
+
+	CLocalPlayerFilter filter;
+	EmitSound( filter, GetSoundSourceIndex(), "BuyPreset.Updated" );
 }
 
 
@@ -2011,9 +2062,6 @@ void C_CSPlayer::ClientThink()
 
 	UpdateIDTarget();
 
-	if ( m_pViewmodelArmConfig == NULL && GetModelPtr() )
-		m_pViewmodelArmConfig = GetPlayerViewmodelArmConfigForPlayerModel( GetModelPtr()->pszName() );
-
 	if ( gpGlobals->curtime >= m_fNextThinkPushAway )
 	{
 		PerformObstaclePushaway( this );
@@ -2044,6 +2092,67 @@ void C_CSPlayer::ClientThink()
 		}
 	}
 
+	if ( CSGameRules()->GetGamemode() == GameModes::DEATHMATCH && this == GetLocalPlayer() && IsAlive() && GetObserverMode() == OBS_MODE_NONE )
+	{
+		float flTimeLeft = m_fImmuneToDamageTime - gpGlobals->curtime;
+		if ( flTimeLeft >= 0 )
+		{
+			//wchar_t szNotice[64] = L"";
+			wchar_t wzTime[8] = L"";
+			int nMinLeft = (int)flTimeLeft / 60;
+			int nSecLeft = (int)flTimeLeft - ( nMinLeft * 60 ); 
+			int nMSecLeft = (flTimeLeft - ((float)(nMinLeft*60) + (float)nSecLeft)) * 10; 
+			V_swprintf_safe( wzTime, L"%d.%d", nSecLeft, nMSecLeft );
+
+			wchar_t wzBuyBind[32] = L"";
+			UTIL_ReplaceKeyBindings( L"%buymenu%", 0, wzBuyBind, sizeof( wzBuyBind ) );
+
+			wchar_t wzAutoBuyBind[32] = L"";
+			UTIL_ReplaceKeyBindings( L"%autobuy%", 0, wzAutoBuyBind, sizeof( wzAutoBuyBind ) );
+
+			wchar_t wszLocalized[256];
+			if ( cl_dm_buyrandomweapons.GetBool() )
+			{
+				if ( flTimeLeft < 1.0f && m_bHasMovedSinceSpawn )
+					g_pVGuiLocalize->ConstructString( wszLocalized, sizeof( wszLocalized ), g_pVGuiLocalize->Find( "#Cstrike_TitlesTXT_DM_InvulnExpire_RandomON" ), 1, wzAutoBuyBind );
+				else if ( flTimeLeft < 0.1 )
+					g_pVGuiLocalize->ConstructString( wszLocalized, sizeof( wszLocalized ), g_pVGuiLocalize->Find( "#Cstrike_TitlesTXT_DM_BuyMenuExpire_RandomON" ), 1, wzAutoBuyBind );
+				else
+					g_pVGuiLocalize->ConstructString( wszLocalized, sizeof( wszLocalized ), g_pVGuiLocalize->Find( "#Cstrike_TitlesTXT_DM_BuyMenu_RandomON" ), 3, wzBuyBind, wzTime, wzAutoBuyBind );
+			}	
+			else
+			{
+				if ( flTimeLeft < 1.0f && m_bHasMovedSinceSpawn )
+					g_pVGuiLocalize->ConstructString( wszLocalized, sizeof( wszLocalized ), g_pVGuiLocalize->Find( "#Cstrike_TitlesTXT_DM_InvulnExpire_RandomOFF" ), 1, wzAutoBuyBind );
+				else if ( flTimeLeft < 0.1 )
+					g_pVGuiLocalize->ConstructString( wszLocalized, sizeof( wszLocalized ), g_pVGuiLocalize->Find( "#Cstrike_TitlesTXT_DM_BuyMenuExpire_RandomOFF" ), 1, wzAutoBuyBind );
+				else	
+					g_pVGuiLocalize->ConstructString( wszLocalized, sizeof( wszLocalized ), g_pVGuiLocalize->Find( "#Cstrike_TitlesTXT_DM_BuyMenu_RandomOFF" ), 3, wzBuyBind, wzTime, wzAutoBuyBind );
+			}
+
+			char szLocalized[256];
+			g_pVGuiLocalize->ConvertUnicodeToANSI( wszLocalized, szLocalized, sizeof( szLocalized ) );
+			HintMessage( szLocalized ); // PiMoN: better to use ClientPrint but who cares you cant even display any hints from client
+		}
+	}
+	
+	// Otherwise buy random or get previous round's gear, depending on cl_dm_buyrandomweapons.
+	if ( m_bShouldAutobuyDMWeapons )
+	{
+		if ( this == GetLocalPlayer() && IsAlive() && (GetTeamNumber() == TEAM_CT || GetTeamNumber() == TEAM_TERRORIST) )
+		{
+			if ( cl_dm_buyrandomweapons.GetBool() )
+			{
+				engine->ClientCmd_Unrestricted( "buyrandom" );
+			}
+			else
+			{
+				engine->ClientCmd_Unrestricted( "rebuy" );
+			}
+
+			m_bShouldAutobuyDMWeapons = false;
+		}
+    
 	if ( IsAlive() && ShouldDraw() )
 	{
 		// enable bone snapshots
@@ -2688,6 +2797,7 @@ void C_CSPlayer::ProcessMuzzleFlashEvent()
 		DispatchParticleEffect( pszEffect, PATTACH_POINT_FOLLOW, pWeaponWorldModel, iAttachmentIndex, false );
 	}
 
+#if 0
 	// Brass Eject Effect.
 	iAttachmentIndex = pWeapon->GetEjectBrassAttachmentIndex( pWeapon );
 	pszEffect = pWeapon->GetCSWpnData().m_szEjectBrassEffect;
@@ -2695,6 +2805,7 @@ void C_CSPlayer::ProcessMuzzleFlashEvent()
 	{
 		DispatchParticleEffect( pszEffect, PATTACH_POINT_FOLLOW, pWeaponWorldModel, iAttachmentIndex, false );
 	}
+#endif
 }
 
 const QAngle& C_CSPlayer::EyeAngles()

@@ -109,6 +109,7 @@ static CViewVectors g_CSViewVectors(
 LINK_ENTITY_TO_CLASS(info_player_terrorist, CPointEntity);
 LINK_ENTITY_TO_CLASS(info_player_counterterrorist,CPointEntity);
 LINK_ENTITY_TO_CLASS(info_player_logo,CPointEntity);
+LINK_ENTITY_TO_CLASS(info_deathmatch_spawn,CPointEntity);
 #endif
 
 REGISTER_GAMERULES_CLASS( CCSGameRules );
@@ -132,7 +133,8 @@ BEGIN_NETWORK_TABLE_NOBASE( CCSGameRules, DT_CSGameRules )
 		RecvPropBool( RECVINFO( m_bBlackMarket ) ),
 		RecvPropBool( RECVINFO( m_bBombDropped ) ),
 		RecvPropBool( RECVINFO( m_bBombPlanted ) ),
-		RecvPropInt( RECVINFO( m_iRoundWinStatus ) )
+		RecvPropInt( RECVINFO( m_iRoundWinStatus ) ),
+		RecvPropInt( RECVINFO( m_iCurrentGamemode ) )
 	#else
 		SendPropBool( SENDINFO( m_bFreezePeriod ) ),
 		SendPropBool( SENDINFO( m_bMatchWaitingForResume ) ),
@@ -150,7 +152,8 @@ BEGIN_NETWORK_TABLE_NOBASE( CCSGameRules, DT_CSGameRules )
 		SendPropBool( SENDINFO( m_bBlackMarket ) ),
 		SendPropBool( SENDINFO( m_bBombDropped ) ),
 		SendPropBool( SENDINFO( m_bBombPlanted ) ),
-		SendPropInt( SENDINFO( m_iRoundWinStatus ) )
+		SendPropInt( SENDINFO( m_iRoundWinStatus ) ),
+		SendPropInt( SENDINFO( m_iCurrentGamemode ) )
 	#endif
 END_NETWORK_TABLE()
 
@@ -212,6 +215,7 @@ ConVar cs_AssistDamageThreshold( "cs_AssistDamageThreshold", "40.0", FCVAR_DEVEL
 extern ConVar sv_stopspeed;
 extern ConVar mp_randomspawn;
 extern ConVar mp_randomspawn_los;
+extern ConVar mp_teammates_are_enemies;
 extern ConVar mp_hostages_max;
 extern ConVar mp_hostages_spawn_farthest;
 extern ConVar mp_hostages_spawn_force_positions;
@@ -224,6 +228,14 @@ ConVar mp_buytime(
 	"How many seconds after round start players can buy items for.",
 	true, 0.25,
 	false, 0 );
+
+ConVar mp_buy_allow_grenades(
+	"mp_buy_allow_grenades",
+	"1",
+	FCVAR_REPLICATED,
+	"Whether players can purchase grenades from the buy menu or not.",
+	true, 0,
+	true, 1 );
 
 ConVar mp_do_warmup_period(
 	"mp_do_warmup_period",
@@ -266,6 +278,38 @@ ConVar mp_round_restart_delay(
 	"Number of seconds to delay before restarting a round after a win",
 	true, 0.0f,
 	true, 10.0f );
+
+ConVar mp_halftime_duration(
+	"mp_halftime_duration",
+	"15.0",
+	FCVAR_REPLICATED,
+	"Number of seconds that halftime lasts",
+	true, 0.0f,
+	true, 300.0f );
+
+ConVar mp_death_drop_gun(
+	"mp_death_drop_gun",
+	"1",
+	FCVAR_REPLICATED,
+	"Which gun to drop on player death: 0=none, 1=best, 2=current or best",
+	true, 0,
+	true, 2 );
+
+ConVar mp_death_drop_grenade(
+	"mp_death_drop_grenade",
+	"2",
+	FCVAR_REPLICATED,
+	"Which grenade to drop on player death: 0=none, 1=best, 2=current or best, 3=all grenades",
+	true, 0,
+	true, 3 );
+
+ConVar mp_death_drop_defuser(
+	"mp_death_drop_defuser",
+	"1",
+	FCVAR_REPLICATED,
+	"Drop defuser on player death",
+	true, 0,
+	true, 1 );
 
 ConVar mp_hostages_takedamage(
 	"mp_hostages_takedamage",
@@ -352,6 +396,18 @@ ConVar mp_warmup_pausetimer(
 	"0",
 	FCVAR_REPLICATED,
 	"Set to 1 to stay in warmup indefinitely. Set to 0 to resume the timer." );
+
+ConVar mp_halftime_pausetimer(
+	"mp_halftime_pausetimer",
+	"0",
+	FCVAR_REPLICATED,
+	"Set to 1 to stay in halftime indefinitely. Set to 0 to resume the timer." );
+
+ConVar mp_halftime_pausematch(
+	"mp_halftime_pausematch",
+	"0",
+	FCVAR_REPLICATED,
+	"Set to 1 to pause match after halftime countdown elapses. Match must be resumed by vote or admin." );
 
 ConVar sv_allowminmodels(
 	"sv_allowminmodels",
@@ -653,7 +709,7 @@ ConVar snd_music_selection(
 		FCVAR_REPLICATED | FCVAR_NOTIFY,
 		"How many minutes each round takes.",
 		true, 1,	// min value
-		true, 9		// max value
+		true, 60	// max value
 		);
 
 	ConVar mp_freezetime( 
@@ -703,12 +759,6 @@ ConVar snd_music_selection(
 		"0",
 		FCVAR_REPLICATED,
 		"Ignore conditions which would end the current round" );
-
-	ConVar mp_free_armor(
-		"mp_free_armor",
-		"0",
-		FCVAR_REPLICATED,
-		"Determines whether armor and helmet are given automatically." );
 
 	ConVar mp_use_official_map_factions(
 		"mp_use_official_map_factions",
@@ -1024,6 +1074,7 @@ ConVar snd_music_selection(
 		m_flLastThinkTime = gpGlobals->curtime;
 
 		m_iRoundTime = 0;
+		m_gamePhase = GAMEPHASE_PLAYING_STANDARD;
 		m_iRoundWinStatus = WINNER_NONE;
 		m_iFreezeTime = 0;
 
@@ -1124,6 +1175,8 @@ ConVar snd_music_selection(
 
 		ReadMultiplayCvars();
 
+		m_bSwitchingTeamsAtRoundReset = false;
+
 		m_pPrices = NULL;
 		m_bBlackMarket = false;
 		m_bDontUploadStats = false;
@@ -1167,7 +1220,26 @@ ConVar snd_music_selection(
 		m_bWarmupPeriod = mp_do_warmup_period.GetBool();
 		m_fWarmupNextChatNoticeTime = 0;
 		m_fWarmupPeriodStart = gpGlobals->curtime;
+
+		if ( HasHalfTime() )
+			SetPhase( GAMEPHASE_PLAYING_FIRST_HALF );
+		else
+			SetPhase( GAMEPHASE_PLAYING_STANDARD );
 	}
+
+	void CCSGameRules::SetPhase( GamePhase phase )
+	{
+		if ( ( GetPhase() == GAMEPHASE_HALFTIME ) && mp_halftime_pausematch.GetInt() )
+		{	// when halftime is over, we pause the match if needed
+			if ( !IsMatchWaitingForResume() )
+			{
+				UTIL_ClientPrintAll( HUD_PRINTCENTER, "#Cstrike_TitlesTXT_Match_Will_Pause" );
+			}
+			SetMatchWaitingForResume( true );
+		}
+
+        m_gamePhase = phase;
+    }
 
 	void CCSGameRules::LoadMapProperties()
 	{
@@ -2684,59 +2756,94 @@ ConVar snd_music_selection(
 		bool bNeededPlayers
 	)
 	{
+		bool bCTsRespawn = mp_respawn_on_death_ct.GetBool();
+		bool bTsRespawn = mp_respawn_on_death_t.GetBool();
+
 		if ( ( m_iNumCT > 0 && m_iNumSpawnableCT > 0 ) && ( m_iNumTerrorist > 0 && m_iNumSpawnableTerrorist > 0 ) )
 		{
-			if ( NumAliveTerrorist == 0 && NumDeadTerrorist != 0 && m_iNumSpawnableCT > 0 )
+			// this checks for last man standing rules
+			if ( mp_teammates_are_enemies.GetBool() )
 			{
-				bool nowin = false;
-					
-				for ( int iGrenade=0; iGrenade < g_PlantedC4s.Count(); iGrenade++ )
+				// last CT alive
+				if ( NumAliveTerrorist == 0 && NumDeadTerrorist != 0 && !bTsRespawn && NumAliveCT == 1 )
 				{
-					CPlantedC4 *pC4 = g_PlantedC4s[iGrenade];
-
-					if ( pC4->IsBombActive() )
-						nowin = true;
-				}
-
-				if ( !nowin )
-				{
-					if ( m_bMapHasBombTarget )
-						AddTeamAccount( TEAM_CT, TeamCashAward::ELIMINATION_BOMB_MAP );
-					else
-						AddTeamAccount( TEAM_CT, TeamCashAward::ELIMINATION_HOSTAGE_MAP_CT );
-
-					if ( !bNeededPlayers )
-					{
-						m_iNumCTWins++;
-						// Update the clients team score
-						UpdateTeamScores();
-					}
-
+					m_iNumCTWins++;
+					// Update the clients team score
+					UpdateTeamScores();
 					TerminateRound( mp_round_restart_delay.GetFloat(), CTs_Win );
 					return true;
 				}
-			}
-		
-			// Terrorists WON
-			if ( NumAliveCT == 0 && NumDeadCT != 0 && m_iNumSpawnableTerrorist > 0 )
-			{
-				if ( m_bMapHasBombTarget )
-					AddTeamAccount( TEAM_TERRORIST, TeamCashAward::ELIMINATION_BOMB_MAP );
-				else
-					AddTeamAccount( TEAM_TERRORIST, TeamCashAward::ELIMINATION_HOSTAGE_MAP_T );
 
-				if ( !bNeededPlayers )
+				if ( NumAliveCT == 0 && NumDeadCT != 0 && !bCTsRespawn && NumAliveTerrorist == 1 )
 				{
 					m_iNumTerroristWins++;
 					// Update the clients team score
 					UpdateTeamScores();
+					TerminateRound( mp_round_restart_delay.GetFloat(), Terrorists_Win );
+					return true;
 				}
 
-				TerminateRound( mp_round_restart_delay.GetFloat(), Terrorists_Win );
-				return true;
+				if ( NumAliveCT == 0 && !bCTsRespawn && NumAliveTerrorist == 0 && !bTsRespawn && (m_iNumTerrorist > 0 || m_iNumCT > 0) )
+				{
+					TerminateRound( mp_round_restart_delay.GetFloat(), Round_Draw );
+					return true;
+				}
+			}
+			else
+			{
+				// CTs WON (if they don't respawn)
+				if ( NumAliveTerrorist == 0 && NumDeadTerrorist != 0 && !bTsRespawn && m_iNumSpawnableCT > 0 )
+				{
+					bool nowin = false;
+					
+					for ( int iGrenade=0; iGrenade < g_PlantedC4s.Count(); iGrenade++ )
+					{
+						CPlantedC4 *pC4 = g_PlantedC4s[iGrenade];
+
+						if ( pC4->IsBombActive() )
+							nowin = true;
+					}
+
+					if ( !nowin )
+					{
+						if ( m_bMapHasBombTarget )
+							AddTeamAccount( TEAM_CT, TeamCashAward::ELIMINATION_BOMB_MAP );
+						else
+							AddTeamAccount( TEAM_CT, TeamCashAward::ELIMINATION_HOSTAGE_MAP_CT );
+
+						if ( !bNeededPlayers )
+						{
+							m_iNumCTWins++;
+							// Update the clients team score
+							UpdateTeamScores();
+						}
+
+						TerminateRound( mp_round_restart_delay.GetFloat(), CTs_Win );
+						return true;
+					}
+				}
+		
+				// Terrorists WON (if they don't respawn)
+				if ( NumAliveCT == 0 && NumDeadCT != 0 && !bCTsRespawn && m_iNumSpawnableTerrorist > 0 )
+				{
+					if ( m_bMapHasBombTarget )
+						AddTeamAccount( TEAM_TERRORIST, TeamCashAward::ELIMINATION_BOMB_MAP );
+					else
+						AddTeamAccount( TEAM_TERRORIST, TeamCashAward::ELIMINATION_HOSTAGE_MAP_T );
+
+					if ( !bNeededPlayers )
+					{
+						m_iNumTerroristWins++;
+						// Update the clients team score
+						UpdateTeamScores();
+					}
+
+					TerminateRound( mp_round_restart_delay.GetFloat(), Terrorists_Win );
+					return true;
+				}
 			}
 		}
-		else if ( NumAliveCT == 0 && NumAliveTerrorist == 0 )
+        else if ( NumAliveCT == 0 && !bCTsRespawn && NumAliveTerrorist == 0 && !bTsRespawn && ( m_iNumTerrorist > 0 || m_iNumCT > 0 ) )
 		{
 			TerminateRound( mp_round_restart_delay.GetFloat(), Round_Draw );
 			return true;
@@ -2929,10 +3036,7 @@ ConVar snd_music_selection(
 			}
 		}
 #endif
-		//=============================================================================
-		// HPE_BEGIN:
 		// [tj] Notify players that the round is about to be reset
-		//=============================================================================
         for ( int clientIndex = 1; clientIndex <= gpGlobals->maxClients; clientIndex++ )
 		{
 			CCSPlayer *pPlayer = (CCSPlayer*) UTIL_PlayerByIndex( clientIndex );
@@ -2941,10 +3045,6 @@ ConVar snd_music_selection(
 				pPlayer->OnPreResetRound();
 			}
 		}
-
-		//=============================================================================
-		// HPE_END
-		//=============================================================================    
 
 		if ( !IsFinite( gpGlobals->curtime ) )
 		{
@@ -2973,6 +3073,42 @@ ConVar snd_music_selection(
 		if ( GetHumanTeam() != TEAM_UNASSIGNED )
 		{
 			MoveHumansToHumanTeam();
+		}
+
+		//If this is the first restart since halftime, do the appropriate bookkeeping.
+		bool bClearAccountsAfterHalftime = false;
+		if ( GetPhase() == GAMEPHASE_HALFTIME )
+		{
+			// Regulation halftime or 1st half of overtime finished, swap the CT and T scores so the scoreboard will be correct
+			int temp = m_iNumCTWins;
+			m_iNumCTWins = m_iNumTerroristWins;
+			m_iNumTerroristWins = temp;
+			UpdateTeamScores();
+			SetPhase( GAMEPHASE_PLAYING_SECOND_HALF );
+
+			// hide scoreboard
+			for ( int i = 1; i <= MAX_PLAYERS; i++ )
+			{
+				CBasePlayer *pPlayer = UTIL_PlayerByIndex( i );
+
+				if ( !pPlayer )
+					continue;
+
+				pPlayer->ShowViewPortPanel( PANEL_SCOREBOARD, false );
+			}
+
+			// Ensure everyone is given only the starting money
+			bClearAccountsAfterHalftime = true;
+
+			// Remove all items at halftime or before overtime when teams aren't switching sides
+			for ( int i = 1; i <= gpGlobals->maxClients; i++ )
+			{
+				CCSPlayer *pPlayer = (CCSPlayer*) UTIL_PlayerByIndex( i );
+				if ( !pPlayer )
+					continue;
+
+				pPlayer->RemoveAllItems( true );
+			}
 		}
 
 		/*************** AUTO-BALANCE CODE *************/
@@ -3029,6 +3165,15 @@ ConVar snd_music_selection(
 			m_iNumCTWins					= 0;
 			m_iNumConsecutiveTerroristLoses	= 0;
 			m_iNumConsecutiveCTLoses		= 0;
+
+			if ( HasHalfTime() )
+			{
+				SetPhase( GAMEPHASE_PLAYING_FIRST_HALF );
+			}
+			else
+			{
+				SetPhase( GAMEPHASE_PLAYING_STANDARD );
+			}
 
 
 			// Reset team scores
@@ -3705,6 +3850,39 @@ ConVar snd_music_selection(
 	
 		UploadGameStats();
 
+		if ( bClearAccountsAfterHalftime && IsPlayingClassic() && HasHalfTime() )
+		{
+			// Loop through all players and give them only the starting money
+			for ( int i = 1; i <= gpGlobals->maxClients; i++ )
+			{
+				CCSPlayer *pPlayer = (CCSPlayer*) UTIL_PlayerByIndex( i );
+				if ( !pPlayer )
+					continue;
+
+				if ( pPlayer->GetTeamNumber() == TEAM_CT || pPlayer->GetTeamNumber() == TEAM_TERRORIST )
+				{
+					int amount_to_assign = -pPlayer->m_iAccount + GetStartMoney();
+
+					pPlayer->AddAccount( amount_to_assign, false );
+				}
+			}
+
+			m_iNumConsecutiveTerroristLoses = 0;
+			m_iNumConsecutiveCTLoses = 0;
+			m_iLoserBonus = TeamCashAwardValue( TeamCashAward::LOSER_BONUS );
+		}
+
+		m_bSwitchingTeamsAtRoundReset = false;
+
+		// Unfreeze all players now that the round is starting
+		UnfreezeAllPlayers();
+
+		// should we show an announcement to declare that this round might be the last round?
+		if ( IsLastRoundBeforeHalfTime() )
+		{
+			UTIL_ClientPrintAll( HUD_PRINTCENTER, "#Cstrike_TitlesTXT_Last_Round_Half" );
+		}
+
 		//=============================================================================
 		// HPE_BEGIN:
 		// [pfreese] I commented out this call to CreateWeaponManager, as the 
@@ -3773,8 +3951,11 @@ ConVar snd_music_selection(
 
 			Assert( pPlayer && pPlayer->GetTeamNumber() == TEAM_TERRORIST && pPlayer->IsAlive() );
 
-			pPlayer->GiveNamedItem( WEAPON_C4_CLASSNAME );
-			pPlayer->SelectItem( WEAPON_C4_CLASSNAME );
+			if ( GetGamemode() != GameModes::DEATHMATCH )
+			{
+				pPlayer->GiveNamedItem( WEAPON_C4_CLASSNAME );
+				pPlayer->SelectItem( WEAPON_C4_CLASSNAME );
+			}
 			m_pLastBombGuy = pPlayer;
 
 			//pPlayer->SetBombIcon();
@@ -3796,6 +3977,16 @@ ConVar snd_music_selection(
 	void CCSGameRules::Think()
 	{
 		CGameRules::Think();
+
+		//Update replicated variable for time till next match or half
+		if ( GetPhase() == GAMEPHASE_HALFTIME )
+		{
+			if ( mp_halftime_pausetimer.GetBool() )
+			{
+				//Delay m_flRestartRoundTime for as long as we're paused.
+				m_flRestartRoundTime += gpGlobals->curtime - m_flLastThinkTime;
+			}
+		}
 
 		for ( int i = 0; i < GetNumberOfTeams(); i++ )
 		{
@@ -3823,6 +4014,51 @@ ConVar snd_music_selection(
 		if ( CheckWinLimit() )
 		{
 			return;
+		}
+
+		//Check for halftime switching
+		if ( GetPhase() == GAMEPHASE_PLAYING_FIRST_HALF )
+		{
+			//The number of rounds before halftime depends on the mode and the associated convar
+			int numRoundsBeforeHalftime = (mp_maxrounds.GetInt() / 2);
+
+			//Finally, check for halftime
+
+			bool bhalftime = false;
+			if ( numRoundsBeforeHalftime > 0 )
+			{
+				if ( GetRoundsPlayed() >= numRoundsBeforeHalftime )
+				{
+					bhalftime = true;
+				}
+			}
+			else if ( mp_timelimit.GetFloat() > 0.0f )
+			{
+				// if maxrounds is 0 then the server is relying on mp_timelimit rather than mp_maxrounds.
+				if ( (GetMapRemainingTime() <= ((mp_timelimit.GetInt() * 60) / 2)) && m_iRoundWinStatus != WINNER_NONE )
+				{
+					bhalftime = true;
+				}
+			}
+
+			if ( bhalftime )
+			{
+				SetPhase( GAMEPHASE_HALFTIME );
+				m_flRestartRoundTime = gpGlobals->curtime + mp_halftime_duration.GetFloat();
+				SwitchTeamsAtRoundReset();
+				FreezePlayers();
+
+				// show scoreboard
+				for ( int i = 1; i <= MAX_PLAYERS; i++ )
+				{
+					CBasePlayer *pPlayer = UTIL_PlayerByIndex( i );
+
+					if ( !pPlayer )
+						continue;
+
+					pPlayer->ShowViewPortPanel( PANEL_SCOREBOARD );
+				}
+			}
 		}
 
 		if ( IsWarmupPeriod() )
@@ -4004,6 +4240,10 @@ ConVar snd_music_selection(
 					break;
 				case GameModes::COMPETITIVE_2V2:
 					engine->ServerCommand( "exec gamemode_competitive2v2.cfg\n" );
+					engine->ServerExecute();
+					break;
+				case GameModes::DEATHMATCH:
+					engine->ServerCommand( "exec gamemode_deathmatch.cfg\n" );
 					engine->ServerExecute();
 					break;
 			}
@@ -4224,7 +4464,44 @@ ConVar snd_music_selection(
 
 		// New code to get rid of round draws!!
 
-		if ( m_bMapHasBombTarget )
+		if ( GetGamemode() == GameModes::DEATHMATCH )
+		{
+			// TODO: make this a shared function so playercount runs the same code
+			CCSPlayer *pWinner = NULL;
+			for ( int i = 1; i <= MAX_PLAYERS; i++ )
+			{
+				CCSPlayer *pPlayer = ToCSPlayer( UTIL_PlayerByIndex( i ) );
+				if ( pPlayer )
+				{
+					if ( pWinner == NULL )
+						pWinner = pPlayer;
+
+					if ( pWinner != pPlayer )
+					{
+						// TODO: Change this to score!!!
+						if ( pWinner->FragCount() > pPlayer->FragCount() )
+							continue;
+						else if ( pWinner->FragCount() < pPlayer->FragCount() )
+							pWinner = pPlayer;
+						else
+							pWinner = (pWinner->entindex() > pPlayer->entindex()) ? pWinner : pPlayer;
+					}
+				}
+			}
+
+			if ( pWinner )
+			{
+				if ( pWinner->GetTeamNumber() == TEAM_CT )
+					TerminateRound( mp_round_restart_delay.GetFloat(), CTs_Win );
+				else
+					TerminateRound( mp_round_restart_delay.GetFloat(), Terrorists_Win );
+			}
+			else
+			{
+				TerminateRound( mp_round_restart_delay.GetFloat(), Round_Draw );
+			}
+		}
+		else if ( m_bMapHasBombTarget )
 		{
 			//If the bomb is planted, don't let the round timer end the round.
 			//keep going until the bomb explodes or is defused
@@ -4638,6 +4915,18 @@ ConVar snd_music_selection(
 			if ( IsSpawnPointValid( ent, NULL ) ) 
 			{
 				NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 0, 255, 0, 200, 600 );
+			}
+			else
+			{
+				NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 255, 0, 0, 200, 600 );
+			}
+		}
+
+		while ( ( ent = gEntList.FindEntityByClassname( ent, "info_deathmatch_spawn" ) ) != NULL )
+		{
+			if ( IsSpawnPointValid( ent, NULL ) )
+			{
+				NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 255, 0, 0, 200, 600 );
 			}
 			else
 			{
@@ -5343,11 +5632,6 @@ ConVar snd_music_selection(
 			// Perform round-related processing at the point when a round winner has been determined
 			RoundWin();
 		}
-
-		if ( iReason == Game_Commencing )
-		{
-			m_bWarmupPeriod = true;
-		}
 	}
 
 	//=============================================================================
@@ -5800,6 +6084,23 @@ ConVar snd_music_selection(
 		return UTIL_IsSpaceEmpty( pPlayer, vTestMins, vTestMaxs );
 	}
 
+	bool CCSGameRules::IsSpawnPointHiddenFromOtherPlayers( CBaseEntity *pSpot, CBasePlayer *pPlayer, int nHideFromTeam )
+	{
+		Vector vecSpot = pSpot->GetAbsOrigin() + Vector( 0, 0, 32 );
+		if ( nHideFromTeam > 0 )
+		{
+			if ( nHideFromTeam == TEAM_CT && UTIL_IsVisibleToTeam( vecSpot, TEAM_CT ) )
+				return false;
+			else if ( nHideFromTeam == TEAM_TERRORIST && UTIL_IsVisibleToTeam( vecSpot, TEAM_TERRORIST ) )
+				return false;
+		}
+		else if ( nHideFromTeam == 0 && ( UTIL_IsVisibleToTeam( vecSpot, TEAM_CT ) ) || 
+			( UTIL_IsVisibleToTeam( vecSpot, TEAM_TERRORIST ) ) )
+			return false;
+
+		return true;
+	}
+
 
 	bool CCSGameRules::IsThereABomb()
 	{
@@ -6179,9 +6480,18 @@ void CCSGameRules::EndWarmup( void )
 }
 #endif
 
+ConVar mp_solid_teammates("mp_solid_teammates", "1", FCVAR_DEVELOPMENTONLY | FCVAR_REPLICATED, "Determines whether teammates are solid or not." ); // TODO: make this shit work properly and make it FCVAR_REPLICATED!
+ConVar mp_free_armor("mp_free_armor", "0", FCVAR_REPLICATED, "Determines whether armor and helmet are given automatically." );
+ConVar mp_halftime("mp_halftime", "0", FCVAR_REPLICATED, "Determines whether the match switches sides in a halftime event.");
 ConVar mp_randomspawn("mp_randomspawn", "0", FCVAR_REPLICATED, "Determines whether players are to spawn. 0 = default; 1 = both teams; 2 = Terrorists; 3 = CTs." );
 ConVar mp_randomspawn_los("mp_randomspawn_los", "1", FCVAR_REPLICATED, "If using mp_randomspawn, determines whether to test Line of Sight when spawning." );
 ConVar mp_randomspawn_dist( "mp_randomspawn_dist", "0", FCVAR_REPLICATED, "If using mp_randomspawn, determines whether to test distance when selecting this spot." );
+
+// Returns true if teammates are solid obstacles in the current game mode
+bool CCSGameRules::IsTeammateSolid( void ) const
+{
+	return mp_solid_teammates.GetBool();
+}
 
 bool CCSGameRules::IsVIPMap() const
 {
@@ -6239,6 +6549,12 @@ bool CCSGameRules::IsArmorFree()
 }
 #endif
 
+// Returns true if the game is to be split into two halves.
+bool CCSGameRules::HasHalfTime( void ) const
+{
+	return mp_halftime.GetBool();
+}
+
 int CCSGameRules::DefaultFOV()
 {
 	return 90;
@@ -6250,6 +6566,42 @@ const CViewVectors* CCSGameRules::GetViewVectors() const
 }
 
 #ifdef GAME_DLL
+//=========================================================
+//=========================================================
+bool CCSGameRules::FPlayerCanTakeDamage( CBasePlayer *pPlayer, CBaseEntity *pAttacker, const CTakeDamageInfo &info )
+{
+	CCSPlayer *pCSAttacker = ToCSPlayer( pAttacker );
+	if ( pCSAttacker && PlayerRelationship( pPlayer, pCSAttacker ) == GR_TEAMMATE && !pCSAttacker->IsOtherEnemy( pPlayer->entindex() ) )
+	{
+		// my teammate hit me.
+		if ( (friendlyfire.GetInt() == 0 ) && ( pCSAttacker != pPlayer ) )
+		{
+			// friendly fire is off, and this hit came from someone other than myself,  then don't get hurt
+			return false;
+		}
+	}
+
+	return BaseClass::FPlayerCanTakeDamage( pPlayer, pCSAttacker, info );
+}
+
+//=========================================================
+//=========================================================
+int CCSGameRules::IPointsForKill( CBasePlayer *pAttacker, CBasePlayer *pKilled )
+{
+	CCSPlayer *pCSAttacker = ToCSPlayer( pAttacker );
+
+	if ( !pKilled )
+		return 0;
+
+	if ( !pCSAttacker )
+		return 1;
+
+	if ( pCSAttacker != pKilled && PlayerRelationship( pCSAttacker, pKilled ) == GR_TEAMMATE && !pCSAttacker->IsOtherEnemy( pKilled->entindex() ) )
+		return -1;
+
+	return 1;
+}
+
 /*
 	Helper function which handles both voice and chat. The only difference is which convar to use
 	to determine whether enemies can be heard (sv_alltalk or sv_allchat).
@@ -6618,6 +6970,23 @@ bool CCSGameRules::IsFriendlyFireOn( void )
 	return friendlyfire.GetBool();
 }
 
+bool CCSGameRules::IsLastRoundBeforeHalfTime( void )
+{
+    if ( HasHalfTime() )
+    {
+		int numRoundsBeforeHalftime = -1;
+		if ( GetPhase() == GAMEPHASE_PLAYING_FIRST_HALF )
+			numRoundsBeforeHalftime = ( mp_maxrounds.GetInt() / 2 );
+
+        if ( ( numRoundsBeforeHalftime > 0 ) && ( m_iTotalRoundsPlayed == (numRoundsBeforeHalftime-1) ) )
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 
 CON_COMMAND( map_showspawnpoints, "Shows player spawn points (red=invalid)" )
 {
@@ -6820,8 +7189,6 @@ void CCSGameRules::AddTeamAccount( int team, int reason, int amount, const char*
 		break;
 	}
 
-	bool bTeamHasClinchedVictory = false;
-
 	char strAmount[8];
 	Q_snprintf( strAmount, sizeof( strAmount ), "%s$%d", amount >= 0 ? "+" : "-", abs( amount ) );
 
@@ -6854,7 +7221,8 @@ void CCSGameRules::AddTeamAccount( int team, int reason, int amount, const char*
 		}
 		else
 		{
-			if ( !bTeamHasClinchedVictory )
+			if ( !IsLastRoundBeforeHalfTime() && ( GetPhase() != GAMEPHASE_HALFTIME ) &&
+				( m_iTotalRoundsPlayed != mp_maxrounds.GetInt() ) )
 			{
 				// TODO: This code assumes on there only being 2 possible reasons for DoesPlayerGetRoundStartMoney returning false: Suicide or Running down the clock as T.
 				// This code should not make that assumption and the awardReasonToken should probably be plumbed to express those properly.
@@ -6893,11 +7261,8 @@ bool CCSGameRules::IsPlayingClassic( void ) const
 
 
 
-//=============================================================================
-// HPE_BEGIN:
 // [menglish] Set up anything for all players that changes based on new players spawning mid-game
 //				Find and return fun fact data
-//=============================================================================
  
 //-----------------------------------------------------------------------------
 // Purpose: Called when a player joins the game after it's started yet can still spawn in
@@ -6919,31 +7284,15 @@ void CCSGameRules::SpawningLatePlayer( CCSPlayer* pLatePlayer )
 	}
 }
 
-//=============================================================================
-// HPE_END
-//=============================================================================
-
-//=============================================================================
-// HPE_BEGIN:
 // [pfreese] Test for "pistol" round, defined as the default starting round
 // when players cannot purchase anything primary weapons
-//=============================================================================
-
 bool CCSGameRules::IsPistolRound()
 {
 	return m_iTotalRoundsPlayed == 0 && GetStartMoney() <= 800;
 }
 
-//=============================================================================
-// HPE_END
-//=============================================================================
-
-//=============================================================================
-// HPE_BEGIN:
 // [tj] So game rules can react to damage taken
 // [menglish]
-//=============================================================================
-
 void CCSGameRules::PlayerTookDamage(CCSPlayer* player, const CTakeDamageInfo &damageInfo)
 {
 	CBaseEntity *pInflictor = damageInfo.GetInflictor();
@@ -6983,10 +7332,35 @@ void CCSGameRules::FreezePlayers( void )
 	}
 }
 
+void CCSGameRules::UnfreezeAllPlayers( void )
+{
+	for ( int i = 1; i <= MAX_PLAYERS; i++ )
+	{
+		CCSPlayer *pPlayer = ToCSPlayer( UTIL_PlayerByIndex( i ) );
 
-//=============================================================================
-// HPE_END
-//=============================================================================
+		if ( pPlayer )
+		{
+			pPlayer->RemoveFlag( FL_FROZEN );
+		}
+	}
+}
+
+void CCSGameRules::SwitchTeamsAtRoundReset( void )
+{
+	m_bSwitchingTeamsAtRoundReset = true;
+
+	for ( int i = 1; i <= MAX_PLAYERS; i++ )
+	{
+		CCSPlayer *pPlayer = ToCSPlayer( UTIL_PlayerByIndex( i ) );
+		if ( pPlayer )
+		{
+			if ( pPlayer->GetTeamNumber() == TEAM_CT || pPlayer->GetTeamNumber() == TEAM_TERRORIST )
+			{
+				pPlayer->SwitchTeamsAtRoundReset();
+			}
+		}
+	}
+}
 #endif
 
 bool CCSGameRules::IsConnectedUserInfoChangeAllowed( CBasePlayer *pPlayer )
