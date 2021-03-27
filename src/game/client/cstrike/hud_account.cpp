@@ -37,13 +37,7 @@ bool CHudAccount::ShouldDraw()
 	C_CSPlayer *pPlayer = C_CSPlayer::GetLocalCSPlayer();
 	if ( pPlayer )
 	{
-		if ( pPlayer->IsObserver() )
-			return false;
-		
-		if ( CSGameRules() && CSGameRules()->GetGamemode() == GameModes::DEATHMATCH )
-			return false;
-
-		return true;
+		return !pPlayer->IsObserver();
 	}
 	else
 	{

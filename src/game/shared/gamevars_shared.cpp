@@ -48,25 +48,11 @@ ConVar friendlyfire(
 	"Allows team members to injure other members of their team"
 	);
 
-ConVar mp_teammates_are_enemies(
-	"mp_teammates_are_enemies",
-	"0",
-	FCVAR_REPLICATED | FCVAR_NOTIFY,
-	"When set, your teammates act as enemies and all players are valid targets."
-	);
-
 ConVar mp_buy_anywhere(
 	"mp_buy_anywhere",
 	"0",
 	FCVAR_REPLICATED | FCVAR_NOTIFY,
 	"When set, players can buy anywhere, not only in buyzones. 0 = default. 1 = both teams. 2 = Terrorists. 3 = Counter-Terrorists."
-	);
-
-ConVar mp_buy_during_immunity(
-	"mp_buy_during_immunity",
-	"0",
-	FCVAR_REPLICATED | FCVAR_NOTIFY,
-	"When set, players can buy when immune, ignoring buytime. 0 = default. 1 = both teams. 2 = Terrorists. 3 = Counter-Terrorists."
 	);
 
 ConVar mp_fadetoblack( 

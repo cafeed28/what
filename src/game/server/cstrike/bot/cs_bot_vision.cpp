@@ -1258,7 +1258,7 @@ CCSPlayer *CCSBot::FindMostDangerousThreat( void )
 				continue;
 
 			// is it an enemy?
-			if ( !IsOtherEnemy( player ) )
+			if (player->InSameTeam( this ))
 			{
 				// keep track of nearby friends - use less exact visibility check
 				if (IsVisible( entity->WorldSpaceCenter(), false, this ))

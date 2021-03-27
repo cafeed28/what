@@ -1118,7 +1118,7 @@ void CCSBot::UpdateTravelDistanceToAllPlayers( void )
 				continue;
 
 			// skip friends for efficiency
-			if ( !IsOtherEnemy( player ) )
+			if (player->InSameTeam( this ))
 				continue;
 
 			int which = player->entindex() % MAX_PLAYERS;

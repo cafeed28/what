@@ -1406,7 +1406,7 @@ bool CCSBot::IsFriendInLineOfFire( void )
 		{
 			CBasePlayer *player = static_cast<CBasePlayer *>( victim );
 
-			if ( !IsOtherEnemy( player->entindex() ) )
+			if (player->InSameTeam( this ))
 				return true;
 		}
 	}

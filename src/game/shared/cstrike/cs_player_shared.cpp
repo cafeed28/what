@@ -48,19 +48,8 @@
 ConVar sv_showimpacts("sv_showimpacts", "0", FCVAR_REPLICATED, "Shows client (red) and server (blue) bullet impact point (1=both, 2=client-only, 3=server-only)" );
 ConVar sv_showplayerhitboxes( "sv_showplayerhitboxes", "0", FCVAR_REPLICATED, "Show lag compensated hitboxes for the specified player index whenever a player fires." );
 
-// friendly fire damage scalers
-ConVar	ff_damage_reduction_grenade( "ff_damage_reduction_grenade", "0.25", FCVAR_REPLICATED, "How much to reduce damage done to teammates by a thrown grenade.  Range is from 0 - 1 (with 1 being damage equal to what is done to an enemy)" );
-ConVar	ff_damage_reduction_grenade_self( "ff_damage_reduction_grenade_self", "1", FCVAR_REPLICATED, "How much to damage a player does to himself with his own grenade.  Range is from 0 - 1 (with 1 being damage equal to what is done to an enemy)" );
-ConVar	ff_damage_reduction_bullets( "ff_damage_reduction_bullets", "0.1", FCVAR_REPLICATED, "How much to reduce damage done to teammates when shot.  Range is from 0 - 1 (with 1 being damage equal to what is done to an enemy)" );
-ConVar	ff_damage_reduction_other( "ff_damage_reduction_other", "0.25", FCVAR_REPLICATED, "How much to reduce damage done to teammates by things other than bullets and grenades.  Range is from 0 - 1 (with 1 being damage equal to what is done to an enemy)" );
-ConVar  ff_damage_bullet_penetration( "ff_damage_bullet_penetration", "0", FCVAR_REPLICATED, "If friendly fire is off, this will scale the penetration power and damage a bullet does when penetrating another friendly player", true, 0.0f, true, 1.0f );
-
-extern ConVar mp_teammates_are_enemies;
 extern ConVar mp_respawn_on_death_ct;
 extern ConVar mp_respawn_on_death_t;
-extern ConVar mp_buy_allow_grenades;
-extern ConVar mp_buy_anywhere;
-extern ConVar mp_buy_during_immunity;
 
 #define	CS_MASK_SHOOT (MASK_SOLID|CONTENTS_DEBRIS)
 #define MAX_PENETRATION_DISTANCE 90 // this is 7.5 feet
@@ -166,28 +155,6 @@ void DispatchEffect( const char *pName, const CEffectData &data );
 	}
 
 #endif
-
-bool CCSPlayer::IsInBuyZone()
-{
-	if ( mp_buy_anywhere.GetInt() == 1 ||
-		mp_buy_anywhere.GetInt() == GetTeamNumber() )
-		return true;
-
-	return m_bInBuyZone;
-}
-
-bool CCSPlayer::IsInBuyPeriod()
-{
-	if ( mp_buy_during_immunity.GetInt() == 1 ||
-		mp_buy_during_immunity.GetInt() == GetTeamNumber() )
-	{
-		return m_bImmunity;
-	}
-	else
-	{
-
-		return CSGameRules() ? !CSGameRules()->IsBuyTimeElapsed() : false;
-	}
 
 Vector CCSPlayer::Weapon_ShootPosition()
 {
@@ -298,10 +265,10 @@ bool CCSPlayer::IsOtherEnemy( int nEntIndex )
 			int nOtherTeam = pCSPR->GetTeam( nEntIndex );
 			int nTeam = GetTeamNumber();
 
-			if ( mp_teammates_are_enemies.GetBool() && nTeam == nOtherTeam )
+			/*if ( mp_teammates_are_enemies.GetBool() && nTeam == nOtherTeam )
 			{
 				return true;
-			}
+			}*/
 
 			return nTeam != nOtherTeam;
 		}
@@ -327,10 +294,10 @@ bool CCSPlayer::IsOtherEnemy( CCSPlayer *pPlayer )
 	int nTeam = GetTeamNumber();
 
 
-	if ( mp_teammates_are_enemies.GetBool() && nTeam == nOtherTeam )
+	/*if ( mp_teammates_are_enemies.GetBool() && nTeam == nOtherTeam )
 	{
 		return true;
-	}
+	}*/
 
 	return nTeam != nOtherTeam;
 }
@@ -1344,19 +1311,6 @@ bool CCSPlayer::HandleBulletPenetration( float &flPenetration,
 
 		flDamageModifier = 0.99f;
 	}
-	else if ( iEnterMaterial == CHAR_TEX_FLESH && ff_damage_reduction_bullets.GetFloat() == 0
-			  && tr.m_pEnt && tr.m_pEnt->IsPlayer() && tr.m_pEnt->GetTeamNumber() == GetTeamNumber() )
-	{
-		if ( ff_damage_bullet_penetration.GetFloat() == 0 )
-		{
-			// don't allow penetrating players when FF is off
-			flPenetrationModifier = 0;
-			return true;
-		}
-
-		flPenetrationModifier = ff_damage_bullet_penetration.GetFloat();
-		flDamageModifier = ff_damage_bullet_penetration.GetFloat();
-	}
 	else
 	{
 		// check the exit material and average the exit and entrace values
@@ -1649,25 +1603,6 @@ bool CCSPlayer::CanMove() const
 	}
 }
 
-unsigned int CCSPlayer::PhysicsSolidMaskForEntity( void ) const
-{
-	if ( !CSGameRules()->IsTeammateSolid() )
-	{
-		switch ( GetTeamNumber() )
-		{
-			case TEAM_UNASSIGNED:
-				return MASK_PLAYERSOLID;
-			case LAST_SHARED_TEAM:
-				return MASK_PLAYERSOLID;
-			case TEAM_TERRORIST:
-				return MASK_PLAYERSOLID | CONTENTS_TEAM1;
-			case TEAM_CT:
-				return MASK_PLAYERSOLID | CONTENTS_TEAM2;
-		}
-	}
-
-	return MASK_PLAYERSOLID;
-}
 
 void CCSPlayer::OnJump( float fImpulse )
 {
@@ -1806,12 +1741,6 @@ AcquireResult::Type CCSPlayer::CanAcquire( CSWeaponID weaponId, AcquireMethod::T
 
 	if ( nType == WEAPONTYPE_GRENADE )
 	{
-		if ( mp_buy_allow_grenades.GetBool() == false )
-		{
-			if ( acquireMethod == AcquireMethod::Buy )
-				return AcquireResult::NotAllowedForPurchase;
-		}
-
 		// make sure we aren't exceeding the ammo max for this grenade type
 		int carryLimitThisGrenade = GetCarryLimit( weaponId );
 

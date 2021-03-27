@@ -9,7 +9,6 @@
 
 #include "cbase.h"
 #include "cs_bot.h"
-#include "cs_gamerules.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -1201,12 +1200,6 @@ float CCSBot::GetApproximateFallDamage( float height ) const
  */
 bool CCSBot::IsFriendInTheWay( const Vector &goalPos )
 {
-	if ( !CSGameRules()->IsTeammateSolid() )
-	{
-		// we can pass right thru teammates in the mode - no waiting
-		return false;
-	}
-
 	// do this check less often to ease CPU burden
 	if (!m_avoidFriendTimer.IsElapsed())
 	{
@@ -1236,7 +1229,7 @@ bool CCSBot::IsFriendInTheWay( const Vector &goalPos )
 		if (!player->IsAlive())
 			continue;
 
-		if ( IsOtherEnemy( player ) )
+		if (!player->InSameTeam( this ))
 			continue;
 
 		if (player->entindex() == entindex())

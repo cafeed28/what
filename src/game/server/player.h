@@ -1104,7 +1104,6 @@ private:
 	Vector					m_vecWaterJumpVel;
 	int						m_nImpulse;
 	float					m_flSwimSoundTime;
-	float					m_ignoreLadderJumpTime;
 	Vector					m_vecLadderNormal;
 	bool					m_bHasWalkMovedSinceLastJump;
 

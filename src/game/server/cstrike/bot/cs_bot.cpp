@@ -120,7 +120,7 @@ int CCSBot::OnTakeDamage( const CTakeDamageInfo &info )
 		
 		bool m_bShouldTalkAboutFF = cv_bot_chatter_friendlyfire_from_bots.GetBool() ? true : !player->IsBot();
 
-		if ( m_bShouldTalkAboutFF && InSameTeam(player) && !IsOtherEnemy( player ) )
+		if (InSameTeam( player ) && m_bShouldTalkAboutFF)
 			GetChatter()->FriendlyFire();
 	}
 
@@ -662,7 +662,7 @@ CCSPlayer *CCSBot::GetImportantEnemy( bool checkVisibility ) const
 			continue;
 
 		// skip friends
-		if ( InSameTeam( player ) && !player->IsOtherEnemy( entindex() ) )
+		if (InSameTeam( player ))
 			continue;
 
 		// is it "important"
