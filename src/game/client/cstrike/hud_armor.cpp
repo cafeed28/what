@@ -55,8 +55,12 @@ private:
 	CPanelAnimationVarAliasType( float, progress_ypos, "progress_ypos", "0", "proportional_float" );
 	CPanelAnimationVarAliasType( float, progress_wide, "progress_wide", "0", "proportional_float" );
 	CPanelAnimationVarAliasType( float, progress_tall, "progress_tall", "0", "proportional_float" );
-	CPanelAnimationVar( Color, m_ProgressFgColor, "ProgressFgColor", "FgColor" );
-	CPanelAnimationVar( Color, m_ProgressBgColor, "ProgressBgColor", "BgColor" );
+	CPanelAnimationVarAliasType(float, progress_chuck_wide, "progress_chuck_wide", "2", "proportional_float");
+	CPanelAnimationVarAliasType(float, progress_chuck_gap, "progress_chuck_gap", "0", "proportional_float");
+
+	CPanelAnimationVar(Color, m_ProgressFgColor, "ProgressFgColor", "FgColor");
+	CPanelAnimationVar(Color, m_ProgressBgColor, "ProgressBgColor", "BgColor");
+	CPanelAnimationVar(int, m_ProgressColorAlpha, "ProgressColorAlpha", "0");;
 
 	int m_iStyle;
 	int m_iOriginalXPos;
@@ -152,10 +156,32 @@ void CHudArmor::Paint()
 
 		if ( hud_healtharmor_style.GetInt() == HUD_STYLE_DEFAULT )
 		{
+			int chunkCount = progress_wide / (progress_chuck_wide + progress_chuck_gap);
+			int enabledChunks = (int)((float)chunkCount * (iArmorValue / 100.0f) + .5f);
+
 			// draw the progress bar
-			DrawBox( progress_xpos, progress_ypos, progress_wide, progress_tall, m_ProgressBgColor, 1.0f );
-			if ( iArmorValue > 0 )
-				DrawBox( progress_xpos, progress_ypos, progress_wide * Clamp( iArmorValue / 100.0f, 0.0f, 1.0f ), progress_tall, m_ProgressFgColor, 1.0f );
+			surface()->DrawSetColor(m_ProgressFgColor);
+
+			int xpos = progress_xpos, ypos = progress_ypos;
+
+			for (int i = 0; i < enabledChunks; i++)
+			{
+				surface()->DrawFilledRect(xpos, ypos, xpos + progress_chuck_wide, ypos + progress_tall);
+				xpos += (progress_chuck_wide + progress_chuck_gap);
+			}
+
+			// Draw the exhausted bar.
+			// if ProgressColorAlpha exsist, use Alpha
+			if (m_ProgressColorAlpha > 0)
+				surface()->DrawSetColor(Color(m_ProgressFgColor[0], m_ProgressFgColor[1], m_ProgressFgColor[2], m_ProgressColorAlpha));
+			else
+				surface()->DrawSetColor(m_ProgressBgColor);
+
+			for (int i = enabledChunks; i < chunkCount; i++)
+			{
+				surface()->DrawFilledRect(xpos, ypos, xpos + progress_chuck_wide, ypos + progress_tall);
+				xpos += (progress_chuck_wide + progress_chuck_gap);
+			}
 		}
 
 		SetDisplayValue( iArmorValue );
