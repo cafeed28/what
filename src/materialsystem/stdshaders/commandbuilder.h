@@ -181,6 +181,24 @@ public:
 		}
 	}
 
+	void SetPixelShaderTextureTransform( int vertexReg, int transformVar )
+	{
+		Vector4D transformation[2];
+		IMaterialVar* pTransformationVar = ( transformVar >= 0 ) ? this->Param( transformVar ) : NULL;
+		if (pTransformationVar && (pTransformationVar->GetType() == MATERIAL_VAR_TYPE_MATRIX))
+		{
+			const VMatrix &mat = pTransformationVar->GetMatrixValue();
+			transformation[0].Init( mat[0][0], mat[0][1], mat[0][2], mat[0][3] );
+			transformation[1].Init( mat[1][0], mat[1][1], mat[1][2], mat[1][3] );
+		}
+		else
+		{
+			transformation[0].Init( 1.0f, 0.0f, 0.0f, 0.0f );
+			transformation[1].Init( 0.0f, 1.0f, 0.0f, 0.0f );
+		}
+		SetPixelShaderConstant( vertexReg, transformation[0].Base(), 2 ); 
+	}
+
 	FORCEINLINE void SetVertexShaderConstant( int nFirstConstant, float const *pSrcData )
 	{
 		m_Storage.PutInt( CBCMD_SET_VERTEX_SHADER_FLOAT_CONST );
@@ -225,6 +243,43 @@ public:
 			transformation[1].Init( 0.0f, 1.0f, 0.0f, 0.0f );
 		}
 		SetVertexShaderConstant( vertexReg, transformation[0].Base(), 2 ); 
+	}
+
+
+	void SetVertexShaderTextureScaledTransformRotate( int vertexReg, int transformVar, int scaleVar, int rotateVar )
+	{
+		Vector2D scale( 1, 1 );
+		IMaterialVar* pScaleVar = this->Param( scaleVar );
+		if (pScaleVar)
+		{
+			if (pScaleVar->GetType() == MATERIAL_VAR_TYPE_VECTOR)
+				pScaleVar->GetVecValue( scale.Base(), 2 );
+			else if (pScaleVar->IsDefined())
+				scale[0] = scale[1] = pScaleVar->GetFloatValue();
+		}
+
+		float flRotateVar = 0.0f;
+		IMaterialVar* pRotateVar = this->Param( rotateVar );
+		if ( pRotateVar && pRotateVar->IsDefined() )
+		{
+			flRotateVar = pRotateVar->GetFloatValue();
+		}
+
+		Vector4D transformation[2];
+		IMaterialVar* pTransformationVar = this->Param( transformVar );
+		if (pTransformationVar && (pTransformationVar->GetType() == MATERIAL_VAR_TYPE_MATRIX))
+		{
+			VMatrix matRot = pTransformationVar->GetMatrixValue();
+			MatrixTranslate( matRot, Vector( 0.5, 0.5, 0 ) );
+			MatrixRotate(	 matRot, Vector( 0, 0, 1), flRotateVar );
+			MatrixTranslate( matRot, Vector( -0.5 * scale[0], -0.5 * scale[1], 0 ) );
+			matRot = matRot.Scale( Vector(scale[0], scale[1], 1) );
+
+			transformation[0].Init( matRot[0][0], matRot[0][1], matRot[0][2], matRot[0][3] );
+			transformation[1].Init( matRot[1][0], matRot[1][1], matRot[1][2], matRot[1][3] );
+
+			SetVertexShaderConstant( vertexReg, transformation[0].Base(), 2 ); 
+		}
 	}
 
 
