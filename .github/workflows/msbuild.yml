@@ -24,7 +24,7 @@ jobs:
         vs-version: '12.0.4'
         
     - name: CreateProject
-      run: createcssoproject.bat
+      run: call createcssoproject.bat
       shell: cmd
       
     - name: dir
