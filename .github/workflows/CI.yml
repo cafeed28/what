@@ -27,8 +27,7 @@ jobs:
         gc .\sln_fix.txt | ac .\csso.sln
     - uses: microsoft/setup-msbuild@v1
     - name: Build
-      run: msbuild src\csso.sln /m /p:Configuration=Release /t:"Clean;Build
-        
+      run: msbuild src\csso.sln /m /p:Configuration=Release /t:"Clean;Build"
     - name: Prepare artifacts
       id: prepare_artifacts
       run: |
