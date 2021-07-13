@@ -182,3 +182,7 @@ config.cfg
 src/.vs/csso/v16/Browse.VC.db-shm
 src/.vs/csso/v16/Browse.VC.opendb
 src/.vs/csso/v16/Browse.VC.db-wal
+*.pdb
+*.lib
+*.exe
+*.dll

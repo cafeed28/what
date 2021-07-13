@@ -38,9 +38,5 @@ $data = @"
 "@
 
 $data | Out-File game\client\client_csso.vcxproj.user utf8
-$data | Out-File appframework\appframework.vcxproj.user utf8
-$data | Out-File datamodel\datamodel.vcxproj.user utf8
-$data | Out-File mathlib\mathlib.vcxproj.user utf8
-$data | Out-File tier0\tier0.vcxproj.user utf8
-$data | Out-File tier2\tier2.vcxproj.user utf8
+
 "`nDebug and launch added to client_csso.vcxproj`n"
