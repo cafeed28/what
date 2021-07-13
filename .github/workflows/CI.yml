@@ -28,3 +28,24 @@ jobs:
     - uses: microsoft/setup-msbuild@v1
     - name: Build
       run: msbuild src\csso.sln /m /nologo /p:Configuration=Release /t:"Clean;Build" /v:m
+    - name: Prepare artifacts
+      id: prepare_artifacts
+      run: |
+        robocopy mp\game\bin          artifacts\bin\bin          /xf *.pdb /r:0 /w:0
+        robocopy mp\game\csso\bin artifacts\bin\csso\bin /xf *.pdb /r:0 /w:0
+        robocopy mp\game\bin          artifacts\pdb\bin              *.pdb /r:0 /w:0
+        robocopy mp\game\csso\bin artifacts\pdb\csso\bin     *.pdb /r:0 /w:0
+        If ($LastExitCode -le 7) { echo "LastExitCode = $LastExitCode";$LastExitCode = 0 }
+        echo "::set-output name=short_commit_sha::$(git rev-parse --short HEAD)"
+    - name: Upload bin artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: bin_${{ runner.os }}-${{ steps.prepare_artifacts.outputs.short_commit_sha }}
+        path: artifacts\bin
+        if-no-files-found: error
+    - name: Upload pdb artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: pdb_${{ runner.os }}-${{ steps.prepare_artifacts.outputs.short_commit_sha }}
+        path: artifacts\pdb
+        if-no-files-found: error
