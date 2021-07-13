@@ -186,3 +186,4 @@ src/.vs/csso/v16/Browse.VC.db-wal
 *.lib
 *.exe
 *.dll
+src/UpgradeLog.htm
