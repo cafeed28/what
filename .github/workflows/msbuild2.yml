@@ -4,12 +4,12 @@ on:
   push:
     branches: [ master, develop ]
     paths:
-      - .github/workflows/CI.yml
+      - .github/workflows/msbuild2.yml
       - src/**
   pull_request:
     branches: [ master, develop ]
     paths:
-      - .github/workflows/CI.yml
+      - .github/workflows/msbuild2.yml
       - src/**
 
 jobs:
