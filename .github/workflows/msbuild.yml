@@ -4,7 +4,7 @@ on: [push]
 
 env:
   # Path to the solution file relative to the root of the project.
-  SOLUTION_FILE_PATH: src
+  SOLUTION_FILE_PATH: src/csso.sln
 
   # Configuration type to build.
   # You can convert this to a build matrix if you need coverage of multiple configuration types.
@@ -24,7 +24,7 @@ jobs:
         vs-version: '12.0.4'
         
     - name: CreateProject
-      run: call createcssoproject.bat
+      run: cd src & call createcssoproject.bat
       shell: cmd
       
     - name: dir
