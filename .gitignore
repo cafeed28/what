@@ -177,3 +177,4 @@ config.cfg
 # shader files
 *.tmp
 
+*.zip
