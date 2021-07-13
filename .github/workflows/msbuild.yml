@@ -18,12 +18,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     
-    - name: go to createcssoproject.bat
-      run: cd src
-      shell: cmd
-      
     - name: CreateProject
-      run: createcssoproject.bat
+      run: src/createcssoproject.bat
       shell: cmd
       
     - name: dir
