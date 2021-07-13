@@ -10,12 +10,11 @@ version: '{branch}-{build}'
 branches:
   only:
     - master
-    - develop
 
 # We only want to build if actual source files changed, and not game resource / misc files.
 only_commits:
   files:
-    - mp/src/
+    - src/
     - appveyor.yml
 
 # Don't build when tags are made
@@ -38,7 +37,7 @@ install:
   - REG ADD "HKLM\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\10.0\Projects\{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}" /v DefaultProjectExtension /t REG_SZ /d vcproj /f
 
 # Let's get into this source directory, where our "creategameprojects" script normally is
-  - cd mp\src
+  - cd src
 
 # It's important to note that this is what is found inside of createallprojects.bat, but our script pauses
 # to help know if something went wrong with VPC, so we directly call it here instead.
@@ -46,14 +45,14 @@ install:
 # It is advised to just only build your game projects (server/client DLLs). Replace this line with the commands found in
 # your "creategameprojects.bat" file in your repository.
 # CHANGEME
-  - devtools\bin\vpc.exe /momentum +everything /mksln everything.sln
+  - devtools\bin\vpc.exe /csso  /define:WORKSHOP_IMPORT_DISABLE /define:SIXENSE_DISABLE /define:NO_X360_XDK /define:RAD_TELEMETRY_DISABLED /define:DISABLE_ETW +appframework +datacache +datamodel +dedicated +inputsystem +gamedlls +engine +mathlib +tier0 +tier1 +tier2 +tier3 +vstdlib +particles +studiomdl +hlmv +vbsp +vvis_dll +vrad_dll +raytrace +studiorender +filesystem_stdio +materialsystem +shaderapidx9 +shaderapiempty +stdshader_dbg +stdshader_dx6 +stdshader_dx7 +stdshader_dx8 +stdshader_dx9 +vguimatsurface +vgui_dll +vgui_surfacelib +vgui_controls +matsys_controls +video_services +video_quicktime +video_webm +launcher +sourcevr +vtf +pet +dme_controls +sfmobjects +toolutils +vmt +commedit +vtex_dll +vtex_launcher +vpk +hammer_dll +hammer_launcher +fgdlib +shaderlib /mksln csso.sln /nop4add /nofpo
 
 # Another note: VPC is really lame and doesn't spit out the full solution file. The correct file is after you
 # open it in Visual Studio and save it. There's a big chunk missing at the end. Refer to momentum's "sln_fix.txt" file,
 # or push your sln file to your game's repository. You can see how the sln_file got its chunk by opening your project's sln
 # file inside of a text editor and looking near the bottom of the file. We copy that chunk over here.
 # CHANGEME
-  - copy everything.sln+sln_fix.txt everything.sln
+  - copy csso.sln+sln_fix.txt csso.sln
 
 
 # Build Configuration things
@@ -61,7 +60,7 @@ install:
 configuration: Release
 
 build_script:
-  - msbuild everything.sln /m /nologo /p:Configuration=%CONFIGURATION% /t:Clean;Build /v:m /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+  - msbuild csso.sln /m /nologo /p:Configuration=%CONFIGURATION% /t:Clean;Build /v:m /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 
 # Disable automatic testing
 test: off  
@@ -76,9 +75,9 @@ after_build:
 # Gonna be creating zip files.
 # CHANGEME to be your correct game's name (not Momentum I hope)
   - |
-    cd %APPVEYOR_BUILD_FOLDER%\mp\game
-    7z a ..\..\bin_%APPVEYOR_REPO_COMMIT%.zip bin momentum\bin -xr!*.pdb
-    7z a ..\..\pdb_%APPVEYOR_REPO_COMMIT%.zip bin\*.pdb momentum\bin\*.pdb
+    cd %APPVEYOR_BUILD_FOLDER%\game
+    7z a ..\..\bin_%APPVEYOR_REPO_COMMIT%.zip bin csso\bin -xr!*.pdb
+    7z a ..\..\pdb_%APPVEYOR_REPO_COMMIT%.zip bin\*.pdb csso\bin\*.pdb
     cd %APPVEYOR_BUILD_FOLDER%
 
 
