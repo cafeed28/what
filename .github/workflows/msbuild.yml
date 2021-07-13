@@ -4,7 +4,7 @@ on: [push]
 
 env:
   # Path to the solution file relative to the root of the project.
-  SOLUTION_FILE_PATH: .
+  SOLUTION_FILE_PATH: src
 
   # Configuration type to build.
   # You can convert this to a build matrix if you need coverage of multiple configuration types.
@@ -18,18 +18,19 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
+      with:
+        vs-version: '[12.0)'
     - name: CreateProject
-      run: cd src & createcssoproject.bat
+      run: createcssoproject.bat
       shell: cmd
       
     - name: dir
       run: dir
       shell: cmd
       
-    - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.2
-      with:
-        vs-version: '[12.0)'
+
 
 
 
