@@ -21,7 +21,7 @@ jobs:
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.0.2
       with:
-        vs-version: '12.0.4'
+        vs-version: '15.2'
         
     - name: CreateProject
       run: cd src & call createcssoproject.bat
