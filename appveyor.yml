@@ -21,7 +21,7 @@ only_commits:
 skip_tags: true
 
 # Build image
-image: Visual Studio 2019
+image: Visual Studio 2013
 
 # Clone to only the last commit
 clone_depth: 1
