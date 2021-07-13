@@ -1,33 +1,30 @@
-name: MSBuild
+name: CI
 
-on: [push]
-
-env:
-  # Path to the solution file relative to the root of the project.
-  SOLUTION_FILE_PATH: src/csso.sln
-  # Configuration type to build.
-  # You can convert this to a build matrix if you need coverage of multiple configuration types.
-  # https://docs.github.com/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-  BUILD_CONFIGURATION: Release
+on:
+  push:
+    branches: [ master, develop ]
+    paths:
+      - .github/workflows/CI.yml
+      - src/**
+  pull_request:
+    branches: [ master, develop ]
+    paths:
+      - .github/workflows/CI.yml
+      - src/**
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
-
+    env:
+      POWERSHELL_TELEMETRY_OPTOUT: 1
     steps:
     - uses: actions/checkout@v2
-
-    - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.2
-      with:
-        vs-version: '12.0.4'
-
-    - name: CreateProject
-      run: cd src & call createcssoproject.bat
-      shell: cmd
-
+    - name: Generate VS solution
+      working-directory: mp\src
+      run: |
+        reg add "HKLM\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\10.0\Projects\{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}" /v DefaultProjectExtension /t REG_SZ /d vcproj /f
+        devtools\bin\vpc.exe /csso  /define:WORKSHOP_IMPORT_DISABLE /define:SIXENSE_DISABLE /define:NO_X360_XDK /define:RAD_TELEMETRY_DISABLED /define:DISABLE_ETW +appframework +datacache +datamodel +dedicated +inputsystem +gamedlls +engine +mathlib +tier0 +tier1 +tier2 +tier3 +vstdlib +particles +studiomdl +hlmv +vbsp +vvis_dll +vrad_dll +raytrace +studiorender +filesystem_stdio +materialsystem +shaderapidx9 +shaderapiempty +stdshader_dbg +stdshader_dx6 +stdshader_dx7 +stdshader_dx8 +stdshader_dx9 +vguimatsurface +vgui_dll +vgui_surfacelib +vgui_controls +matsys_controls +video_services +video_quicktime +video_webm +launcher +sourcevr +vtf +pet +dme_controls +sfmobjects +toolutils +vmt +commedit +vtex_dll +vtex_launcher +vpk +hammer_dll +hammer_launcher +fgdlib +shaderlib /mksln csso.sln /nop4add /nofpo
+        gc .\sln_fix.txt | ac .\everything.sln
+    - uses: microsoft/setup-msbuild@v1
     - name: Build
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      # Add additional options to the MSBuild command line here (like platform or verbosity level).
-      # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
-      run: /'C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv' /Build /${{env.BUILD_CONFIGURATION}}  ${{env.SOLUTION_FILE_PATH}}
+      run: msbuild src\csso.sln /m /p:Configuration=Release /t:"Clean;Build" /v:m
