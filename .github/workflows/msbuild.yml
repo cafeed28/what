@@ -14,12 +14,26 @@ env:
 jobs:
   build:
     runs-on: windows-latest
-
+    
     steps:
     - uses: actions/checkout@v2
-
+    
+    - name: go to createcssoproject.bat
+      run: cd /src/
+      shell: cmd
+      
+    - name: CreateProject
+      run: createcssoproject.bat
+      shell: cmd
+      
+    - name: dir
+      run: dir
+      shell: cmd
+      
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.0.2
+      with:
+        vs-version: '[12.0)'
 
     - name: Restore NuGet packages
       working-directory: ${{env.GITHUB_WORKSPACE}}
