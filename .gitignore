@@ -187,3 +187,5 @@ src/.vs/csso/v16/Browse.VC.db-wal
 *.exe
 *.dll
 src/UpgradeLog.htm
+src/materialsystem/stdshaders/filestocopy.txt
+src/materialsystem/stdshaders/uniquefilestocopy.txt
