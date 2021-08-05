@@ -138,10 +138,17 @@ BEGIN_VS_SHADER( VertexLitGeneric, "Help for VertexLitGeneric" )
 		SHADER_PARAM( BLENDTINTCOLOROVERBASE, SHADER_PARAM_TYPE_FLOAT, "0", "blend between tint acting as a multiplication versus a replace" )
 		SHADER_PARAM( NOTINT, SHADER_PARAM_TYPE_BOOL, "0", "Disable tinting" )
 
+		// vertexlitgeneric envmap fresnel control
+		SHADER_PARAM( ENVMAPFRESNELMINMAXEXP, SHADER_PARAM_TYPE_VEC3, "[0.0 1.0 2.0]", "Min/max fresnel range and exponent for vertexlitgeneric" )
+		SHADER_PARAM( BASEALPHAENVMAPMASKMINMAXEXP, SHADER_PARAM_TYPE_VEC3, "[1.0 0.0 1.0]", "" )
+
 		// This is to allow phong materials to disable half lambert. Half lambert has always been forced on in phong,
 		// so the only safe way to allow artists to disable half lambert is to create this param that disables the
 		// default behavior of forcing half lambert on.
 		SHADER_PARAM( PHONGDISABLEHALFLAMBERT, SHADER_PARAM_TYPE_BOOL, "0", "Disable half lambert for phong" )
+
+		SHADER_PARAM( ENVMAPLIGHTSCALE, SHADER_PARAM_TYPE_FLOAT, "0.0", "How much the lightmap effects environment map reflection, 0.0 is off, 1.0 will allow complete blackness of the environment map if the lightmap is black" )
+		SHADER_PARAM( ENVMAPLIGHTSCALEMINMAX, SHADER_PARAM_TYPE_VEC2, "[0.0 1.0]", "Thresholds for the lightmap envmap effect.  Setting the min higher increases the minimum light amount at which the envmap gets nerfed to nothing." )
 	END_SHADER_PARAMS
 
 	void SetupVars( VertexLitGeneric_DX9_Vars_t& info )
@@ -221,7 +228,13 @@ BEGIN_VS_SHADER( VertexLitGeneric, "Help for VertexLitGeneric" )
 		info.m_nTintReplacesBaseColor = BLENDTINTCOLOROVERBASE;
 		info.m_nNoTint = NOTINT;
 
+		info.m_nEnvMapFresnelMinMaxExp = ENVMAPFRESNELMINMAXEXP;
+		info.m_nBaseAlphaEnvMapMaskMinMaxExp = BASEALPHAENVMAPMASKMINMAXEXP;
+
 		info.m_nPhongDisableHalfLambert = PHONGDISABLEHALFLAMBERT;
+
+		info.m_nEnvMapLightScale = ENVMAPLIGHTSCALE;
+		info.m_nEnvMapLightScaleMinMax = ENVMAPLIGHTSCALEMINMAX;
 	}
 
 	// Cloak Pass

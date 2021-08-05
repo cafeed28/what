@@ -150,6 +150,10 @@ void InitParamsVertexLitGeneric_DX9( CBaseVSShader *pShader, IMaterialVar** para
 	InitIntParam( info.m_nEnvmapMaskFrame, params, 0 );
 	InitFloatParam( info.m_nEnvmapContrast, params, 0.0 );
 	InitFloatParam( info.m_nEnvmapSaturation, params, 1.0f );
+	if ( info.m_nEnvMapLightScale != -1 )
+		InitFloatParam( info.m_nEnvMapLightScale, params, 0.0f );
+	if ( info.m_nEnvMapLightScaleMinMax != -1 )
+		InitVecParam( info.m_nEnvMapLightScaleMinMax, params, 0.0f, 1.0f );
 	InitFloatParam( info.m_nSeamlessScale, params, 0.0 );
 
 	// handle line art parms
@@ -221,6 +225,17 @@ void InitParamsVertexLitGeneric_DX9( CBaseVSShader *pShader, IMaterialVar** para
 
 	InitIntParam( info.m_nLinearWrite, params, 0 );
 	InitIntParam( info.m_nGammaColorRead, params, 0 );
+
+	if ( (info.m_nEnvMapFresnelMinMaxExp != -1) && !params[info.m_nEnvMapFresnelMinMaxExp]->IsDefined() )
+	{
+		params[info.m_nEnvMapFresnelMinMaxExp]->SetVecValue( 0.0f, 1.0f, 2.0f, 0.0f );
+	}
+	if ( (info.m_nBaseAlphaEnvMapMaskMinMaxExp != -1) && !params[info.m_nBaseAlphaEnvMapMaskMinMaxExp]->IsDefined() )
+	{
+		// Default to min: 1 max: 0 exp: 1 so that we default to the legacy behavior for basealphaenvmapmask, which is 1-baseColor.a
+		// These default values translate to a scale of -1, bias of 1 and exponent 1 in the shader.
+		params[info.m_nBaseAlphaEnvMapMaskMinMaxExp]->SetVecValue( 1.0f, 0.0f, 1.0f, 0.0f );
+	}
 
 	InitIntParam( info.m_nDepthBlend, params, 0 );
 	InitFloatParam( info.m_nDepthBlendScale, params, 50.0f );
@@ -479,6 +494,8 @@ static void DrawVertexLitGeneric_DX9_Internal( CBaseVSShader *pShader, IMaterial
 				bHasNormal = true;
 			}
 
+			bool bHasEnvMapFresnel = bHasEnvmap && IsBoolSet( info.m_nEnvmapFresnel, params );
+
 			bool bHalfLambert = IS_FLAG_SET( MATERIAL_VAR_HALFLAMBERT );
 			// Alpha test: FIXME: shouldn't this be handled in CBaseVSShader::SetInitialShadowState
 			pShaderShadow->EnableAlphaTest( bIsAlphaTested );
@@ -670,7 +687,7 @@ static void DrawVertexLitGeneric_DX9_Internal( CBaseVSShader *pShader, IMaterial
 			if ( bHasBump || bHasDiffuseWarp )
 			{
 #ifndef _X360
-				if ( !g_pHardwareConfig->HasFastVertexTextures() )
+				if ( !g_pHardwareConfig->SupportsShaderModel_3_0() )
 #endif
 				{
 					bool bUseStaticControlFlow = g_pHardwareConfig->SupportsStaticControlFlow();
@@ -766,7 +783,7 @@ static void DrawVertexLitGeneric_DX9_Internal( CBaseVSShader *pShader, IMaterial
 				}
 
 #ifndef _X360
-				if ( !g_pHardwareConfig->HasFastVertexTextures() )
+				if ( !g_pHardwareConfig->SupportsShaderModel_3_0() )
 #endif
 				{
 					bool bUseStaticControlFlow = g_pHardwareConfig->SupportsStaticControlFlow();
@@ -792,6 +809,7 @@ static void DrawVertexLitGeneric_DX9_Internal( CBaseVSShader *pShader, IMaterial
 						SET_STATIC_PIXEL_SHADER_COMBO( DIFFUSELIGHTING,  hasDiffuseLighting );
 						SET_STATIC_PIXEL_SHADER_COMBO( ENVMAPMASK,  bHasEnvmapMask );
 						SET_STATIC_PIXEL_SHADER_COMBO( BASEALPHAENVMAPMASK,  hasBaseAlphaEnvmapMask );
+						SET_STATIC_PIXEL_SHADER_COMBO( ENVMAPFRESNEL,  bHasEnvMapFresnel && bHasEnvmap );
 						SET_STATIC_PIXEL_SHADER_COMBO( SELFILLUM,  bHasSelfIllum );
 						SET_STATIC_PIXEL_SHADER_COMBO( VERTEXCOLOR,  bHasVertexColor );
 						SET_STATIC_PIXEL_SHADER_COMBO( FLASHLIGHT,  bHasFlashlight );
@@ -819,6 +837,7 @@ static void DrawVertexLitGeneric_DX9_Internal( CBaseVSShader *pShader, IMaterial
 						SET_STATIC_PIXEL_SHADER_COMBO( DIFFUSELIGHTING,  hasDiffuseLighting );
 						SET_STATIC_PIXEL_SHADER_COMBO( ENVMAPMASK,  bHasEnvmapMask );
 						SET_STATIC_PIXEL_SHADER_COMBO( BASEALPHAENVMAPMASK,  hasBaseAlphaEnvmapMask );
+						SET_STATIC_PIXEL_SHADER_COMBO( ENVMAPFRESNEL,  bHasEnvMapFresnel && bHasEnvmap );
 						SET_STATIC_PIXEL_SHADER_COMBO( SELFILLUM,  bHasSelfIllum );
 						SET_STATIC_PIXEL_SHADER_COMBO( VERTEXCOLOR,  bHasVertexColor );
 						SET_STATIC_PIXEL_SHADER_COMBO( FLASHLIGHT,  bHasFlashlight );
@@ -860,6 +879,7 @@ static void DrawVertexLitGeneric_DX9_Internal( CBaseVSShader *pShader, IMaterial
 					SET_STATIC_PIXEL_SHADER_COMBO( DIFFUSELIGHTING,  hasDiffuseLighting );
 					SET_STATIC_PIXEL_SHADER_COMBO( ENVMAPMASK,  bHasEnvmapMask );
 					SET_STATIC_PIXEL_SHADER_COMBO( BASEALPHAENVMAPMASK,  hasBaseAlphaEnvmapMask );
+					SET_STATIC_PIXEL_SHADER_COMBO( ENVMAPFRESNEL,  bHasEnvMapFresnel && bHasEnvmap );
 					SET_STATIC_PIXEL_SHADER_COMBO( SELFILLUM,  bHasSelfIllum );
 					SET_STATIC_PIXEL_SHADER_COMBO( VERTEXCOLOR,  bHasVertexColor );
 					SET_STATIC_PIXEL_SHADER_COMBO( FLASHLIGHT,  bHasFlashlight );
@@ -1017,10 +1037,10 @@ static void DrawVertexLitGeneric_DX9_Internal( CBaseVSShader *pShader, IMaterial
 					// c6 - glow color
 					0,0,0,										// will be filled in
 					GetFloatParam( info.m_nGlowAlpha, params ),
-					// c7 - mask range parms
+					// c7 - mask range parms and basealphaenvmapmask scale and bias
 					flSoftStart,
 					flSoftEnd,
-					0,0,
+					0,0,	// filled in below
 					// c8 - outline color
 					0,0,0,
 					GetFloatParam( info.m_nOutlineAlpha, params ),
@@ -1039,8 +1059,21 @@ static void DrawVertexLitGeneric_DX9_Internal( CBaseVSShader *pShader, IMaterial
 				{
 					params[info.m_nOutlineColor]->GetVecValue( flConsts+12, 3 );
 				}
+				if ( info.m_nBaseAlphaEnvMapMaskMinMaxExp != -1 )
+				{
+					flConsts[10] = params[info.m_nBaseAlphaEnvMapMaskMinMaxExp]->GetVecValue()[0];
+					flConsts[11] = params[info.m_nBaseAlphaEnvMapMaskMinMaxExp]->GetVecValue()[1] - flConsts[10];
+				}
 				pContextData->m_SemiStaticCmdsOut.SetPixelShaderConstant( 5, flConsts, 5 );
 
+			}
+			else if ( info.m_nBaseAlphaEnvMapMaskMinMaxExp != -1 )
+			{
+				float flConsts[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+				
+				flConsts[2] = params[ info.m_nBaseAlphaEnvMapMaskMinMaxExp ]->GetVecValue()[0];
+				flConsts[3] = params[ info.m_nBaseAlphaEnvMapMaskMinMaxExp ]->GetVecValue()[1] - flConsts[2];
+				pContextData->m_SemiStaticCmdsOut.SetPixelShaderConstant( 7, flConsts, 1 );
 			}
 			if ( !g_pConfig->m_bFastNoBump )
 			{
@@ -1079,6 +1112,28 @@ static void DrawVertexLitGeneric_DX9_Internal( CBaseVSShader *pShader, IMaterial
 			if ( bHasEnvmapMask )
 			{
 				pContextData->m_SemiStaticCmdsOut.BindTexture( pShader, SHADER_SAMPLER4, info.m_nEnvmapMask, info.m_nEnvmapMaskFrame );
+			}
+
+			bool bHasEnvMapFresnel = bHasEnvmap && IsBoolSet( info.m_nEnvmapFresnel, params );
+			if ( bHasEnvMapFresnel )
+			{
+				float flConsts[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+				params[ info.m_nEnvMapFresnelMinMaxExp ]->GetVecValue( flConsts, 3 );
+				flConsts[1] -= flConsts[0];	// convert max fresnel into scale factor
+
+				if ( info.m_nBaseAlphaEnvMapMaskMinMaxExp != -1 )
+				{
+					flConsts[3] = params[ info.m_nBaseAlphaEnvMapMaskMinMaxExp ]->GetVecValue()[2];		// basealphaenvmapmask exponent in w
+				}
+
+				pContextData->m_SemiStaticCmdsOut.SetPixelShaderConstant( 14, flConsts, 1 );
+			}
+			else if ( info.m_nBaseAlphaEnvMapMaskMinMaxExp != -1 )
+			{
+				// still need to set exponent for basealphaenvmapmask
+				float flConsts[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+				flConsts[3] = params[ info.m_nBaseAlphaEnvMapMaskMinMaxExp ]->GetVecValue()[2];		// basealphaenvmapmask exponent in w
+				pContextData->m_SemiStaticCmdsOut.SetPixelShaderConstant( 14, flConsts, 1 );
 			}
 
 			if ( bHasSelfIllumFresnel && (!bHasFlashlight || IsX360() ) )
@@ -1128,8 +1183,33 @@ static void DrawVertexLitGeneric_DX9_Internal( CBaseVSShader *pShader, IMaterial
 				pShaderAPI->SetPixelShaderConstant( 31, vScreenScale, 1 );
 			}
 
-			if ( ( !bHasFlashlight || IsX360() ) && ( info.m_nEnvmapContrast != -1 ) )
-				pContextData->m_SemiStaticCmdsOut.SetPixelShaderConstant( 2, info.m_nEnvmapContrast );
+			if ( bHasEnvmap && ( !bHasFlashlight || IsGameConsole() ) )
+			{
+				// This was shader reg 2, but this was conflicting with the flashlight state and we somehow never noticed it.
+				// fvEnvmapParams are contrast, lightscale, lightscale min, lightscale max
+				// If contrast is less than 0 it's invalid, but the shader is expecting something, so just set 1.0 (specular squared, the darkest).
+				float envMapParams[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
+				if ( info.m_nEnvmapContrast > 0 )
+				{
+					// The shader is expecting something, so just set 1.0 (specular squared, the darkest).
+					envMapParams[0] = GetFloatParam( info.m_nEnvmapContrast, params );
+				}
+
+				if ( info.m_nEnvMapLightScale != -1 )
+				{
+					envMapParams[1] = GetFloatParam( info.m_nEnvMapLightScale, params );
+				}
+				if ( info.m_nEnvMapLightScaleMinMax != -1 )
+				{
+					float lightScaleMinMax[2] = { 0.0, 0.0 };
+					params[info.m_nEnvMapLightScaleMinMax]->GetVecValue( lightScaleMinMax, 2 );
+					envMapParams[2] = lightScaleMinMax[0];
+					envMapParams[3] = lightScaleMinMax[1] + lightScaleMinMax[0];
+
+				}
+
+				pContextData->m_SemiStaticCmdsOut.SetPixelShaderConstant( 19, envMapParams );
+			}
 
 			// mat_fullbright 2 handling
 			bool bLightingOnly = bVertexLitGeneric && mat_fullbright.GetInt() == 2 && !IS_FLAG_SET( MATERIAL_VAR_NO_DEBUG_OVERRIDE );

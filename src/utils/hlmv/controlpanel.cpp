@@ -22,6 +22,7 @@
 // email:          mete@swissquake.ch
 // web:            http://www.swissquake.ch/chumbalum-soft/
 //
+#include "filesystem.h"
 #include "ControlPanel.h"
 #include "ViewerSettings.h"
 #include "StudioModel.h"
@@ -47,6 +48,7 @@
 #include "tier0/icommandline.h"
 #include "valve_ipc_win32.h"
 #include "mdlviewer.h"
+#include "materialsystem/imaterialvar.h"
 
 extern char g_appTitle[];
 extern IPhysicsSurfaceProps *physprop;
@@ -55,6 +57,28 @@ extern ISoundEmitterSystemBase *g_pSoundEmitterBase;
 extern CValveIpcClientUtl g_HlmvIpcClient;
 extern bool g_bHlmvMaster;
 
+bool g_OnlyEditMaterialsThatWantToBeEdited = false;
+class CTextBuffer
+{
+public:
+	CTextBuffer( void ) {}
+	~CTextBuffer( void ) {}
+	inline int GetSize( void ) { return m_buffer.Count(); }
+	inline char *GetData( void ) { return m_buffer.Base(); }
+	void WriteText( const char *pText )
+	{
+		int len = strlen( pText );
+		CopyData( pText, len );
+	}
+	void Terminate( void ) { CopyData( "\0", 1 ); }
+	void CopyData( const char *pData, int len )
+	{
+		int offset = m_buffer.AddMultipleToTail( len );
+		memcpy( m_buffer.Base() + offset, pData, len );
+	}
+private:
+	CUtlVector<char> m_buffer;
+};
 
 //-----------------------------------------------------------------------------
 // Reads all of the physics materials from surface property file
@@ -1021,10 +1045,12 @@ bool CBoneControlWindow::SerializeQC( CUtlBuffer& buf )
 			{
 				mstudiobbox_t &hitbox = list[j].m_BBox;
 				mstudiobone_t* pBone = hdr->pBone( hitbox.bone );
-				buf.Printf( "$hbox %d \"%s\"\t  %7.2f %7.2f %7.2f  %7.2f %7.2f %7.2f", 
+				buf.Printf( "$hbox %d \"%s\"\t  %7.2f %7.2f %7.2f  %7.2f %7.2f %7.2f  %7.2f %7.2f %7.2f %7.2f", 
 					hitbox.group, pBone->pszName(), 
 					hitbox.bbmin.x, hitbox.bbmin.y, hitbox.bbmin.z,
-					hitbox.bbmax.x, hitbox.bbmax.y, hitbox.bbmax.z );
+					hitbox.bbmax.x, hitbox.bbmax.y, hitbox.bbmax.z,
+					hitbox.angOffsetOrientation.x, hitbox.angOffsetOrientation.y, hitbox.angOffsetOrientation.z,
+					hitbox.flCapsuleRadius );
 				if ( !list[j].m_Name.IsEmpty() )
 				{
 					buf.Printf( " \"%s\"", list[j].m_Name.Get() );
@@ -1253,11 +1279,214 @@ ControlPanel::ControlPanel( mxWindow *parent )
 	SetupAttachmentsWindow( tab );
 	SetupIKRuleWindow( tab );
 	SetupEventWindow( tab );
+	SetupMatVarWindow( tab );
+	SetupSubmodelWindow( tab );
 
 	g_ControlPanel = this;
 
 	iSelectionToSequence = NULL;
 	iSequenceToSelection = NULL;
+}
+
+void ControlPanel::UpdateSubmodelSelection( void )
+{
+	int iSelectedSubmodel = cSubmodelList->getSelectedIndex();
+
+	bool bSubmodelButtonsEnabled = (iSelectedSubmodel != -1);
+	bSubmodelRemoveSelected->setEnabled( bSubmodelButtonsEnabled );
+	cSubmodelAttachTo->setEnabled( bSubmodelButtonsEnabled );
+	cSubmodelLocalAttachOrigin->setEnabled( bSubmodelButtonsEnabled );
+
+	if ( bSubmodelButtonsEnabled )
+	{
+		cSubmodelAttachTo->removeAll();
+		cSubmodelAttachTo->add( "_none_" );
+		cSubmodelAttachTo->select(0);
+		CStudioHdr *pHdr = g_pStudioModel->GetStudioHdr();
+		if ( pHdr )
+		{
+			for ( int n = 0; n < pHdr->numbones(); n++ )
+			{
+				const mstudiobone_t *pBone = pHdr->pBone(n);
+				if ( pBone )
+				{
+					cSubmodelAttachTo->add( pBone->pszName() );
+					if ( Q_stricmp(g_MergeModelBonePairs[iSelectedSubmodel].szTargetBone, pBone->pszName()) == 0 )
+					{
+						cSubmodelAttachTo->select(n+1);
+					}
+				}
+			}
+			for ( int n = 0; n < pHdr->GetNumAttachments(); n++ )
+			{
+				mstudioattachment_t &pModelAttachment = (mstudioattachment_t &)pHdr->pAttachment( n );
+				cSubmodelAttachTo->add( pModelAttachment.pszName() );
+				if ( Q_stricmp(g_MergeModelBonePairs[iSelectedSubmodel].szTargetBone, pModelAttachment.pszName()) == 0 )
+				{
+					cSubmodelAttachTo->select(pHdr->numbones()+n+1);
+				}
+			}
+		}
+
+		cSubmodelLocalAttachOrigin->removeAll();
+		cSubmodelLocalAttachOrigin->add( "_none_" );
+		cSubmodelLocalAttachOrigin->select(0);
+		CStudioHdr *pHdrSub = g_pStudioExtraModel[iSelectedSubmodel]->GetStudioHdr();
+		if ( pHdrSub )
+		{
+			for ( int n = 0; n < pHdrSub->numbones(); n++ )
+			{
+				const mstudiobone_t *pBone = pHdrSub->pBone(n);
+				if ( pBone )
+				{
+					cSubmodelLocalAttachOrigin->add( pBone->pszName() );
+					if ( Q_stricmp(g_MergeModelBonePairs[iSelectedSubmodel].szLocalBone, pBone->pszName()) == 0 )
+					{
+						cSubmodelLocalAttachOrigin->select(n+1);
+					}
+				}
+			}
+			for ( int n = 0; n < pHdrSub->GetNumAttachments(); n++ )
+			{
+				mstudioattachment_t &pModelAttachment = (mstudioattachment_t &)pHdrSub->pAttachment( n );
+				cSubmodelLocalAttachOrigin->add( pModelAttachment.pszName() );
+				if ( Q_stricmp(g_MergeModelBonePairs[iSelectedSubmodel].szLocalBone, pModelAttachment.pszName()) == 0 )
+				{
+					cSubmodelLocalAttachOrigin->select(pHdrSub->numbones()+n+1);
+				}
+			}
+		}
+
+	}
+	else
+	{
+		cSubmodelAttachTo->removeAll();
+		cSubmodelLocalAttachOrigin->removeAll();
+	}
+}
+
+void ControlPanel::UpdateSubmodelWindow( void )
+{
+	cSubmodelList->removeAll();
+	for ( int i = 0; i < HLMV_MAX_MERGED_MODELS; i++ )
+	{
+		if ( g_viewerSettings.mergeModelFile[i][0] != 0 )
+		{
+			cSubmodelList->add( g_viewerSettings.mergeModelFile[i] );
+		}
+	}
+	UpdateSubmodelSelection();
+}
+
+void ControlPanel::SetupSubmodelWindow( mxTab* pTab )
+{
+
+	mxWindow *wSubmodels = new mxWindow (this, 0, 0, 0, 0);
+	tab->add (wSubmodels, "Submodels");
+
+	bSubmodelAdd = new mxButton( wSubmodels, 2, 10, 90, 70, "Add Submodel", IDC_SUBMODEL_LOADMERGEDMODEL );
+	bSubmodelAddSteam = new mxButton( wSubmodels, 2, 90, 90, 20, "Add [VPK]", IDC_SUBMODEL_LOADMERGEDMODEL_STEAM );
+	bSubmodelRemoveAll = new mxButton( wSubmodels, 2, 120, 90, 50, "Remove All", IDC_SUBMODEL_UNLOADALLMERGEDMODELS );
+
+	//new mxLabel( wSubmodels, 100, 2, 100, 18, "Loaded Submodels:" );
+	cSubmodelList = new mxListBox( wSubmodels, 100, 10, 450, 175, IDC_SUBMODEL_UPDATE_SELECTION );
+	mxToolTip::add (cSubmodelList, "Select submodels to add/remove/change");
+
+	bSubmodelRemoveSelected = new mxButton( wSubmodels, 555, 10, 120, 20, "Remove Selected", IDC_SUBMODEL_UNLOADMERGEDMODEL );
+	bSubmodelRemoveSelected->setEnabled(false);
+
+	new mxLabel( wSubmodels, 555, 45, 160, 18, "Force attach to:" );
+	cSubmodelAttachTo = new mxChoice( wSubmodels, 555, 60, 200, 20, IDC_SUBMODEL_UPDATE_BONESELECTION );
+	cSubmodelAttachTo->setEnabled(false);
+
+	new mxLabel( wSubmodels, 555, 80, 160, 18, "From local attach origin:" );
+	cSubmodelLocalAttachOrigin = new mxChoice( wSubmodels, 555, 95, 200, 20, IDC_SUBMODEL_UPDATE_BONESELECTION );
+	cSubmodelLocalAttachOrigin->setEnabled(false);
+	
+}
+
+void ControlPanel::SetupMatVarWindow( mxTab* pTab )
+{
+	mxWindow *wMatVars = new mxWindow (this, 0, 0, 0, 0);
+	tab->add (wMatVars, "Materials");
+
+	new mxLabel( wMatVars, 2, 2, 100, 18, "Materials:" );
+	cMaterialList = new mxListBox( wMatVars, 0, 20, 200, 170, IDC_MATERIALVARMATS );
+	cMaterialList->add ("None");
+	cMaterialList->select (1);
+	mxToolTip::add (cMaterialList, "Materials (VMT files) this model has loaded");
+
+	new mxLabel( wMatVars, 202, 2, 100, 18, "Material Parameters:" );
+	cMaterialParamList = new mxListBox( wMatVars, 200, 20, 200, 170, IDC_MATERIALVARPARAMS );
+	cMaterialParamList->add ("None");
+	cMaterialParamList->select (1);
+	mxToolTip::add (cMaterialParamList, "Material parameters of this material");
+
+	cMaterialParamListOnlyTextures = new mxCheckBox( wMatVars, 310, 0, 95, 20, "Only Textures", IDC_MATERIALVARMATS );
+
+	new mxLabel (wMatVars, 405, 2, 100, 18, "Modify Parameter:");
+	
+	leMaterialParamText = new mxLineEdit2(wMatVars, 405, 25, 510, 24, "", IDC_MATVAREDIT);
+	leMaterialParamText->setVisible(false);
+
+	lblMatrixRotation = new mxLabel (wMatVars, 405, 55, 70, 18, "Rotation:");
+	slMaterialParamMatrixSliderRotation = new mxSlider(wMatVars, 465, 55, 450, 20, IDC_MATVARSLIDERMATRIX);
+	slMaterialParamMatrixSliderRotation->setRange( -180.0, 180.0 );
+	slMaterialParamMatrixSliderRotation->setSteps( 1, 1 );
+	slMaterialParamMatrixSliderRotation->setValue( 0.0 );
+
+	lblMatrixScaleX = new mxLabel (wMatVars, 405, 75, 70, 18, "Scale X:");
+	slMaterialParamMatrixSliderScaleX = new mxSlider(wMatVars, 465, 75, 450, 20, IDC_MATVARSLIDERMATRIX);
+	slMaterialParamMatrixSliderScaleX->setRange( -5.0, 5.0 );
+	slMaterialParamMatrixSliderScaleX->setSteps( 1, 1 );
+	slMaterialParamMatrixSliderScaleX->setValue( 1.0 );
+
+	lblMatrixScaleY = new mxLabel (wMatVars, 405, 95, 70, 18, "Scale Y:");
+	slMaterialParamMatrixSliderScaleY = new mxSlider(wMatVars, 465, 95, 450, 20, IDC_MATVARSLIDERMATRIX);
+	slMaterialParamMatrixSliderScaleY->setRange( -5.0, 5.0 );
+	slMaterialParamMatrixSliderScaleY->setSteps( 1, 1 );
+	slMaterialParamMatrixSliderScaleY->setValue( 1.0 );
+
+	lblMatrixTranslateX = new mxLabel (wMatVars, 405, 115, 70, 18, "Translate X:");
+	slMaterialParamMatrixSliderTranslateX = new mxSlider(wMatVars, 465, 115, 450, 20, IDC_MATVARSLIDERMATRIX);
+	slMaterialParamMatrixSliderTranslateX->setRange( -2.0, 2.0 );
+	slMaterialParamMatrixSliderTranslateX->setSteps( 1, 1 );
+	slMaterialParamMatrixSliderTranslateX->setValue( 0.0 );
+
+	lblMatrixTranslateY = new mxLabel (wMatVars, 405, 135, 70, 18, "Translate Y:");
+	slMaterialParamMatrixSliderTranslateY = new mxSlider(wMatVars, 465, 135, 450, 20, IDC_MATVARSLIDERMATRIX);
+	slMaterialParamMatrixSliderTranslateY->setRange( -2.0, 2.0 );
+	slMaterialParamMatrixSliderTranslateY->setSteps( 1, 1 );
+	slMaterialParamMatrixSliderTranslateY->setValue( 0.0 );
+	
+	slMaterialParamMatrixSliderRotation->setVisible(false);
+	slMaterialParamMatrixSliderScaleX->setVisible(false);
+	slMaterialParamMatrixSliderScaleY->setVisible(false);
+	slMaterialParamMatrixSliderTranslateX->setVisible(false);
+	slMaterialParamMatrixSliderTranslateY->setVisible(false);
+	lblMatrixRotation->setVisible(false);
+	lblMatrixScaleX->setVisible(false);
+	lblMatrixScaleY->setVisible(false);
+	lblMatrixTranslateX->setVisible(false);
+	lblMatrixTranslateY->setVisible(false);
+
+	bMaterialParamColor = new mxButton( wMatVars, 405, 55, 100, 30, "Color picker", IDC_MATVARCOLORPICKER );
+	bMaterialParamColor->setVisible(false);
+
+	slMaterialParamFloat = new mxSlider(wMatVars, 405, 55, 510, 20, IDC_MATVARSLIDERFLOAT);
+	slMaterialParamFloat->setRange( -1.0, 1.0 );
+	slMaterialParamFloat->setValue( 0.0 );
+	slMaterialParamFloat->setVisible(false);
+
+	cbMaterialParamMultiEdit = new mxCheckBox (wMatVars, 505, 0, 150, 20, "Affect all loaded materials", NULL);
+
+	bMaterialParamLoad = new mxButton( wMatVars, 405, 159, 100, 20, "Replace VMT", IDC_MATVARLOAD );
+	mxToolTip::add (bMaterialParamLoad, "Temporarily replace this material with a custom set of VMT parameters.");
+	bMaterialParamLoad->setVisible(false);
+
+	bMaterialParamCopyToClipboard = new mxButton( wMatVars, 510, 159, 100, 20, "Copy to clipboard", IDC_MATVARCOPYTOCLIPBOARD );
+	mxToolTip::add (bMaterialParamCopyToClipboard, "");
+	bMaterialParamCopyToClipboard->setVisible(false);
 }
 
 
@@ -1917,7 +2146,11 @@ ControlPanel::handleEvent (mxEvent *event)
 			case '2':
 			case '3':
 			case '4':
-				g_viewerSettings.renderMode = event->key - '1';
+				// don't do quick keys when in edit mode
+				if ( tab->getSelectedIndex() < 4 ) // physics tab
+				{
+					g_viewerSettings.renderMode = event->key - '1';
+				}
 				break;
 
 			case '-':
@@ -2000,6 +2233,474 @@ ControlPanel::handleEvent (mxEvent *event)
 		case IDC_ORIGINAXISLENGTH:
 		{
 			g_viewerSettings.originAxisLength = reinterpret_cast< mxSlider * >( event->widget )->getValue();
+			break;
+		}
+
+		case IDC_MATERIALVARMATS:
+		{
+			//when a material is selected, populate the material param list with all the parameters of this material
+			cMaterialParamList->removeAll();
+			
+			//hide slider controls
+			slMaterialParamMatrixSliderRotation->setVisible(false);
+			slMaterialParamMatrixSliderScaleX->setVisible(false);
+			slMaterialParamMatrixSliderScaleY->setVisible(false);
+			slMaterialParamMatrixSliderTranslateX->setVisible(false);
+			slMaterialParamMatrixSliderTranslateY->setVisible(false);
+			lblMatrixRotation->setVisible(false);
+			lblMatrixScaleX->setVisible(false);
+			lblMatrixScaleY->setVisible(false);
+			lblMatrixTranslateX->setVisible(false);
+			lblMatrixTranslateY->setVisible(false);
+			slMaterialParamFloat->setVisible(false);
+			leMaterialParamText->setVisible(false);
+			bMaterialParamColor->setVisible(false);
+			bMaterialParamLoad->setVisible(false);
+			bMaterialParamCopyToClipboard->setVisible(false);
+
+			if ( cMaterialList->getSelectedIndex() < 0 )
+				break;
+
+			studiohdr_t* pStudioR = g_pStudioModel->GetStudioRenderHdr();
+			if ( pStudioR )
+			{
+				IMaterial *pMaterials[128];
+				g_pStudioRender->GetMaterialList( pStudioR, ARRAYSIZE( pMaterials ), &pMaterials[0] );
+
+				IMaterial *pSelectedMaterial = pMaterials[ cMaterialList->getSelectedIndex() ];
+
+				if ( g_OnlyEditMaterialsThatWantToBeEdited )
+				{
+					bool bLocalHideOthersInHLMV = false;
+					pSelectedMaterial->FindVar("$hlmvallowedit", &bLocalHideOthersInHLMV, false);
+
+					if ( !bLocalHideOthersInHLMV )
+						break;
+				}
+
+				if ( !pSelectedMaterial->IsErrorMaterial() )
+				{
+					bMaterialParamLoad->setVisible( true );
+					bMaterialParamCopyToClipboard->setVisible(true);
+
+					int nShaderParams = pSelectedMaterial->ShaderParamCount();
+					IMaterialVar **pMatVars = pSelectedMaterial->GetShaderParams();
+
+					for (int n=0; n<nShaderParams; n++ )
+					{
+						IMaterialVar *pThisVar = pMatVars[n];
+						if (pThisVar->IsDefined() )
+						{
+							if ( cMaterialParamListOnlyTextures->isChecked() && !pThisVar->IsTexture() )
+								continue;
+
+							cMaterialParamList->add( pThisVar->GetName() );
+						}
+					}
+				}
+			}
+			break;
+		}
+
+		case IDC_MATERIALVARPARAMS:
+		{
+			// when a material parameter is selected, populate the lineedit control with the string value of that parameter
+			leMaterialParamText->clear();
+
+			studiohdr_t* pStudioR = g_pStudioModel->GetStudioRenderHdr();
+			if ( pStudioR )
+			{
+				IMaterial *pMaterials[128];
+				//int nMaterials = 
+				g_pStudioRender->GetMaterialList( pStudioR, ARRAYSIZE( pMaterials ), &pMaterials[0] );
+
+				bool bHideInHLMV = false;
+				if ( g_OnlyEditMaterialsThatWantToBeEdited )
+				{
+					bool bLocalHideOthersInHLMV = false;
+					pMaterials[cMaterialList->getSelectedIndex()]->FindVar("$hlmvallowedit", &bLocalHideOthersInHLMV, false);
+					if ( !bLocalHideOthersInHLMV )
+						bHideInHLMV = true;
+				}
+
+				leMaterialParamText->setVisible(!bHideInHLMV);
+				bMaterialParamColor->setVisible(!bHideInHLMV);
+				bMaterialParamLoad->setVisible(!bHideInHLMV);
+
+				if ( !pMaterials[ cMaterialList->getSelectedIndex() ]->IsErrorMaterial() )
+				{
+					bool bFoundParam = false;
+					IMaterialVar *pThisVar = pMaterials[cMaterialList->getSelectedIndex()]->FindVar( cMaterialParamList->getItemText(cMaterialParamList->getSelectedIndex()), &bFoundParam, false );
+					if (bFoundParam)
+					{
+
+						//hide type-specific controls
+						bMaterialParamColor->setVisible(false);
+						slMaterialParamMatrixSliderRotation->setVisible(false);
+						slMaterialParamMatrixSliderScaleX->setVisible(false);
+						slMaterialParamMatrixSliderScaleY->setVisible(false);
+						slMaterialParamMatrixSliderTranslateX->setVisible(false);
+						slMaterialParamMatrixSliderTranslateY->setVisible(false);
+						lblMatrixRotation->setVisible(false);
+						lblMatrixScaleX->setVisible(false);
+						lblMatrixScaleY->setVisible(false);
+						lblMatrixTranslateX->setVisible(false);
+						lblMatrixTranslateY->setVisible(false);
+						slMaterialParamFloat->setVisible(false);
+
+						switch ( pThisVar->GetType() )
+						{
+
+							case MATERIAL_VAR_TYPE_FLOAT:
+								{
+									slMaterialParamFloat->setVisible(true);
+									if ( pThisVar->GetFloatValue() > slMaterialParamFloat->getMaxValue() || pThisVar->GetFloatValue() < slMaterialParamFloat->getMinValue() )
+									{
+										slMaterialParamFloat->setRange( -pThisVar->GetFloatValue() * 2.0, pThisVar->GetFloatValue() * 2.0 );
+									}
+									else
+									{
+										slMaterialParamFloat->setRange( -1.0, 1.0 );
+									}
+									slMaterialParamFloat->setValue( pThisVar->GetFloatValue() );
+									leMaterialParamText->setText( pThisVar->GetStringValue() );
+								}
+								break;
+
+							case MATERIAL_VAR_TYPE_VECTOR:
+								{
+									bMaterialParamColor->setVisible(true);
+									leMaterialParamText->setText( pThisVar->GetStringValue() );
+								}
+								break;
+
+							case MATERIAL_VAR_TYPE_MATRIX:
+								{
+
+									slMaterialParamMatrixSliderRotation->setVisible(true);
+									slMaterialParamMatrixSliderScaleX->setVisible(true);
+									slMaterialParamMatrixSliderScaleY->setVisible(true);
+									slMaterialParamMatrixSliderTranslateX->setVisible(true);
+									slMaterialParamMatrixSliderTranslateY->setVisible(true);
+									lblMatrixRotation->setVisible(true);
+									lblMatrixScaleX->setVisible(true);
+									lblMatrixScaleY->setVisible(true);
+									lblMatrixTranslateX->setVisible(true);
+									lblMatrixTranslateY->setVisible(true);
+
+									VMatrix mat = pThisVar->GetMatrixValue();
+									Vector tempScale = mat.GetScale();
+									Vector tempTrans = mat.GetTranslation();
+									QAngle tempAngle;
+									MatrixToAngles( mat, tempAngle );
+
+									slMaterialParamMatrixSliderScaleX->setValue( tempScale.x );
+									slMaterialParamMatrixSliderScaleY->setValue( tempScale.y );
+									slMaterialParamMatrixSliderTranslateX->setValue( tempTrans.x );
+									slMaterialParamMatrixSliderTranslateY->setValue( tempTrans.y );
+									slMaterialParamMatrixSliderRotation->setValue( tempAngle.y );
+
+									char temp[255];
+									V_snprintf( temp, sizeof(temp), " center .5 .5 scale %f %f rotate %f translate %f %f", tempScale.x, tempScale.y, tempAngle.y, tempTrans.x, tempTrans.y );
+
+									leMaterialParamText->setText( temp );
+								}
+								break;
+
+							default:
+								{
+									leMaterialParamText->setText( pThisVar->GetStringValue() );
+								}
+								break;
+						}
+
+					}
+				}
+			}
+			break;
+		}
+
+		case IDC_MATVAREDIT:
+		{
+			char str[ 255 ];
+			leMaterialParamText->getText( str, sizeof( str ) );
+
+			if ( V_strcmp( str, "" ) )
+			{
+				studiohdr_t* pStudioR = g_pStudioModel->GetStudioRenderHdr();
+				if ( pStudioR )
+				{
+					IMaterial *pMaterials[128];
+					g_pStudioRender->GetMaterialList( pStudioR, ARRAYSIZE( pMaterials ), &pMaterials[0] );
+
+					if ( !pMaterials[ cMaterialList->getSelectedIndex() ]->IsErrorMaterial() )
+					{
+						bool bFoundParam = false;
+						IMaterialVar *pThisVar = pMaterials[cMaterialList->getSelectedIndex()]->FindVar( cMaterialParamList->getItemText(cMaterialParamList->getSelectedIndex()), &bFoundParam, false );
+						if (bFoundParam)
+						{
+							pThisVar->SetValueAutodetectType( str );
+							pMaterials[cMaterialList->getSelectedIndex()]->RefreshPreservingMaterialVars();
+						}
+
+						//if affect all loaded materials is checked, loop through other materials and attempt the same change
+						if ( cbMaterialParamMultiEdit->isChecked() )
+						{
+							for ( int i=0; i<cMaterialList->getItemCount(); i++ )
+							{
+								if ( i == cMaterialList->getSelectedIndex() )
+									continue;
+
+								if ( g_OnlyEditMaterialsThatWantToBeEdited )
+								{
+									bool bLocalHideOthersInHLMV = false;
+									pMaterials[i]->FindVar("$hlmvallowedit", &bLocalHideOthersInHLMV, false);
+									if ( !bLocalHideOthersInHLMV )
+										continue;
+								}
+
+								IMaterialVar *pThisVar = pMaterials[i]->FindVar( cMaterialParamList->getItemText(cMaterialParamList->getSelectedIndex()), &bFoundParam, false );
+								if (bFoundParam)
+								{
+									pThisVar->SetValueAutodetectType( str );
+									pMaterials[i]->RefreshPreservingMaterialVars();
+								}
+
+							}
+						}
+
+					}
+
+				}
+			}
+
+			break;
+		}
+
+		case IDC_MATVARCOLORPICKER:
+		{
+			
+			char str[255];
+			char str2[255];
+			leMaterialParamText->getText(str,sizeof(str));
+
+			// replace both possible variants
+			V_StrSubst( str, "[ ", "", str2, sizeof(str2) );
+			V_StrSubst( str2, " ]", "", str, sizeof(str) );
+			V_StrSubst( str, "{ ", "", str2, sizeof(str2) );
+			V_StrSubst( str2, " }", "", str, sizeof(str) );
+
+			CUtlVector< char * > vectorComponents;
+			V_SplitString(str, " ", vectorComponents );
+
+			int r = atoi(vectorComponents[0]);
+			int g = atoi(vectorComponents[1]);
+			int b = atoi(vectorComponents[2]);
+
+			if (mxChooseColor (this, &r, &g, &b))
+			{
+				char result[255];
+				V_snprintf(result, sizeof(result), "{ %i %i %i }", r, g, b );
+				leMaterialParamText->setText(result);
+			}
+
+			break;
+		}
+
+
+		case IDC_MATVARCOPYTOCLIPBOARD:
+		{
+			int nMatSelection = cMaterialList->getSelectedIndex();
+			if ( nMatSelection < 0 || !strcmp( cMaterialList->getItemText(nMatSelection), "None" ) )
+			{
+				mxMessageBox (this, "No material selected.", g_appTitle, MX_MB_OK | MX_MB_ERROR);
+				break;
+			}
+			studiohdr_t* pStudioR = g_pStudioModel->GetStudioRenderHdr();
+			if ( !pStudioR )
+			{
+				mxMessageBox (this, "No loaded model.", g_appTitle, MX_MB_OK | MX_MB_ERROR);
+				break;
+			}
+
+			IMaterial *pMaterials[128];
+			g_pStudioRender->GetMaterialList(pStudioR, ARRAYSIZE(pMaterials), &pMaterials[0]);
+			IMaterial *pSelectedMaterial = pMaterials[nMatSelection];
+
+			if (pSelectedMaterial->IsErrorMaterial())
+			{
+				mxMessageBox(this, "Selected material is ErrorMaterial.", g_appTitle, MX_MB_OK | MX_MB_ERROR);
+				break;
+			}
+
+			// write material property KVs to clipboard
+
+			CTextBuffer out;
+			out.WriteText( pSelectedMaterial->GetShaderName() );
+			out.WriteText( "\r\n{\r\n" );
+			IMaterialVar **pMatVars = pSelectedMaterial->GetShaderParams();
+			for ( int n = 0; n < pSelectedMaterial->ShaderParamCount(); n++ )
+			{
+				IMaterialVar *pThisVar = pMatVars[n];
+				if ( pThisVar->IsDefined() )
+				{
+					char tmp[512];
+					sprintf( tmp, "\t\"%s\" \"%s\"\r\n", pThisVar->GetName(), pThisVar->GetStringValue() );
+					out.WriteText( tmp );
+				}
+			}
+			out.WriteText( "\r\n}\r\n" );
+			
+			if ( out.GetSize() )
+			{
+				char *pOutput = new char[out.GetSize()];
+				memcpy( pOutput, out.GetData(), out.GetSize() );
+				Sys_CopyStringToClipboard( pOutput );
+
+				mxMessageBox (this, "Material properties copied to clipboard.", g_appTitle, MX_MB_OK | MX_MB_INFORMATION);
+			}
+
+			break;
+		}
+
+
+		case IDC_MATVARLOAD:
+		{
+			int nMatSelection = cMaterialList->getSelectedIndex();
+			if ( nMatSelection < 0 || !strcmp( cMaterialList->getItemText(nMatSelection), "None" ) )
+			{
+				mxMessageBox (this, "Can't replace VMT parameters: No material selected.", g_appTitle, MX_MB_OK | MX_MB_ERROR);
+				break;
+			}
+			studiohdr_t* pStudioR = g_pStudioModel->GetStudioRenderHdr();
+			if ( !pStudioR )
+			{
+				mxMessageBox (this, "Can't replace VMT parameters: No loaded model.", g_appTitle, MX_MB_OK | MX_MB_ERROR);
+				break;
+			}
+
+			IMaterial *pMaterials[128];
+			g_pStudioRender->GetMaterialList(pStudioR, ARRAYSIZE(pMaterials), &pMaterials[0]);
+			IMaterial *pSelectedMaterial = pMaterials[nMatSelection];
+
+			if (pSelectedMaterial->IsErrorMaterial())
+			{
+				mxMessageBox(this, "Can't replace VMT parameters: Selected material is ErrorMaterial.", g_appTitle, MX_MB_OK | MX_MB_ERROR);
+				break;
+			}
+
+			const char *pFilePath = mxGetOpenFileName (this, 0, "*.vmt");
+			if (pFilePath)
+			{
+				KeyValues *kvLoadedFromFile = new KeyValues( pSelectedMaterial->GetShaderName() );
+
+				if ( kvLoadedFromFile->LoadFromFile( g_pFileSystem, pFilePath ) )
+				{
+					cMaterialList->deselect(nMatSelection);
+					cMaterialParamList->removeAll();
+					
+					//hide slider controls
+					slMaterialParamMatrixSliderRotation->setVisible(false);
+					slMaterialParamMatrixSliderScaleX->setVisible(false);
+					slMaterialParamMatrixSliderScaleY->setVisible(false);
+					slMaterialParamMatrixSliderTranslateX->setVisible(false);
+					slMaterialParamMatrixSliderTranslateY->setVisible(false);
+					lblMatrixRotation->setVisible(false);
+					lblMatrixScaleX->setVisible(false);
+					lblMatrixScaleY->setVisible(false);
+					lblMatrixTranslateX->setVisible(false);
+					lblMatrixTranslateY->setVisible(false);
+					slMaterialParamFloat->setVisible(false);
+					leMaterialParamText->setVisible(false);
+					bMaterialParamColor->setVisible(false);
+					bMaterialParamLoad->setVisible(false);
+					
+					KeyValues *kv = new KeyValues(pSelectedMaterial->GetShaderName());
+					IMaterialVar **pMatVars = pSelectedMaterial->GetShaderParams();
+					for (int n = 0; n < pSelectedMaterial->ShaderParamCount(); n++)
+					{
+						IMaterialVar *pThisVar = pMatVars[n];
+						if (pThisVar->IsDefined())
+							kv->SetString(pThisVar->GetName(), pThisVar->GetStringValue());
+					}
+					
+					kv->MergeFrom( kvLoadedFromFile, KeyValues::MERGE_KV_UPDATE );
+					
+					pSelectedMaterial->SetShaderAndParams( kv );
+					pSelectedMaterial->Refresh();
+
+					if (cbMaterialParamMultiEdit->isChecked())
+					{
+						for (int i = 0; i < cMaterialList->getItemCount(); i++)
+						{
+							if (i == cMaterialList->getSelectedIndex())
+								continue;
+
+							if ( g_OnlyEditMaterialsThatWantToBeEdited )
+							{
+								bool bLocalHideOthersInHLMV = false;
+								pMaterials[i]->FindVar("$hlmvallowedit", &bLocalHideOthersInHLMV, false);
+								if ( !bLocalHideOthersInHLMV )
+									continue;
+							}
+
+							pSelectedMaterial = pMaterials[i];
+
+							KeyValues *kv = new KeyValues(pSelectedMaterial->GetShaderName());
+							IMaterialVar **pMatVars = pSelectedMaterial->GetShaderParams();
+							for (int n = 0; n < pSelectedMaterial->ShaderParamCount(); n++)
+							{
+								IMaterialVar *pThisVar = pMatVars[n];
+								if (pThisVar->IsDefined())
+									kv->SetString(pThisVar->GetName(), pThisVar->GetStringValue());
+							}
+
+							kv->MergeFrom(kvLoadedFromFile, KeyValues::MERGE_KV_UPDATE);
+
+							pSelectedMaterial->SetShaderAndParams(kv);
+							pSelectedMaterial->Refresh();
+
+							if ( kv )
+								kv->deleteThis();
+
+						}
+					}
+
+					if ( kv )
+						kv->deleteThis();
+
+					if ( kvLoadedFromFile )
+						kvLoadedFromFile->deleteThis();
+					
+				}
+				else
+				{
+					mxMessageBox(this, "Failed to load vmt file.", g_appTitle, MX_MB_OK | MX_MB_ERROR);
+					break;
+				}
+
+			}
+
+		}
+
+		case IDC_MATVARSLIDERMATRIX:
+		{
+			char temp[255];
+			V_snprintf( temp, sizeof(temp), " center .5 .5 scale %f %f rotate %f translate %f %f", 
+				slMaterialParamMatrixSliderScaleX->getValue(), slMaterialParamMatrixSliderScaleY->getValue(),
+				slMaterialParamMatrixSliderRotation->getValue(),
+				slMaterialParamMatrixSliderTranslateX->getValue(), slMaterialParamMatrixSliderTranslateY->getValue() );
+			leMaterialParamText->setText(temp);
+
+			break;
+		}
+
+		case IDC_MATVARSLIDERFLOAT:
+		{
+			char temp[255];
+			V_snprintf( temp, sizeof(temp), "%f", slMaterialParamFloat->getValue() );
+			leMaterialParamText->setText(temp);
+
 			break;
 		}
 
@@ -2255,6 +2956,28 @@ ControlPanel::handleEvent (mxEvent *event)
 		}
 		break;
 
+		case IDC_EXPLORE_TO_VMT:
+		{
+			int index = cMessageList->getSelectedIndex();
+			if (index >= 0)
+			{
+				char szAbsPath[260];
+				V_sprintf_safe( szAbsPath, "%s\\%s\\materials\\%s.vmt", getenv("VGAME"), getenv("VMOD"), cMessageList->getItemText( index ) );
+				
+				for (char *cp = szAbsPath; *cp; cp++)
+				{
+					if (*cp == '/')
+						*cp = '\\';
+				
+					if (*cp == '\r' ||*cp == '\n')
+						*cp = '\0';
+				}
+
+				ShellExecute( 0, 0, _T(szAbsPath), 0, 0, SW_SHOW );
+			}
+		}
+		break;
+
 		case IDC_SUBMODEL:
 		{
 			int index = cSubmodel->getSelectedIndex();
@@ -2365,6 +3088,107 @@ ControlPanel::handleEvent (mxEvent *event)
 
 		case IDC_EVENT_QC_STRING:
 			// ignore edits to the qc text box
+			break;
+
+		case IDC_SUBMODEL_UPDATE_BONESELECTION:
+			{
+				int iSelectedSubmodel = cSubmodelList->getSelectedIndex();
+				if ( iSelectedSubmodel != -1 )
+				{
+					strcpy( g_MergeModelBonePairs[iSelectedSubmodel].szTargetBone, cSubmodelAttachTo->getLabel() );
+					strcpy( g_MergeModelBonePairs[iSelectedSubmodel].szLocalBone, cSubmodelLocalAttachOrigin->getLabel() );
+				}
+			}
+			break;
+
+		case IDC_SUBMODEL_UPDATE_SELECTION:
+			{
+				UpdateSubmodelSelection();
+			}
+			break;
+
+		case IDC_SUBMODEL_LOADMERGEDMODEL:
+			{
+				const char *ptr = mxGetOpenFileName (this, 0, "*.mdl");
+				if (ptr)
+				{
+					// find the first free slot
+					int iChosenSlot = 0;
+					for ( int i = 0; i < HLMV_MAX_MERGED_MODELS; i++ )
+					{
+						if ( g_viewerSettings.mergeModelFile[i][0] == 0 )
+						{
+							iChosenSlot = i;
+							break;
+						}
+					}
+					strcpy( g_viewerSettings.mergeModelFile[iChosenSlot], ptr );
+					g_MDLViewer->LoadModelFile( ptr, iChosenSlot );
+				}
+			}
+			break;
+
+		case IDC_SUBMODEL_LOADMERGEDMODEL_STEAM:
+			{
+				const char *pFilename = g_MDLViewer->SteamGetOpenFilename();
+				if ( pFilename )
+				{
+					// find the first free slot
+					int iChosenSlot = 0;
+					for ( int i = 0; i < HLMV_MAX_MERGED_MODELS; i++ )
+					{
+						if ( g_viewerSettings.mergeModelFile[i][0] == 0 )
+						{
+							iChosenSlot = i;
+							break;
+						}
+					}
+					strcpy( g_viewerSettings.mergeModelFile[iChosenSlot], pFilename );
+					g_MDLViewer->LoadModelFile( pFilename, iChosenSlot );
+				}
+			}
+			break;
+
+
+		case IDC_SUBMODEL_UNLOADMERGEDMODEL:
+			{
+				int i = cSubmodelList->getSelectedIndex();
+				// FIXME: move to d_cpl
+				if ( i != -1 && g_pStudioExtraModel[i])
+				{
+					strcpy( g_viewerSettings.mergeModelFile[i], "" );
+					g_pStudioExtraModel[i]->FreeModel( false );
+					delete g_pStudioExtraModel[i];
+					g_pStudioExtraModel[i] = NULL;
+				}
+
+				//need to push the missing index out of the merged model list
+				for ( int i = 0; i < HLMV_MAX_MERGED_MODELS - 1; i++ )
+				{
+					if ( g_pStudioExtraModel[i] == NULL && g_pStudioExtraModel[i+1] != NULL )
+					{
+						strcpy( g_viewerSettings.mergeModelFile[i], g_viewerSettings.mergeModelFile[i+1] );
+						strcpy( g_viewerSettings.mergeModelFile[i+1], "" );
+						g_pStudioExtraModel[i] = g_pStudioExtraModel[i+1];
+						g_pStudioExtraModel[i+1] = NULL;
+
+						
+						strcpy( g_MergeModelBonePairs[i].szLocalBone, g_MergeModelBonePairs[i+1].szLocalBone );
+						strcpy( g_MergeModelBonePairs[i+1].szLocalBone, "" );
+						strcpy( g_MergeModelBonePairs[i].szTargetBone, g_MergeModelBonePairs[i+1].szTargetBone );
+						strcpy( g_MergeModelBonePairs[i+1].szTargetBone, "" );
+					}
+				}
+
+				UpdateSubmodelWindow();
+			}
+			break;
+
+
+		case IDC_SUBMODEL_UNLOADALLMERGEDMODELS:
+			{
+				UnloadAllMergedModels();
+			}
 			break;
 
 		default:
@@ -2688,6 +3512,31 @@ void ControlPanel::OnLoadModel( void )
 		centerView();
 		centerView();
 	}
+
+	if ( g_viewerSettings.guessModelFOV )
+	{
+		// guess the category and set a reasonable default fov
+		if ( V_stristr( g_pStudioModel->GetFileName(), "\\player\\" ) )
+		{
+			setFOV( 90.0f );
+		}
+		else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons\\v_" ) )
+		{
+			setFOV( 54.0f );
+		}
+		else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons\\v_models\\" ) )
+		{
+			setFOV( 54.0f );
+		}
+		else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons\\w_" ) )
+		{
+			setFOV( 90.0f );
+		}
+		else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons\\w_models\\" ) )
+		{
+			setFOV( 90.0f );
+		}
+	}
 }
 
 
@@ -2712,11 +3561,8 @@ LoadModelResult_t ControlPanel::loadModel(const char *filename, int slot )
 		if (g_pStudioExtraModel[slot]->PostLoadModel( filename ))
 		{
 			connectFlexes( g_pStudioExtraModel[slot]->GetStudioHdr() );
-			if ( g_MDLViewer && g_MDLViewer->getMenuBar() )
-			{
-				g_MDLViewer->getMenuBar()->modify (IDC_FILE_UNLOADMERGEDMODEL1 + slot, IDC_FILE_UNLOADMERGEDMODEL1 + slot, filename);
-				g_MDLViewer->getMenuBar()->setEnabled (IDC_FILE_UNLOADMERGEDMODEL1 + slot, true);
-			}
+
+			UpdateSubmodelWindow();
 			return LoadModel_Success;
 		}
 		else
@@ -3510,6 +4356,7 @@ ControlPanel::setModelInfo()
 	if ( g_pStudioModel && !m_bVMTInfoLoaded )
 	{
 		UpdateMaterialList();
+		UpdateMaterialVars();
 	}
 
 	if( checkSum == hdr->GetRenderHdr()->checksum && boneLODCount == g_DrawModelResults.m_NumHardwareBones && numBatches == g_DrawModelResults.m_NumBatches)
@@ -3586,6 +4433,73 @@ void ControlPanel::UpdateMaterialList( )
 	}
 }
 
+void ControlPanel::UpdateMaterialVars( )
+{
+	cMaterialList->removeAll();
+	cMaterialParamList->removeAll();
+	leMaterialParamText->clear();
+
+	//hide slider controls
+	slMaterialParamMatrixSliderRotation->setVisible(false);
+	slMaterialParamMatrixSliderScaleX->setVisible(false);
+	slMaterialParamMatrixSliderScaleY->setVisible(false);
+	slMaterialParamMatrixSliderTranslateX->setVisible(false);
+	slMaterialParamMatrixSliderTranslateY->setVisible(false);
+	lblMatrixRotation->setVisible(false);
+	lblMatrixScaleX->setVisible(false);
+	lblMatrixScaleY->setVisible(false);
+	lblMatrixTranslateX->setVisible(false);
+	lblMatrixTranslateY->setVisible(false);
+	slMaterialParamFloat->setVisible(false);
+
+	studiohdr_t* pStudioR = g_pStudioModel->GetStudioRenderHdr();
+	if ( pStudioR )
+	{
+		IMaterial *pMaterials[128];
+		int nMaterials = g_pStudioRender->GetMaterialList( pStudioR, ARRAYSIZE( pMaterials ), &pMaterials[0] );
+
+		//first parse all materials to see if any materials want to hide any others
+		g_OnlyEditMaterialsThatWantToBeEdited = false;
+		for (int i = 0; i < nMaterials; i++)
+		{
+			bool bLocalHideOthersInHLMV = false;
+			pMaterials[i]->FindVar("$hlmvallowedit", &bLocalHideOthersInHLMV, false);
+
+			if ( bLocalHideOthersInHLMV )
+			{
+				g_OnlyEditMaterialsThatWantToBeEdited = true;
+				break;
+			}
+		}
+
+		for ( int i = 0; i < nMaterials; i++ )
+		{
+			char c_MaterialLine[256];
+			Q_strcpy( c_MaterialLine, "" );
+
+			bool bLocalHideOthersInHLMV = false;
+			pMaterials[i]->FindVar( "$hlmvallowedit", &bLocalHideOthersInHLMV, false );
+
+			if ( pMaterials[i]->IsErrorMaterial() )
+			{
+				Q_strcpy( c_MaterialLine, "[error] could not load material" );
+			}
+			else if ( g_OnlyEditMaterialsThatWantToBeEdited && !bLocalHideOthersInHLMV )
+			{
+				Q_strcpy( c_MaterialLine, "[ " );
+				Q_strcat( c_MaterialLine, V_GetFileName( pMaterials[i]->GetName() ), sizeof( c_MaterialLine ) );
+				Q_strcat( c_MaterialLine, " ]", sizeof( c_MaterialLine ) );
+			}
+			else
+			{
+				Q_strcat( c_MaterialLine, V_GetFileName( pMaterials[i]->GetName() ), sizeof( c_MaterialLine ) );
+			}
+
+			cMaterialList->add(c_MaterialLine);
+		}
+	}
+}
+
 
 extern 	matrix3x4_t g_viewtransform;
 
@@ -3646,7 +4560,8 @@ void ControlPanel::centerView( )
 	g_viewerSettings.lightrot[0] = 0.0f;
 	g_viewerSettings.lightrot[1] = 180.0f; // light should aim at models front
 	g_viewerSettings.lightrot[2] = 0.0f;
-	setFOV( 65.0f );
+	if ( !g_viewerSettings.guessModelFOV )
+		setFOV( 65.0f );
 	d_MatSysWindow->redraw();
 }
 
@@ -3662,7 +4577,8 @@ void ControlPanel::viewmodelView()
 	g_viewerSettings.lightrot[0] = 0.0f;
 	g_viewerSettings.lightrot[1] = 180.0f; // light should aim at models front
 	g_viewerSettings.lightrot[2] = 0.0f;
-	setFOV( 54.0f );
+	if ( !g_viewerSettings.guessModelFOV )
+		setFOV( 54.0f );
 	d_MatSysWindow->redraw();
 }
 
@@ -4022,17 +4938,16 @@ void ControlPanel::SetFrameSlider( float flFrame )
 //-----------------------------------------------------------------------------
 void ControlPanel::UnloadAllMergedModels()
 {
-	for ( int i = 0; i < HLMV_MAX_MERGED_MODELS; ++i )
+	for ( int i = 0; i<HLMV_MAX_MERGED_MODELS; i++ )
 	{
-		g_MDLViewer->getMenuBar()->modify( IDC_FILE_UNLOADMERGEDMODEL1 + i, IDC_FILE_UNLOADMERGEDMODEL1 + i, "(empty)" );
-		g_MDLViewer->getMenuBar()->setEnabled( IDC_FILE_UNLOADMERGEDMODEL1 + i, false );
-		V_strcpy_safe( g_viewerSettings.mergeModelFile[i], "" );
-
+		// FIXME: move to d_cpl
 		if ( g_pStudioExtraModel[i] )
 		{
+			strcpy( g_viewerSettings.mergeModelFile[i], "" );
 			g_pStudioExtraModel[i]->FreeModel( false );
 			delete g_pStudioExtraModel[i];
 			g_pStudioExtraModel[i] = NULL;
 		}
 	}
+	UpdateSubmodelWindow();
 }

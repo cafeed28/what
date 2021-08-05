@@ -514,6 +514,8 @@ CWeaponCSBase::CWeaponCSBase()
 	m_fLastShotTime = 0.0f;
 	m_weaponMode = Primary_Mode;
 
+	ResetPostponeFireReadyTime();
+
 	m_bReloadVisuallyComplete = false;
 
 	m_flDoneSwitchingSilencer = 0.0f;
@@ -1387,6 +1389,14 @@ void CWeaponCSBase::Precache( void )
 
 Activity CWeaponCSBase::GetDeployActivity( void )
 {
+	CBaseCombatCharacter *pOwner = GetOwner();
+	if (pOwner)
+	{
+		if ( GetReserveAmmoCount( AMMO_POSITION_PRIMARY ) <= 0 && LookupActivity( "ACT_VM_EMPTY_DRAW" ) > 0 )
+		{
+			return ACT_VM_EMPTY_DRAW;
+		}
+	}
 	return ACT_VM_DRAW;
 }
 
@@ -1512,6 +1522,7 @@ bool CWeaponCSBase::Deploy()
 	if ( pPlayer )
 	{
 		pPlayer->m_iLastZoom = 0;
+		pPlayer->m_bIsScoped = false;
 		pPlayer->SetFOV( pPlayer, 0 );
 	}
 #else
@@ -1629,7 +1640,6 @@ void CWeaponCSBase::Drop(const Vector &vecVelocity)
 	SetGravity(1.0);
 	m_iState = WEAPON_NOT_CARRIED;
 	RemoveEffects( EF_NODRAW );
-	FallInit();
 	SetGroundEntity( NULL );
 
 	m_bInReload = false; // stop reloading
@@ -1641,6 +1651,13 @@ void CWeaponCSBase::Drop(const Vector &vecVelocity)
 	// The m_nextOwnerTouchTime delay fixes that.
 	m_nextOwnerTouchTime = gpGlobals->curtime + 0.1f;
 	m_prevOwner = GetPlayerOwner();
+
+	SetOwnerEntity( NULL );
+	SetOwner( NULL );
+
+	VerifyAndSetContextSensitiveWeaponModel();
+
+	FallInit();
 
 	SetTouch(&CWeaponCSBase::DefaultTouch);
 
@@ -1656,9 +1673,6 @@ void CWeaponCSBase::Drop(const Vector &vecVelocity)
 	}
 
 	SetNextThink( gpGlobals->curtime );
-
-	SetOwnerEntity( NULL );
-	SetOwner( NULL );
 
 	m_bReloadVisuallyComplete = false;
 
@@ -2162,7 +2176,7 @@ ConVar cl_cam_driver_compensation_scale( "cl_cam_driver_compensation_scale", "0.
 			if ( !pPlayer )
 				return true;
 
-			if ( pPlayer && pPlayer->GetFOV() != pPlayer->GetDefaultFOV() )
+			if ( pPlayer && pPlayer->GetFOV() != pPlayer->GetDefaultFOV() && pPlayer->m_bIsScoped )
 				return true;
 
 			// hide particle effects when we're interpolating between observer targets
@@ -2210,7 +2224,7 @@ ConVar cl_cam_driver_compensation_scale( "cl_cam_driver_compensation_scale", "0.
 		else if ( event == AE_CLIENT_EJECT_BRASS )
 		{
 			C_CSPlayer *pPlayer = ToCSPlayer( GetOwner() );
-			if ( pPlayer && pPlayer->GetFOV() < pPlayer->GetDefaultFOV() )
+			if( pPlayer && pPlayer->GetFOV() != pPlayer->GetDefaultFOV() && pPlayer->m_bIsScoped )
 				return true;
 
 			Vector origin;
@@ -2548,6 +2562,44 @@ ConVar cl_cam_driver_compensation_scale( "cl_cam_driver_compensation_scale", "0.
 					{
 						vm->SetPoseParameter( pEvent->options, fmod( m_iNumEmptyAttacks, (float) GetMaxClip1() ) / (float) GetMaxClip1() );
 					}
+				}
+			}
+			else if ( nEvent == AE_CL_SHOW_SILENCER )
+			{
+				if ( CBasePlayer *pOwner = ToBasePlayer( GetPlayerOwner() ) )
+				{
+					if ( CBaseViewModel *vm = pOwner->GetViewModel( m_nViewModelIndex ) )
+						vm->SetBodygroup( vm->FindBodygroupByName( "silencer" ), 0 );
+				}
+
+				//world model
+				CBaseWeaponWorldModel *pWorldModel = GetWeaponWorldModel();
+				if ( pWorldModel )
+				{
+					pWorldModel->SetBodygroup( pWorldModel->FindBodygroupByName( "silencer" ), 0 );
+				}
+				else
+				{
+					SetBodygroup( FindBodygroupByName( "silencer" ), 0 );
+				}
+			}
+			else if ( nEvent == AE_CL_HIDE_SILENCER )
+			{
+				if ( CBasePlayer *pOwner = ToBasePlayer( GetPlayerOwner() ) )
+				{
+					if ( CBaseViewModel *vm = pOwner->GetViewModel( m_nViewModelIndex ) )
+						vm->SetBodygroup( vm->FindBodygroupByName( "silencer" ), 1 );
+				}
+
+				//world model
+				CBaseWeaponWorldModel *pWorldModel = GetWeaponWorldModel();
+				if ( pWorldModel )
+				{
+					pWorldModel->SetBodygroup( pWorldModel->FindBodygroupByName( "silencer" ), 1 );
+				}
+				else
+				{
+					SetBodygroup( FindBodygroupByName( "silencer" ), 1 );
 				}
 			}
 			else if ( nEvent == AE_CL_EJECT_MAG )

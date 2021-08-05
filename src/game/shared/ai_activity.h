@@ -268,6 +268,8 @@ typedef enum
 	ACT_VM_ATTACH_SILENCER,
 	ACT_VM_DETACH_SILENCER,
 
+	ACT_VM_EMPTY_DRAW,			// Deploy an Empty weapon
+
 	// TF2 Scout Pack
 	ACT_VM_DRAW_SPECIAL,
 	ACT_VM_HOLSTER_SPECIAL,
@@ -2196,11 +2198,6 @@ typedef enum
 	ACT_MELEE_VM_INSPECT_START,
 	ACT_MELEE_VM_INSPECT_IDLE,
 	ACT_MELEE_VM_INSPECT_END,
-
-	ACT_DEFUSE,
-	ACT_DEFUSE_WITH_KIT,
-	ACT_DEFUSE_CROUCH,
-	ACT_DEFUSE_WITH_KIT_CROUCH,
 
 
 	// csgo death anims that don't require direction (direction is pose-param driven for more granularity)
