@@ -1912,7 +1912,6 @@ bool C_BaseEntity::GetAttachmentVelocity( int number, Vector &originVel, Quatern
 	return true;
 }
 
-
 //-----------------------------------------------------------------------------
 // Purpose: Get this entity's rendering clip plane if one is defined
 // Output : float * - The clip plane to use, or NULL if no clip plane is defined
@@ -4013,6 +4012,8 @@ void C_BaseEntity::SetDormant( bool bDormant )
 	UpdateVisibility();
 
 	ParticleProp()->OwnerSetDormantTo( bDormant );
+
+	OnSetDormant( bDormant );
 }
 
 //-----------------------------------------------------------------------------

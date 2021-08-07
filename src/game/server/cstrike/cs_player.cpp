@@ -1631,7 +1631,7 @@ void CCSPlayer::GiveDefaultItems()
 
 			if ( secondaryString && *secondaryString )
 			{
-				LoadoutSlot_t loadout_slot = CSLoadout()->GetSlotFromWeapon( this, secondaryString + 7 ); // +7 to get rid of weapon_ prefix
+				LoadoutSlot_t loadout_slot = CSLoadout()->GetSlotFromWeapon( GetTeamNumber(), secondaryString + 7 ); // +7 to get rid of weapon_ prefix
 				if ( loadout_slot != SLOT_NONE )
 					secondaryString = UTIL_VarArgs( "weapon_%s", CSLoadout()->GetWeaponFromSlot( this, loadout_slot ) );
 
@@ -1680,7 +1680,7 @@ void CCSPlayer::GiveDefaultItems()
 		meleeString = engine->ParseFile( meleeString, token, sizeof( token ) );
 		while ( meleeString != NULL )
 		{
-			LoadoutSlot_t loadout_slot = CSLoadout()->GetSlotFromWeapon( this, token );
+			LoadoutSlot_t loadout_slot = CSLoadout()->GetSlotFromWeapon( GetTeamNumber(), token );
 			if ( loadout_slot != SLOT_NONE )
 				V_strcpy( token, UTIL_VarArgs( "weapon_%s", CSLoadout()->GetWeaponFromSlot( this, loadout_slot ) ) );
 
@@ -1711,7 +1711,7 @@ void CCSPlayer::GiveDefaultItems()
 
 		if ( secondaryString && *secondaryString )
 		{
-			LoadoutSlot_t loadout_slot = CSLoadout()->GetSlotFromWeapon( this, secondaryString + 7 ); // +7 to get rid of weapon_ prefix
+			LoadoutSlot_t loadout_slot = CSLoadout()->GetSlotFromWeapon( GetTeamNumber(), secondaryString + 7 ); // +7 to get rid of weapon_ prefix
 			if ( loadout_slot != SLOT_NONE )
 				secondaryString = UTIL_VarArgs( "weapon_%s", CSLoadout()->GetWeaponFromSlot( this, loadout_slot ) );
 
@@ -1735,7 +1735,7 @@ void CCSPlayer::GiveDefaultItems()
 
 		if ( primaryString && *primaryString )
 		{
-			LoadoutSlot_t loadout_slot = CSLoadout()->GetSlotFromWeapon( this, primaryString + 7 ); // +7 to get rid of weapon_ prefix
+			LoadoutSlot_t loadout_slot = CSLoadout()->GetSlotFromWeapon( GetTeamNumber(), primaryString + 7 ); // +7 to get rid of weapon_ prefix
 			if ( loadout_slot != SLOT_NONE )
 				primaryString = UTIL_VarArgs( "weapon_%s", CSLoadout()->GetWeaponFromSlot( this, loadout_slot ) );
 
@@ -5007,7 +5007,7 @@ BuyResult_e CCSPlayer::AttemptToBuyTaser( void )
 //      value without adding new code to all the return points.
 BuyResult_e CCSPlayer::HandleCommand_Buy( const char *item )
 {
-	const char* loadoutItem = CSLoadout()->GetWeaponFromSlot( this, CSLoadout()->GetSlotFromWeapon( this, item ) );
+	const char* loadoutItem = CSLoadout()->GetWeaponFromSlot( this, CSLoadout()->GetSlotFromWeapon( GetTeamNumber(), item ) );
 	if ( loadoutItem != NULL )
 		item = loadoutItem;
 
@@ -5774,32 +5774,6 @@ bool CCSPlayer::WantsLagCompensationOnEntity( const CBasePlayer *pPlayer, const 
 	}
 
 	return BaseClass::WantsLagCompensationOnEntity( pPlayer, pCmd, pEntityTransmitBits );
-}
-
-int CCSPlayer::LookupBone( const char *szName )
-{
-	if ( m_bUseNewAnimstate )
-	{
-		// Try to fix up some common old bone names to new bone names, until I can go through the code and fix all cases or write a data-driven solution.
-		if ( Q_stristr( szName, "weapon_bone" ) )
-		{
-			szName = "hand_R";
-		}
-		else if ( Q_stristr( szName, "Head" ) )
-		{
-			szName = "head_0";
-		}
-		else if ( Q_stristr( szName, "L_Hand" ) )
-		{
-			szName = "hand_L";
-		}
-		else if ( Q_stristr( szName, "R_Hand" ) )
-		{
-			szName = "hand_R";
-		}
-	}
-
-	return BaseClass::LookupBone(szName);
 }
 
 // Handles the special "radio" alias commands we're creating to accommodate the scripts players use
@@ -7918,7 +7892,7 @@ void CCSPlayer::PostAutoBuyCommandProcessing(const AutoBuyInfoStruct *commandInf
 	char classname[64];
 	Q_strcpy( classname, commandInfo->m_classname );
 
-	const char* loadoutWeapon = CSLoadout()->GetWeaponFromSlot( this, CSLoadout()->GetSlotFromWeapon( this, commandInfo->m_command ) );
+	const char* loadoutWeapon = CSLoadout()->GetWeaponFromSlot( this, CSLoadout()->GetSlotFromWeapon( GetTeamNumber(), commandInfo->m_command ) );
 	if ( loadoutWeapon != NULL )
 		Q_snprintf( classname, sizeof( classname ), "weapon_%s", loadoutWeapon );
 

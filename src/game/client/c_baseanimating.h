@@ -52,6 +52,11 @@ typedef unsigned short MDLHandle_t;
 
 extern ConVar vcollide_wireframe;
 
+struct OnEndGoto_t
+{
+	int nSequence;
+	int nSequenceWeight;
+};
 
 struct ClientModelRenderInfo_t : public ModelRenderInfo_t
 {
@@ -69,6 +74,16 @@ struct RagdollInfo_t
 	int			m_nNumBones;
 	Vector		m_rgBonePos[MAXSTUDIOBONES];
 	Quaternion	m_rgBoneQuaternion[MAXSTUDIOBONES];
+};
+
+enum
+{
+	ANIMLODFLAG_DISTANT					= 0x01,
+	ANIMLODFLAG_OUTSIDEVIEWFRUSTUM		= 0x02,
+	ANIMLODFLAG_INVISIBLELOCALPLAYER	= 0x04,
+	ANIMLODFLAG_DORMANT					= 0x08,
+	//ANIMLODFLAG_UNUSED				= 0x10,
+	//ANIMLODFLAG_UNUSED				= 0x20,
 };
 
 
@@ -269,6 +284,7 @@ public:
 	virtual bool					GetAttachment( int number, Vector &origin, QAngle &angles );
 	virtual bool					GetAttachment( int number, matrix3x4_t &matrix );
 	virtual bool					GetAttachmentVelocity( int number, Vector &originVel, Quaternion &angleVel );
+	virtual void					ComputeLightingOrigin( ClientModelRenderInfo_t *pInfo );
 	
 	// Returns the attachment in local space
 	bool							GetAttachmentLocal( int iAttachment, matrix3x4_t &attachmentToLocal );
@@ -278,6 +294,7 @@ public:
 	virtual C_BaseAnimating *		GetBoneSetupDependancy( void ) { return GetMoveParent() ? GetMoveParent()->GetBaseAnimating() : NULL; }
 
 	bool							GetRootBone( matrix3x4_t &rootBone );
+	inline void						SetUseParentLightingOrigin( bool value ) { m_bUseParentLightingOrigin = value; }
 
 	// Should this object cast render-to-texture shadows?
 	virtual ShadowType_t			ShadowCastType();
@@ -447,6 +464,7 @@ public:
 	float							SequenceDuration( CStudioHdr *pStudioHdr, int iSequence );
 	inline float					SequenceDuration( int iSequence ) { return SequenceDuration(GetModelPtr(), iSequence); }
 	int								FindTransitionSequence( int iCurrentSequence, int iGoalSequence, int *piDir );
+	void							SetSequenceOnEnd( void );
 
 	void							RagdollMoved( void );
 
@@ -502,6 +520,19 @@ public:
 	// Object bodygroup
 	int								m_nBody;
 
+	int								m_nCustomBlendingRuleMask;
+
+	unsigned int					m_nAnimLODflags;
+	unsigned int					m_nAnimLODflagsOld;
+
+	inline void SetAnimLODflag( unsigned int nNewFlag )		{ m_nAnimLODflags |= (nNewFlag); }
+	inline void UnSetAnimLODflag( unsigned int nNewFlag )	{ m_nAnimLODflags &= (~nNewFlag); }
+	inline bool IsAnimLODflagSet( unsigned int nFlag )		{ return (m_nAnimLODflags & (nFlag)) != 0; }
+	inline void ClearAnimLODflags( void )					{ m_nAnimLODflags = 0; }
+
+	int								m_nComputedLODframe;
+	float							m_flDistanceFromCamera;
+
 	// Hitbox set to use (default 0)
 	int								m_nHitboxSet;
 
@@ -546,6 +577,8 @@ protected:
 	Vector							m_bonePosition;
 	QAngle							m_boneAngles;
 	CHandle<C_BaseAnimating>		m_pAttachedTo;
+
+	CUtlVector<OnEndGoto_t>			m_onEndGoto;
 
 protected:
 
@@ -623,7 +656,7 @@ private:
 	// Calculated attachment points
 	CUtlVector<CAttachmentData>		m_Attachments;
 
-	bool							SetupBones_AttachmentHelper( CStudioHdr *pStudioHdr );
+	void							SetupBones_AttachmentHelper( CStudioHdr *pStudioHdr );
 
 	EHANDLE							m_hLightingOrigin;
 	EHANDLE							m_hLightingOriginRelative;
@@ -631,6 +664,12 @@ private:
 	// These are compared against each other to determine if the entity should muzzle flash.
 	CNetworkVar( unsigned char, m_nMuzzleFlashParity );
 	unsigned char m_nOldMuzzleFlashParity;
+
+	bool							ShouldSkipAnimationFrame( float currentTime );
+	int								m_nLastNonSkippedFrame;
+
+	Vector							m_pos_cached[MAXSTUDIOBONES];
+	Quaternion						m_q_cached[MAXSTUDIOBONES];
 
 	bool							m_bInitModelEffects;
 	bool							m_bDelayInitModelEffects;
@@ -653,6 +692,8 @@ private:
 	mutable MDLHandle_t				m_hStudioHdr;
 	CThreadFastMutex				m_StudioHdrInitLock;
 	bool							m_bHasAttachedParticles;
+
+	bool							m_bUseParentLightingOrigin;
 
 	friend class C_BaseAnimatingOverlay;
 };
