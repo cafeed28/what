@@ -146,6 +146,7 @@ public:
 
 	virtual void Simulate();
 	virtual	void Spawn( void );
+	virtual void UpdateOnRemove( void );
 	virtual void OnSetDormant( bool bDormant );
 
 	void GiveCarriedHostage( EHANDLE hHostage );
@@ -301,6 +302,11 @@ public:
 	virtual void CalcFreezeCamView( Vector& eyeOrigin, QAngle& eyeAngles, float& fov );
 	virtual void CalcDeathCamView( Vector& eyeOrigin, QAngle& eyeAngles, float& fov );
 
+	void UpdateFreezeCamFlashlightEffect( C_BaseEntity *pTarget, float flAmount );
+	void CancelFreezeCamFlashlightEffect();
+	bool m_bFreezeCamFlashlightActive;
+	CTextureReference m_freezeCamSpotLightTexture;
+
 	virtual float GetDeathCamInterpolationTime();
 	float GetFreezeFrameInterpolant( void );
 
@@ -429,7 +435,9 @@ public:
 	CNetworkVar( bool, m_bIsGrabbingHostage );	// tracks whether this player is currently grabbing a hostage
 	CNetworkVar( bool, m_bHasMovedSinceSpawn ); // Whether player has moved from spawn position
 	CNetworkVar( float, m_fImmuneToDamageTime );	// When gun game spawn damage immunity will expire
-	CNetworkVar( bool, m_bImmunity );	// tracks whether this player is currently immune in gun game
+	CNetworkVar( bool, m_bImmunity );	// tracks whether this player is currently immune
+	CNetworkVar( bool, m_bMadeFinalGunGameProgressiveKill );
+	CNetworkVar( int, m_iGunGameProgressiveWeaponIndex ); // index of current gun game weapon
 	CNetworkVar( bool, m_bInBombZone );
 	CNetworkVar( bool, m_bInBuyZone );
 	CNetworkVar( bool, m_bInNoDefuseArea );
@@ -541,6 +549,9 @@ public:
 
 // [tj] checks if this player has another given player on their Steam friends list.
 	bool HasPlayerAsFriend( C_CSPlayer* player );
+
+	bool MadeFinalGunGameProgressiveKill( void ) { return m_bMadeFinalGunGameProgressiveKill; }
+	int GetPlayerGunGameWeaponIndex( void ) { return m_iGunGameProgressiveWeaponIndex; }
 
 	bool IsAbleToInstantRespawn( void );
 

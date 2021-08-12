@@ -22,7 +22,7 @@
 	#include "soundenvelope.h"
 
 #else
-	
+
 	#include "bot.h"
 	#include "utldict.h"
 	#include "cs_player.h"
@@ -54,6 +54,10 @@
 	#include "vote_controller.h"
 	#include "cs_voteissues.h"
 	#include "effects/chicken.h"
+	#include "flashbang_projectile.h"
+	#include "decoy_projectile.h"
+	#include "hegrenade_projectile.h"
+	#include "smokegrenade_projectile.h"
 	
 #if defined( REPLAY_ENABLED )	
 	#include "replay/ireplaysystem.h"
@@ -116,10 +120,69 @@ static CViewVectors g_CSViewVectors(
 
 
 #ifndef CLIENT_DLL
-LINK_ENTITY_TO_CLASS(info_player_terrorist, CPointEntity);
-LINK_ENTITY_TO_CLASS(info_player_counterterrorist,CPointEntity);
-LINK_ENTITY_TO_CLASS(info_player_logo,CPointEntity);
-LINK_ENTITY_TO_CLASS(info_deathmatch_spawn,CPointEntity);
+BEGIN_DATADESC( SpawnPoint )
+    // Keyfields
+    DEFINE_KEYFIELD( m_iPriority,	FIELD_INTEGER,	"priority" ),
+	DEFINE_KEYFIELD( m_bEnabled,	FIELD_BOOLEAN,	"enabled" ),
+
+	DEFINE_INPUTFUNC( FIELD_VOID,	"SetEnabled",	InputSetEnabled ),
+	DEFINE_INPUTFUNC( FIELD_VOID,	"SetDisabled",	InputSetDisabled ),
+	DEFINE_INPUTFUNC( FIELD_VOID,	"ToggleEnabled",	InputToggleEnabled ),
+END_DATADESC()
+
+LINK_ENTITY_TO_CLASS( info_player_terrorist, SpawnPoint );
+LINK_ENTITY_TO_CLASS( info_player_counterterrorist, SpawnPoint );
+LINK_ENTITY_TO_CLASS( info_player_logo, CPointEntity );
+LINK_ENTITY_TO_CLASS( info_deathmatch_spawn, SpawnPoint );
+LINK_ENTITY_TO_CLASS( info_armsrace_counterterrorist, SpawnPoint );
+LINK_ENTITY_TO_CLASS( info_armsrace_terrorist, SpawnPoint );
+
+SpawnPoint::SpawnPoint() : m_bEnabled( true ), m_nType( 0 )
+{
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void SpawnPoint::Spawn( void )
+{
+	BaseClass::Spawn();
+
+	if ( CSGameRules() )
+		CSGameRules()->AddSpawnPointToMasterList( this );
+}
+
+void SpawnPoint::InputSetEnabled( inputdata_t &inputdata )
+{
+	SetSpawnEnabled( true );
+}
+
+void SpawnPoint::InputSetDisabled( inputdata_t &inputdata )
+{
+	SetSpawnEnabled( false );
+}
+
+void SpawnPoint::InputToggleEnabled( inputdata_t &inputdata )
+{
+	m_bEnabled = !m_bEnabled;
+
+	if ( CSGameRules() )
+	{
+		CSGameRules()->RefreshCurrentSpawnPointLists();
+	}
+}
+
+void SpawnPoint::SetSpawnEnabled( bool bEnabled )
+{
+	bool bChanged = (m_bEnabled != bEnabled);
+
+	m_bEnabled = bEnabled;
+
+	if ( CSGameRules() && bChanged )
+	{
+		CSGameRules()->RefreshCurrentSpawnPointLists();
+	}
+}
 #endif
 
 REGISTER_GAMERULES_CLASS( CCSGameRules );
@@ -148,10 +211,16 @@ BEGIN_NETWORK_TABLE_NOBASE( CCSGameRules, DT_CSGameRules )
 		RecvPropBool( RECVINFO( m_bMapHasBombTarget ) ),
 		RecvPropBool( RECVINFO( m_bMapHasRescueZone ) ),
 		RecvPropBool( RECVINFO( m_bLogoMap ) ),
+		RecvPropInt( RECVINFO( m_iNumGunGameProgressiveWeaponsCT ) ),
+		RecvPropInt( RECVINFO( m_iNumGunGameProgressiveWeaponsT ) ),
 		RecvPropBool( RECVINFO( m_bBlackMarket ) ),
 		RecvPropBool( RECVINFO( m_bBombDropped ) ),
 		RecvPropBool( RECVINFO( m_bBombPlanted ) ),
 		RecvPropInt( RECVINFO( m_iRoundWinStatus ) ),
+		RecvPropArray3( RECVINFO_ARRAY( m_GGProgressiveWeaponOrderCT ), RecvPropInt( RECVINFO( m_GGProgressiveWeaponOrderCT[0] ) ) ),
+		RecvPropArray3( RECVINFO_ARRAY( m_GGProgressiveWeaponOrderT ), RecvPropInt( RECVINFO( m_GGProgressiveWeaponOrderT[0] ) ) ),
+		RecvPropArray3( RECVINFO_ARRAY( m_GGProgressiveWeaponKillUpgradeOrderCT ), RecvPropInt( RECVINFO( m_GGProgressiveWeaponKillUpgradeOrderCT[0] ) ) ),
+		RecvPropArray3( RECVINFO_ARRAY( m_GGProgressiveWeaponKillUpgradeOrderT ), RecvPropInt( RECVINFO( m_GGProgressiveWeaponKillUpgradeOrderT[0] ) ) ),
 		RecvPropInt( RECVINFO( m_iCurrentGamemode ) ),
 	#else
 		SendPropBool( SENDINFO( m_bFreezePeriod ) ),
@@ -175,10 +244,16 @@ BEGIN_NETWORK_TABLE_NOBASE( CCSGameRules, DT_CSGameRules )
 		SendPropBool( SENDINFO( m_bMapHasBombTarget ) ),
 		SendPropBool( SENDINFO( m_bMapHasRescueZone ) ),
 		SendPropBool( SENDINFO( m_bLogoMap ) ),
+		SendPropInt( SENDINFO( m_iNumGunGameProgressiveWeaponsCT ) ),
+		SendPropInt( SENDINFO( m_iNumGunGameProgressiveWeaponsT ) ),
 		SendPropBool( SENDINFO( m_bBlackMarket ) ),
 		SendPropBool( SENDINFO( m_bBombDropped ) ),
 		SendPropBool( SENDINFO( m_bBombPlanted ) ),
 		SendPropInt( SENDINFO( m_iRoundWinStatus ) ),
+		SendPropArray3( SENDINFO_ARRAY3( m_GGProgressiveWeaponOrderCT ), SendPropInt( SENDINFO_ARRAY( m_GGProgressiveWeaponOrderCT ), 0, SPROP_UNSIGNED ) ),
+		SendPropArray3( SENDINFO_ARRAY3( m_GGProgressiveWeaponOrderT ), SendPropInt( SENDINFO_ARRAY( m_GGProgressiveWeaponOrderT ), 0, SPROP_UNSIGNED ) ),
+		SendPropArray3( SENDINFO_ARRAY3( m_GGProgressiveWeaponKillUpgradeOrderCT ), SendPropInt( SENDINFO_ARRAY( m_GGProgressiveWeaponKillUpgradeOrderCT ), 0, SPROP_UNSIGNED ) ),
+		SendPropArray3( SENDINFO_ARRAY3( m_GGProgressiveWeaponKillUpgradeOrderT ), SendPropInt( SENDINFO_ARRAY( m_GGProgressiveWeaponKillUpgradeOrderT ), 0, SPROP_UNSIGNED ) ),
 		SendPropInt( SENDINFO( m_iCurrentGamemode ) ),
 	#endif
 END_NETWORK_TABLE()
@@ -320,6 +395,26 @@ ConVar mp_match_can_clinch(
 	"1",
 	FCVAR_REPLICATED,
 	"Can a team clinch and end the match by being so far ahead that the other team has no way to catching up?" );
+
+ConVar mp_ggprogressive_round_restart_delay(
+	"mp_ggprogressive_round_restart_delay",
+	"15.0",
+	FCVAR_REPLICATED,
+	"Number of seconds to delay before restarting a round after a win in gungame progessive",
+	true, 0.0f,
+	true, 90.0f );
+
+ConVar mp_ggprogressive_use_random_weapons(
+	"mp_ggprogressive_use_random_weapons",
+	"1",
+	FCVAR_REPLICATED,
+	"If set, selects random weapons from set categories for the progression order" );
+
+ConVar mp_ggprogressive_random_weapon_kills_needed(
+	"mp_ggprogressive_random_weapon_kills_needed",
+	"2",
+	FCVAR_REPLICATED,
+	"If mp_ggprogressive_use_random_weapons is set, this is the number of kills needed with each weapon" );
 
 ConVar mp_ct_default_melee(
 	"mp_ct_default_melee",
@@ -535,6 +630,12 @@ ConVar mp_molotovusedelay(
 	"Number of seconds to delay before the molotov can be used after acquiring it",
 	true, 0.0,
 	true, 30.0 );
+
+ConVar mp_default_team_winner_no_objective(
+	"mp_default_team_winner_no_objective",
+	"-1",
+	FCVAR_REPLICATED,
+	"If the map doesn't define an objective (bomb, hostage, etc), the value of this convar will declare the winner when the time runs out in the round." );
 
 ConVar mp_respawn_on_death_t(
 	"mp_respawn_on_death_t",
@@ -1127,6 +1228,23 @@ ConVar snd_music_selection(
     };
 #endif
 
+    template < class T > void VectorShuffle( CUtlVector< T > &arrayToShuffle )
+    {
+        int numEntries = arrayToShuffle.Count();
+
+        // Shuffle entries
+        for ( int i = 0; i < numEntries - 1; ++i )
+        {
+            int randVal = RandomInt( i, numEntries - 1 );
+
+            if ( randVal != i )
+            {
+                // Swap values
+                V_swap( arrayToShuffle[ i ], arrayToShuffle[ randVal ] );
+            }
+        }
+    }
+
 	// --------------------------------------------------------------------------------------------------- //
 	// CCSGameRules implementation.
 	// --------------------------------------------------------------------------------------------------- //
@@ -1142,7 +1260,6 @@ ConVar snd_music_selection(
 		m_nOvertimePlaying = 0;
 
 		m_fRoundStartTime = 0;
-		m_bAllowWeaponSwitch = true;
 		m_bFreezePeriod = true;
 		m_bMatchWaitingForResume = false;
 
@@ -1197,11 +1314,7 @@ ConVar snd_music_selection(
 		m_iHostagesTouched = 0;
 		m_flNextHostageAnnouncement = 0.0f;
 
-        //=============================================================================
-        // HPE_BEGIN
         // [dwenger] Reset rescue-related achievement values
-        //=============================================================================
-
 		// [tj] reset flawless and lossless round related flags
 		m_bNoTerroristsKilled = true;
 		m_bNoCTsKilled = true;
@@ -1226,10 +1339,6 @@ ConVar snd_music_selection(
 		m_pFunFactManager = new CCSFunFactMgr();
 		m_pFunFactManager->Init();
 
-        //=============================================================================
-        // HPE_END
-        //=============================================================================
-
 		m_iHaveEscaped = 0;
 		m_bMapHasEscapeZone = false;
 		m_iNumEscapers = 0;
@@ -1246,15 +1355,24 @@ ConVar snd_music_selection(
 
 		m_bRoundTimeWarningTriggered = false;
 
+		m_iNumGunGameProgressiveWeaponsCT = 0;
+		m_iNumGunGameProgressiveWeaponsT = 0;
 		m_bAllowWeaponSwitch = true;
 
 		m_flNextHostageAnnouncement = gpGlobals->curtime;	// asap.
 
 		m_bHasTriggeredRoundStartMusic = false;
 
+		m_iCurrentGamemode = 0;
+
 		ReadMultiplayCvars();
 
 		m_bSwitchingTeamsAtRoundReset = false;
+
+		m_iNextCTSpawnPoint = 0;
+		m_iNextTerroristSpawnPoint = 0;
+
+		m_iMaxGunGameProgressiveWeaponIndex = 0;
 
 		m_pPrices = NULL;
 		m_bBlackMarket = false;
@@ -1289,8 +1407,6 @@ ConVar snd_music_selection(
 		}
 #endif
 
-		m_iCurrentGamemode = 0;
-
 		m_iMapFactionCT = -1;
 		m_iMapFactionT = -1;
 		LoadMapProperties();
@@ -1298,6 +1414,105 @@ ConVar snd_music_selection(
 		m_bWarmupPeriod = mp_do_warmup_period.GetBool();
 		m_fWarmupNextChatNoticeTime = 0;
 		m_fWarmupPeriodStart = gpGlobals->curtime;
+
+		// Add the gun game weapons.
+		if ( GetGamemode() == GameModes::ARMS_RACE )
+		{
+			if ( mp_ggprogressive_use_random_weapons.GetBool() )
+			{
+				// this is where we build the list of GG progressive weapons
+				// collect all of the weapons here
+				CUtlVector< GGWeaponAliasName > pSMGs;
+				for ( int i=GGLIST_SMGS_START; i<(GGLIST_SMGS_LAST+1); i++ )
+					pSMGs.AddToTail(ggWeaponAliasNameList[i]);
+				CUtlVector< GGWeaponAliasName > pShotguns;
+				for ( int i=GGLIST_SGS_START; i<(GGLIST_SGS_LAST+1); i++ )
+					pShotguns.AddToTail(ggWeaponAliasNameList[i]);
+				CUtlVector< GGWeaponAliasName > pRifles;
+				for ( int i=GGLIST_RIFLES_START; i<(GGLIST_RIFLES_LAST+1); i++ )
+					pRifles.AddToTail(ggWeaponAliasNameList[i]);
+				CUtlVector< GGWeaponAliasName > pSnipers;
+				for ( int i=GGLIST_SNIPERS_START; i<(GGLIST_SNIPERS_LAST+1); i++ )
+					pSnipers.AddToTail(ggWeaponAliasNameList[i]);
+				CUtlVector< GGWeaponAliasName > pMGs;
+				for ( int i=GGLIST_MGS_START; i<(GGLIST_MGS_LAST+1); i++ )
+					pMGs.AddToTail(ggWeaponAliasNameList[i]);
+				CUtlVector< GGWeaponAliasName > pPistols;
+				for ( int i=GGLIST_PISTOLS_START; i<(GGLIST_PISTOLS_LAST+1); i++ )
+					pPistols.AddToTail(ggWeaponAliasNameList[i]);
+
+				int nNumSMGs = 3;
+				int nNumRifles = 4;
+				int nNumShotguns = 2;
+				int nNumSnipers = 2;
+				int nNumMGs = 1;
+				int nNumPistols = 4;
+				// this should total 16 weapons
+
+				int nKillsNeeded = MAX( 1, mp_ggprogressive_random_weapon_kills_needed.GetInt() );
+
+				// now pick a random one from the list we created above for each category
+				CUtlVector< GGWeaponAliasName > pWeaponProgression;
+				for ( int i=0; i<nNumSMGs; i++ )
+				{
+					int nPick = RandomInt( 0, pSMGs.Count()-1 );
+					pWeaponProgression.AddToTail(pSMGs[nPick]);
+					pSMGs.FastRemove( nPick );
+				}
+				for ( int i=0; i<nNumRifles; i++ )
+				{
+					int nPick = RandomInt( 0, pRifles.Count()-1 );
+					pWeaponProgression.AddToTail(pRifles[nPick]);
+					pRifles.FastRemove( nPick );
+				}
+				for ( int i=0; i<nNumShotguns; i++ )
+				{
+					int nPick = RandomInt( 0, pShotguns.Count()-1 );
+					pWeaponProgression.AddToTail(pShotguns[nPick]);
+					pShotguns.FastRemove( nPick );
+				}
+				for ( int i=0; i<nNumSnipers; i++ )
+				{
+					int nPick = RandomInt( 0, pSnipers.Count()-1 );
+					pWeaponProgression.AddToTail(pSnipers[nPick]);
+					pSnipers.FastRemove( nPick );
+				}
+				for ( int i=0; i<nNumMGs; i++ )
+				{
+					int nPick = RandomInt( 0, pMGs.Count()-1 );
+					pWeaponProgression.AddToTail(pMGs[nPick]);
+					pMGs.FastRemove( nPick );
+				}
+				for ( int i=0; i<nNumPistols; i++ )
+				{
+					int nPick = RandomInt( 0, pPistols.Count()-1 );
+					pWeaponProgression.AddToTail(pPistols[nPick]);
+					pPistols.FastRemove( nPick );
+				}
+
+				// go through the list we build and add them to the final list that will get used in the game
+				FOR_EACH_VEC( pWeaponProgression, iWeaponProgression )
+				{
+					const GGWeaponAliasName &wp = (pWeaponProgression)[iWeaponProgression];
+					AddGunGameWeapon( wp.aliasName, nKillsNeeded, TEAM_CT );
+					AddGunGameWeapon( wp.aliasName, nKillsNeeded, TEAM_TERRORIST );
+				}
+
+				// add the knife manually			
+				AddGunGameWeapon( "knifegg", 1, TEAM_CT );
+				AddGunGameWeapon( "knifegg", 1, TEAM_TERRORIST );
+			}
+			else
+			{
+				// PiMoN: both CT and T use the same array in current CS:GO
+				for ( int i = 0; i < ARRAYSIZE( ggWeaponProgressionCT ); i++ )
+				{
+					const WeaponProgression wp = ggWeaponProgressionCT[i];
+					AddGunGameWeapon( wp.m_Name, wp.m_Kills, TEAM_CT );
+					AddGunGameWeapon( wp.m_Name, wp.m_Kills, TEAM_TERRORIST );
+				}
+			}
+		}
 
 		if ( HasHalfTime() )
 			SetPhase( GAMEPHASE_PLAYING_FIRST_HALF );
@@ -1329,8 +1544,13 @@ ConVar snd_music_selection(
 			case GameModes::FLYING_SCOUTSMAN:
 				engine->ServerCommand( "exec gamemode_flying_scoutsman.cfg\n" );
 				engine->ServerExecute();
+			case GameModes::ARMS_RACE:
+				engine->ServerCommand( "exec gamemode_armsrace.cfg\n" );
+				engine->ServerExecute();
 				break;
 		}
+
+		m_pLastGrenade.bIsValid = false;
 	}
 
 	void CCSGameRules::SetPhase( GamePhase phase )
@@ -2485,6 +2705,12 @@ ConVar snd_music_selection(
 		int NumDeadCT, NumDeadTerrorist, NumAliveTerrorist, NumAliveCT;
 		InitializePlayerCounts( NumAliveTerrorist, NumAliveCT, NumDeadTerrorist, NumDeadCT );
 
+        /*********************************** GUN GAME PROGRESSIVE CHECK *******************************************************/
+        if ( GetGamemode() == GameModes::ARMS_RACE )
+        {
+			return GunGameProgressiveEndCheck();
+        }
+
 
 		/***************************** OTHER PLAYER's CHECK *********************************************************/
 		bool bNeededPlayers = false;
@@ -2831,6 +3057,76 @@ ConVar snd_music_selection(
 		return false;
 	}
 
+    bool CCSGameRules::GunGameProgressiveEndCheck( void )
+	{
+		bool bDidEnd = false;
+
+		if ( GetPhase() == GAMEPHASE_MATCH_ENDED )
+		{
+			// No need to perform the check if the match has ended
+			return false;
+		}
+
+		if ( GetGamemode() != GameModes::ARMS_RACE )
+			return false;
+
+		CCSPlayer *pWinner = NULL;
+
+		// Test if a player made a kill with the final gun game weapon
+		for ( int iTeam = 0; iTeam < GetNumberOfTeams(); iTeam++ )
+		{
+			CTeam *pTeam = GetGlobalTeam( iTeam );
+
+			for ( int iPlayer = 0; iPlayer < pTeam->GetNumPlayers(); iPlayer++ )
+			{
+				CCSPlayer *pPlayer = ToCSPlayer( pTeam->GetPlayer( iPlayer ) );
+				Assert( pPlayer );
+				if ( !pPlayer )
+					continue;
+
+				if ( pPlayer->MadeFinalGunGameProgressiveKill() )
+				{
+					pWinner = pPlayer;
+
+					float delayTime;
+
+					delayTime = mp_ggprogressive_round_restart_delay.GetFloat();
+
+					m_bCompleteReset = true;
+
+					bDidEnd = true;
+
+					SetPhase( GAMEPHASE_MATCH_ENDED );
+
+					GoToIntermission();
+
+					TerminateRound( mp_ggprogressive_round_restart_delay.GetFloat(), (pTeam->GetTeamNumber() == TEAM_CT) ? CTs_Win : Terrorists_Win );
+
+					break;
+				}
+			}
+
+			if ( bDidEnd )
+				break;
+		}
+
+		if ( bDidEnd )
+		{
+			for ( int i = 1; i <= MAX_PLAYERS; i++ )
+			{
+				CCSPlayer *pPlayer = ToCSPlayer( UTIL_PlayerByIndex( i ) );
+
+				if ( pPlayer )
+				{
+					pPlayer->AddFlag( FL_FROZEN );
+					pPlayer->Unblind();
+				}
+			}
+		}
+
+		return bDidEnd;
+	}
+
 
 	bool CCSGameRules::BombRoundEndCheck( bool bNeededPlayers )
 	{
@@ -3098,6 +3394,44 @@ ConVar snd_music_selection(
 		m_iCurrentGamemode = mp_gamemode_override.GetInt();
 	}
 
+	static int SpawnPointSortFunction( SpawnPoint* const *left, SpawnPoint* const *right )
+	{
+		// Sort 2 spawn points against each other using their priority values
+		return ( *left )->m_iPriority - ( *right )->m_iPriority;
+	}
+
+	static int ArmsRaceSpawnPointSortFunction( SpawnPoint* const *left, SpawnPoint* const *right )
+	{
+		if ( ( *left )->m_nType != SpawnPoint::ArmsRace && ( *right )->m_nType == SpawnPoint::ArmsRace )
+			return 1;
+
+		if ( ( *left )->m_nType == SpawnPoint::ArmsRace && ( *right )->m_nType != SpawnPoint::ArmsRace )
+			return -1;
+
+		return 0;
+	}
+
+	// Perform round-related processing at the point when there is less than 1 second of "free play" to go before the round officially ends
+    // At this point the round winner has been determined and displayed to the players
+    void CCSGameRules::PreRestartRound( void )
+    {
+        IGameEvent *restartEvent = gameeventmanager->CreateEvent( "cs_pre_restart" );
+        gameeventmanager->FireEvent( restartEvent );
+        m_bHasTriggeredRoundStartMusic = true;
+
+		// reshuffle spawns and then sort by priority for the next round.
+		ShuffleSpawnPointLists();
+		SortSpawnPointLists();
+
+		// TEMP
+//		for ( int i=0; i < WEAPON_LAST; i++ )
+//		{
+//			const CCSWeaponInfo *pCSWeaponInfo = GetWeaponInfo( (CSWeaponID)i );
+//			if ( pCSWeaponInfo )
+//				Msg( "%s is worth %d points.\n", pCSWeaponInfo->szPrintName, GetWeaponScoreForDeathmatch( (CSWeaponID)i ) );
+//		}
+    }
+
 	void CCSGameRules::RoundWin( void )
 	{
         // Update accounts based on number of hostages remaining.. 
@@ -3189,6 +3523,9 @@ ConVar snd_music_selection(
 		}
 #endif
 
+		m_iNextCTSpawnPoint = 0;
+		m_iNextTerroristSpawnPoint = 0;
+
 #if CS_CONTROLLABLE_BOTS_ENABLED
 		RevertBotsFunctor revertBots;
 		ForEachPlayer( revertBots );
@@ -3203,6 +3540,9 @@ ConVar snd_music_selection(
 				pPlayer->OnPreResetRound();
 			}
 		}
+
+		GetGlobalTeam( TEAM_CT )->ResetTeamLeaders();
+		GetGlobalTeam( TEAM_TERRORIST )->ResetTeamLeaders();
 
 		if ( !IsFinite( gpGlobals->curtime ) )
 		{
@@ -3262,7 +3602,11 @@ ConVar snd_music_selection(
 
 		//If this is the first restart since halftime, do the appropriate bookkeeping.
 		bool bClearAccountsAfterHalftime = false;
-		if ( GetPhase() == GAMEPHASE_HALFTIME )
+		if ( GetGamemode() == GameModes::ARMS_RACE )
+		{
+			ClearGunGameData();
+		}
+		else if ( GetPhase() == GAMEPHASE_HALFTIME )
 		{
 			if ( GetOvertimePlaying() && ( GetRoundsPlayed() <= ( mp_maxrounds.GetInt() + ( GetOvertimePlaying() - 1 )*mp_overtime_maxrounds.GetInt() ) ) )
 			{
@@ -4101,7 +4445,7 @@ ConVar snd_music_selection(
 
 	void CCSGameRules::GiveC4()
 	{
-		if ( IsWarmupPeriod() || GetGamemode() == GameModes::DEATHMATCH )
+		if ( IsWarmupPeriod() || GetGamemode() == GameModes::ARMS_RACE || GetGamemode() == GameModes::DEATHMATCH )
 			return;
 
 		enum {
@@ -4396,8 +4740,8 @@ ConVar snd_music_selection(
 					// when the warmup period ends, set the round to restart in 3 seconds
 					if (!m_bCompleteReset)
 					{
-						//GetGlobalTeam( TEAM_CT )->ResetScores();
-						//GetGlobalTeam( TEAM_TERRORIST )->ResetScores();
+						GetGlobalTeam( TEAM_CT )->ResetTeamLeaders();
+						GetGlobalTeam( TEAM_TERRORIST )->ResetTeamLeaders();
 
 						m_flRestartRoundTime = gpGlobals->curtime + 4.0;
 						m_bCompleteReset = true;
@@ -4441,11 +4785,11 @@ ConVar snd_music_selection(
             }
         }
 
-		if ( !m_bHasTriggeredRoundStartMusic )
+		if (m_flRestartRoundTime > 0.0f && ((m_flRestartRoundTime - 0.3) <= gpGlobals->curtime) && !m_bHasTriggeredRoundStartMusic)
 		{
-			IGameEvent* restartEvent = gameeventmanager->CreateEvent( "cs_pre_restart" );
-			gameeventmanager->FireEvent( restartEvent );
-			m_bHasTriggeredRoundStartMusic = true;
+			// Perform round-related processing at the point when there is less than 1 second of "free play" to go before the round officially ends
+			// At this point the round winner has been determined and displayed to the players
+			PreRestartRound();
 		}
 		
 		if ( m_flRestartRoundTime > 0.0f && m_flRestartRoundTime <= gpGlobals->curtime )
@@ -4774,30 +5118,59 @@ ConVar snd_music_selection(
 				TerminateRound( mp_round_restart_delay.GetFloat(), Round_Draw );
 			}
 		}
+		else if ( mp_default_team_winner_no_objective.GetInt() != -1 )
+		{
+			int nTeam = mp_default_team_winner_no_objective.GetInt();
+
+			if ( nTeam == TEAM_CT )
+			{
+				m_iNumCTWins++;
+				m_iNumCTWinsThisPhase++;
+				UpdateTeamScores();
+
+				MarkLivingPlayersOnTeamAsNotReceivingMoneyNextRound( TEAM_TERRORIST );
+				AddTeamAccount( TEAM_CT, TeamCashAward::WIN_BY_TIME_RUNNING_OUT_BOMB );
+				TerminateRound( mp_round_restart_delay.GetFloat(), CTs_Win );
+			}
+			else if ( nTeam == TEAM_TERRORIST )
+			{
+				m_iNumTerroristWins++;
+				m_iNumTerroristWinsThisPhase++;
+				UpdateTeamScores();
+
+				MarkLivingPlayersOnTeamAsNotReceivingMoneyNextRound( TEAM_CT );
+				AddTeamAccount( TEAM_TERRORIST, TeamCashAward::WIN_BY_TIME_RUNNING_OUT_HOSTAGE );
+				TerminateRound( mp_round_restart_delay.GetFloat(), Terrorists_Win );
+			}
+			else
+			{
+				TerminateRound( mp_round_restart_delay.GetFloat(), Round_Draw );
+			}
+		}
 		else if ( m_bMapHasBombTarget )
 		{
 			//If the bomb is planted, don't let the round timer end the round.
 			//keep going until the bomb explodes or is defused
 			if( !m_bBombPlanted )
 			{
+				MarkLivingPlayersOnTeamAsNotReceivingMoneyNextRound(TEAM_TERRORIST);
 				AddTeamAccount( TEAM_CT, TeamCashAward::WIN_BY_TIME_RUNNING_OUT_BOMB );
 				
 				m_iNumCTWins++;
 				m_iNumCTWinsThisPhase++;
 				TerminateRound( mp_round_restart_delay.GetFloat(), Target_Saved );
 				UpdateTeamScores();
-				MarkLivingPlayersOnTeamAsNotReceivingMoneyNextRound(TEAM_TERRORIST);
 			}
 		}
 		else if ( m_bMapHasRescueZone )
 		{
+			MarkLivingPlayersOnTeamAsNotReceivingMoneyNextRound(TEAM_CT);
 			AddTeamAccount( TEAM_TERRORIST, TeamCashAward::WIN_BY_TIME_RUNNING_OUT_HOSTAGE );
 			
 			m_iNumTerroristWins++;
 			m_iNumTerroristWinsThisPhase++;
 			TerminateRound( mp_round_restart_delay.GetFloat(), Hostages_Not_Rescued );
 			UpdateTeamScores();
-			MarkLivingPlayersOnTeamAsNotReceivingMoneyNextRound(TEAM_CT);
 		}
 		else if ( m_bMapHasEscapeZone )
 		{
@@ -5109,21 +5482,32 @@ ConVar snd_music_selection(
 	// next round.
 	void CCSGameRules::MarkLivingPlayersOnTeamAsNotReceivingMoneyNextRound(int team)
 	{
-		int playerNum;
-		for (playerNum = 1; playerNum <= gpGlobals->maxClients; ++playerNum)
-		{
-			CCSPlayer *player = (CCSPlayer *)UTIL_PlayerByIndex(playerNum);
-			if (player == NULL)
-			{
-				continue;
-			}
+        int playerNum;
+        for (playerNum = 1; playerNum <= gpGlobals->maxClients; ++playerNum)
+        {
+            CCSPlayer *player = (CCSPlayer *)UTIL_PlayerByIndex(playerNum);
+            if (player == NULL)
+            {
+                continue;
+            }
 
-			if ((player->GetTeamNumber() == team) && (player->IsAlive()))
-			{
-				player->MarkAsNotReceivingMoneyNextRound();
-			}
-		}
-	}
+            if ((player->GetTeamNumber() == team) && (player->IsAlive()))
+            {
+				// Exception here: only here and not inside "MarkAsNotReceivingMoneyNextRound"
+				// to not affect team-wide money management, round backups, etc.
+
+				// When a player is alive and controlling a bot then the monetary punishment should go
+				// to the bot being controlled
+				if ( player->IsControllingBot() )
+				{
+					if ( CCSPlayer* controlledBotPlayer = player->GetControlledBot() )
+						player = controlledBotPlayer;
+				}
+
+                player->MarkAsNotReceivingMoneyNextRound();
+            }
+        }
+    }
 
 
 	void CCSGameRules::CheckLevelInitialized( void )
@@ -5132,37 +5516,12 @@ ConVar snd_music_selection(
 		{
 			// Count the number of spawn points for each team
 			// This determines the maximum number of players allowed on each
-
-			CBaseEntity* ent = NULL; 
 			
 			m_iSpawnPointCount_Terrorist	= 0;
 			m_iSpawnPointCount_CT			= 0;
 
-			while ( ( ent = gEntList.FindEntityByClassname( ent, "info_player_terrorist" ) ) != NULL )
-			{
-				if ( IsSpawnPointValid( ent, NULL ) )
-				{
-					m_iSpawnPointCount_Terrorist++;
-				}
-				else
-				{
-					Warning("Invalid terrorist spawnpoint at (%.1f,%.1f,%.1f)\n",
-						ent->GetAbsOrigin()[0],ent->GetAbsOrigin()[2],ent->GetAbsOrigin()[2] );
-				}
-			}
-
-			while ( ( ent = gEntList.FindEntityByClassname( ent, "info_player_counterterrorist" ) ) != NULL )
-			{
-				if ( IsSpawnPointValid( ent, NULL ) ) 
-				{
-					m_iSpawnPointCount_CT++;
-				}
-				else
-				{
-					Warning("Invalid counterterrorist spawnpoint at (%.1f,%.1f,%.1f)\n",
-						ent->GetAbsOrigin()[0],ent->GetAbsOrigin()[2],ent->GetAbsOrigin()[2] );
-				}
-			}
+			// create the spawn point lists here
+			GenerateSpawnPointListsFirstTime();
 
 			// Is this a logo map?
 			if ( gEntList.FindEntityByClassname( NULL, "info_player_logo" ) )
@@ -5171,20 +5530,74 @@ ConVar snd_music_selection(
 			m_bLevelInitialized = true;
 		}
 	}
-
-	void CCSGameRules::ShowSpawnPoints( void )
+	
+	void CCSGameRules::AddSpawnPointToMasterList( SpawnPoint* pSpawnPoint )
 	{
-		CBaseEntity* ent = NULL;
-		
-		while ( ( ent = gEntList.FindEntityByClassname( ent, "info_player_terrorist" ) ) != NULL )
+		//if classname == T
+		if ( FClassnameIs( pSpawnPoint, "info_player_terrorist" ) || 
+			 FClassnameIs( pSpawnPoint, "info_enemy_terrorist_spawn" ) ||
+			 FClassnameIs( pSpawnPoint, "info_armsrace_terrorist" )  )
+		{
+			// check to make sure it isn't already in the list
+			if ( m_TerroristSpawnPointsMasterList.Find( pSpawnPoint ) != m_TerroristSpawnPointsMasterList.InvalidIndex() )
+			{
+				AssertMsg( false, "AddSpawnPointToMasterList tried to add a spawn point to the list, but it already exists in the list!" );
+				return;
+			}
+
+			m_TerroristSpawnPointsMasterList.AddToTail( pSpawnPoint );
+		}
+		else if ( FClassnameIs( pSpawnPoint, "info_player_counterterrorist" ) ||
+				  FClassnameIs( pSpawnPoint, "info_armsrace_counterterrorist" ) )
+		{
+			if ( m_CTSpawnPointsMasterList.Find( pSpawnPoint ) != m_CTSpawnPointsMasterList.InvalidIndex() )
+			{
+				AssertMsg( false, "AddSpawnPointToMasterList tried to add a spawn point to the list, but it already exists in the list!" );
+				return;
+			}
+
+			m_CTSpawnPointsMasterList.AddToTail( pSpawnPoint );
+		}
+		else if ( FClassnameIs( pSpawnPoint, "info_deathmatch_spawn" ) )
+		{
+			// No team specific spawns in this mode
+		}
+		else
+		{
+			// doesn't match any classes we are aware of!
+			AssertMsg( false, "AddSpawnPointToMasterList is looking to adda  class to the master spawn list, but it doesn't recognize the class type!" );
+		}
+
+		RefreshCurrentSpawnPointLists();
+	}
+
+	void CCSGameRules::GenerateSpawnPointListsFirstTime( void )
+	{
+		//CUtlVector< SpawnPoint* >	m_CTSpawnPointsMasterList;			// The master list of CT spawn points (contains all points whether enabled or disabled)
+		//CUtlVector< SpawnPoint* >	m_TerroristSpawnPointsMasterList;	// The master list of Terrorist spawn points (contains all points whether enabled or disabled)
+
+		// Clear out existing spawn point lists
+		m_TerroristSpawnPointsMasterList.RemoveAll();
+		m_CTSpawnPointsMasterList.RemoveAll();
+
+		const char* szTSpawnEntName = "info_player_terrorist";
+		CBaseEntity* ent = NULL; 
+
+		while ( ( ent = gEntList.FindEntityByClassname( ent, szTSpawnEntName ) ) != NULL )
 		{
 			if ( IsSpawnPointValid( ent, NULL ) )
 			{
-				NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 0, 255, 0, 200, 600 );
+				SpawnPoint* pSpawnPoint = assert_cast< SpawnPoint* >( ent );
+				if ( pSpawnPoint )
+				{
+					// Store off the terrorist spawn point
+					m_TerroristSpawnPointsMasterList.AddToTail( pSpawnPoint );
+				}
 			}
 			else
 			{
-				NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 255, 0, 0, 200, 600);
+				Warning("Invalid terrorist spawnpoint at (%.1f,%.1f,%.1f)\n",
+					ent->GetAbsOrigin()[0],ent->GetAbsOrigin()[1],ent->GetAbsOrigin()[2] );
 			}
 		}
 
@@ -5192,7 +5605,294 @@ ConVar snd_music_selection(
 		{
 			if ( IsSpawnPointValid( ent, NULL ) ) 
 			{
+				SpawnPoint* pSpawnPoint = assert_cast< SpawnPoint* >( ent );
+				if ( pSpawnPoint )
+				{
+					// Store off the CT spawn point
+					m_CTSpawnPointsMasterList.AddToTail( pSpawnPoint );
+				}
+			}
+			else
+			{
+				Warning("Invalid counterterrorist spawnpoint at (%.1f,%.1f,%.1f)\n",
+					ent->GetAbsOrigin()[0],ent->GetAbsOrigin()[1],ent->GetAbsOrigin()[2] );
+			}
+		}
+
+		ent = NULL; 
+		// if we're playing armsrace, add the armsrace spawns to the list as well
+		if ( GetGamemode() == GameModes::ARMS_RACE )
+		{
+			while ( ( ent = gEntList.FindEntityByClassname( ent, "info_armsrace_terrorist" ) ) != NULL )
+			{
+				if ( IsSpawnPointValid( ent, NULL ) )
+				{
+					SpawnPoint* pSpawnPoint = assert_cast< SpawnPoint* >( ent );
+					if ( pSpawnPoint )
+					{
+						pSpawnPoint->m_nType = SpawnPoint::ArmsRace;
+						// Store off the terrorist spawn point
+						m_TerroristSpawnPointsMasterList.AddToTail( pSpawnPoint );
+					}
+				}
+				else
+				{
+					Warning( "Invalid terrorist spawnpoint at (%.1f,%.1f,%.1f)\n",
+							 ent->GetAbsOrigin()[0], ent->GetAbsOrigin()[1], ent->GetAbsOrigin()[2] );
+				}
+			}
+
+			while ( ( ent = gEntList.FindEntityByClassname( ent, "info_armsrace_counterterrorist" ) ) != NULL )
+			{
+				if ( IsSpawnPointValid( ent, NULL ) )
+				{
+					SpawnPoint* pSpawnPoint = assert_cast< SpawnPoint* >( ent );
+					if ( pSpawnPoint )
+					{
+						pSpawnPoint->m_nType = SpawnPoint::ArmsRace;
+						// Store off the CT spawn point
+						m_CTSpawnPointsMasterList.AddToTail( pSpawnPoint );
+					}
+				}
+				else
+				{
+					Warning( "Invalid counterterrorist spawnpoint at (%.1f,%.1f,%.1f)\n",
+							 ent->GetAbsOrigin()[0], ent->GetAbsOrigin()[1], ent->GetAbsOrigin()[2] );
+				}
+			}
+
+			// we want the arms race spawns to shuffle with the regular spawns
+			ShuffleMasterSpawnPointLists();
+		}
+
+		// sort them to ensure the priority ones are up front
+		SortMasterSpawnPointLists();
+
+		RefreshCurrentSpawnPointLists();
+	}
+
+	void CCSGameRules::RefreshCurrentSpawnPointLists( void )
+	{
+		// Clear out existing spawn point lists
+		m_TerroristSpawnPoints.RemoveAll();
+		m_CTSpawnPoints.RemoveAll();
+
+		m_iSpawnPointCount_Terrorist = 0;
+		m_iSpawnPointCount_CT = 0;
+
+		FOR_EACH_VEC( m_TerroristSpawnPointsMasterList, i )
+		{
+			SpawnPoint* pSpawnPoint = m_TerroristSpawnPointsMasterList[i];
+			if ( pSpawnPoint && pSpawnPoint->IsEnabled() )
+			{
+				m_iSpawnPointCount_Terrorist++;
+
+				// Store off the terrorist spawn point
+				m_TerroristSpawnPoints.AddToTail( pSpawnPoint );
+			}
+		}
+
+		FOR_EACH_VEC( m_CTSpawnPointsMasterList, i )
+		{
+			SpawnPoint* pSpawnPoint = m_CTSpawnPointsMasterList[i];
+			if ( pSpawnPoint && pSpawnPoint->IsEnabled() )
+			{
+				m_iSpawnPointCount_CT++;
+
+				// Store off the CT spawn point
+				m_CTSpawnPoints.AddToTail( pSpawnPoint );
+			}
+		}
+
+		// Shuffle the spawn points
+		ShuffleSpawnPointLists();
+
+		// Sort the list now that the spawn points have been shuffled
+		SortSpawnPointLists();
+	}
+
+    void CCSGameRules::SortSpawnPointLists( void )
+    {
+		if ( GetGamemode() == GameModes::ARMS_RACE )
+		{
+			// Sort the spawn point lists
+			m_TerroristSpawnPoints.Sort( ArmsRaceSpawnPointSortFunction );
+			m_CTSpawnPoints.Sort( ArmsRaceSpawnPointSortFunction );
+		}
+		else
+		{
+			// Sort the spawn point lists
+			m_TerroristSpawnPoints.Sort( SpawnPointSortFunction );
+			m_CTSpawnPoints.Sort( SpawnPointSortFunction );
+		}
+    }
+
+    void CCSGameRules::ShuffleSpawnPointLists( void )
+    {
+        // Shuffle terrorist spawn points
+        VectorShuffle( m_TerroristSpawnPoints );
+
+        // Shuffle CT spawn points
+        VectorShuffle( m_CTSpawnPoints );
+    }
+
+	void CCSGameRules::ShuffleMasterSpawnPointLists( void )
+	{
+		// Shuffle terrorist spawn points
+		VectorShuffle( m_TerroristSpawnPointsMasterList );
+
+		// Shuffle CT spawn points
+		VectorShuffle( m_CTSpawnPointsMasterList );
+	}
+
+	void CCSGameRules::SortMasterSpawnPointLists( void )
+	{
+		if ( GetGamemode() == GameModes::ARMS_RACE )
+		{
+			// Sort the spawn point lists
+			m_TerroristSpawnPointsMasterList.Sort( ArmsRaceSpawnPointSortFunction );
+			m_CTSpawnPointsMasterList.Sort( ArmsRaceSpawnPointSortFunction );
+
+			int nSpots = 0;
+			// disable all spawns over 10 because we already shoved teh arms race ones up front and
+			// if there are enough, disable the ones that aren't flagged as arms race
+			FOR_EACH_VEC( m_TerroristSpawnPointsMasterList, i )
+			{
+				SpawnPoint* pSpawnPoint = m_TerroristSpawnPointsMasterList[i];
+				if ( pSpawnPoint && pSpawnPoint->IsEnabled() )
+				{
+					if ( IsSpawnPointValid( pSpawnPoint, NULL ) == false )
+					{
+						pSpawnPoint->m_bEnabled = false;
+						continue;
+					}
+
+					nSpots++;
+					if ( nSpots > 12 )
+						pSpawnPoint->m_bEnabled = false;
+				}
+			}
+
+			nSpots = 0;
+			// disable for the CTs as well
+			FOR_EACH_VEC( m_CTSpawnPointsMasterList, i )
+			{
+				SpawnPoint* pSpawnPoint = m_CTSpawnPointsMasterList[i];
+				if ( pSpawnPoint && pSpawnPoint->IsEnabled() )
+				{
+					if ( IsSpawnPointValid( pSpawnPoint, NULL ) == false )
+					{
+						pSpawnPoint->m_bEnabled = false;
+						continue;
+					}
+
+					nSpots++;
+					if ( nSpots > 12 )
+						pSpawnPoint->m_bEnabled = false;
+				}
+			}
+		}
+		else
+		{
+
+			m_TerroristSpawnPointsMasterList.Sort( SpawnPointSortFunction );
+			m_CTSpawnPointsMasterList.Sort( SpawnPointSortFunction );
+		}
+	}
+
+    void CCSGameRules::ShufflePlayerList( CUtlVector< CCSPlayer* > &playersList )
+    {
+        // Shuffle players
+        VectorShuffle( playersList );
+    }
+
+
+    CBaseEntity*CCSGameRules::GetNextSpawnpoint( int teamNumber )
+    {
+        CBaseEntity* pRetVal = NULL;
+
+        if ( teamNumber == TEAM_CT )
+        {
+            if ( m_iNextCTSpawnPoint >= m_CTSpawnPoints.Count() )
+            {
+                m_iNextCTSpawnPoint = 0;
+            }
+
+            if ( m_iNextCTSpawnPoint < m_CTSpawnPoints.Count() )
+            {
+                pRetVal = m_CTSpawnPoints[ m_iNextCTSpawnPoint ];
+                m_iNextCTSpawnPoint++;
+            }
+        }
+        else if ( teamNumber == TEAM_TERRORIST )
+        {
+            if ( m_iNextTerroristSpawnPoint >= m_TerroristSpawnPoints.Count() )
+            {
+                m_iNextTerroristSpawnPoint = 0;
+            }
+
+            if ( m_iNextTerroristSpawnPoint < m_TerroristSpawnPoints.Count() )
+            {
+                pRetVal = m_TerroristSpawnPoints[ m_iNextTerroristSpawnPoint ];
+                m_iNextTerroristSpawnPoint++;
+            }
+        }
+
+        return pRetVal;
+    }
+
+	void CCSGameRules::ShowSpawnPoints( void )
+	{
+        CBaseEntity* ent = NULL;
+        
+        while ( ( ent = gEntList.FindEntityByClassname( ent, "info_player_terrorist" ) ) != NULL )
+        {
+            if ( IsSpawnPointValid( ent, NULL ) == false )
+            {
+				NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 255, 0, 0, 200, 600 );
+            }
+            else if ( !( assert_cast< SpawnPoint* >( ent )->IsEnabled() ) )
+            {
+				NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 255, 0, 255, 200, 600 );
+            }
+			else
+			{
 				NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 0, 255, 0, 200, 600 );
+			}
+        }
+
+        while ( ( ent = gEntList.FindEntityByClassname( ent, "info_player_counterterrorist" ) ) != NULL )
+        {
+            if ( IsSpawnPointValid( ent, NULL ) == false ) 
+            {
+				NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 255, 0, 0, 200, 600 );
+			}
+			else if ( !( assert_cast< SpawnPoint* >( ent )->IsEnabled() ) )
+			{
+				NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 255, 0, 255, 200, 600 );
+			}
+			else
+			{
+				NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 0, 255, 0, 200, 600 );
+			}
+        }
+
+		while ( ( ent = gEntList.FindEntityByClassname( ent, "info_deathmatch_spawn" ) ) != NULL )
+		{
+			if ( IsSpawnPointValid( ent, NULL ) )
+			{
+				if ( !( assert_cast< SpawnPoint* >( ent )->IsEnabled() ) )
+				{
+					NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 255, 0, 255, 200, 600 );
+				}
+				else if ( IsSpawnPointHiddenFromOtherPlayers( ent, NULL ) )
+				{
+					NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 0, 255, 0, 200, 600 );
+				}
+				else
+				{
+					NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 255, 0, 0, 200, 600 );
+				}
 			}
 			else
 			{
@@ -5200,18 +5900,41 @@ ConVar snd_music_selection(
 			}
 		}
 
-		while ( ( ent = gEntList.FindEntityByClassname( ent, "info_deathmatch_spawn" ) ) != NULL )
+		if ( GetGamemode() == GameModes::ARMS_RACE )
 		{
-			if ( IsSpawnPointValid( ent, NULL ) )
+			while ( ( ent = gEntList.FindEntityByClassname( ent, "info_armsrace_terrorist" ) ) != NULL )
 			{
-				NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 255, 0, 0, 200, 600 );
+				if ( IsSpawnPointValid( ent, NULL ) == false )
+				{
+					NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 255, 0, 0, 200, 600 );
+				}
+				else if ( !( assert_cast< SpawnPoint* >( ent )->IsEnabled() ) )
+				{
+					NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 255, 0, 255, 200, 600 );
+				}
+				else
+				{
+					NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 0, 255, 0, 200, 600 );
+				}
 			}
-			else
+
+			while ( ( ent = gEntList.FindEntityByClassname( ent, "info_armsrace_counterterrorist" ) ) != NULL )
 			{
-				NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 255, 0, 0, 200, 600 );
+				if ( IsSpawnPointValid( ent, NULL ) == false )
+				{
+					NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 255, 0, 0, 200, 600 );
+				}
+				else if ( !( assert_cast< SpawnPoint* >( ent )->IsEnabled() ) )
+				{
+					NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 255, 0, 255, 200, 600 );
+				}
+				else
+				{
+					NDebugOverlay::Box( ent->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX, 0, 255, 0, 200, 600 );
+				}
 			}
 		}
-	}
+    }
 
 	void CCSGameRules::CheckRestartRound( void )
 	{
@@ -6130,7 +6853,8 @@ ConVar snd_music_selection(
 
 			// [tj] Check flawless victory achievement - currently requiring extermination
 			if (((iReason == CTs_Win && m_bNoCTsDamaged) || (iReason == Terrorists_Win && m_bNoTerroristsDamaged))
-				&& losingTeam && losingTeam->GetNumPlayers() - ignoreCount >= AchievementConsts::DefaultMinOpponentsForAchievement)
+				&& losingTeam && losingTeam->GetNumPlayers() - ignoreCount >= AchievementConsts::DefaultMinOpponentsForAchievement
+				&& GetGamemode() != GameModes::ARMS_RACE)
 			{
 				CTeam *pTeam = GetGlobalTeam( iWinnerTeam );
 
@@ -6477,35 +7201,61 @@ ConVar snd_music_selection(
 
 	CBaseEntity *CCSGameRules::GetPlayerSpawnSpot( CBasePlayer *pPlayer )
 	{
-		// gat valid spwan point
+		// we don't want to get a spawn if we are already in the process of spawning with one because
+		// it increments the spawn number without actually spawning and messes up the spawn priority
+		CCSPlayer* pCSPlayer = ToCSPlayer( pPlayer );
+		if ( !pCSPlayer || pCSPlayer->IsPlayerSpawning() )
+			return NULL;
+
+		pCSPlayer->SetPlayerSpawning( true );
+
+        // get valid spawn point
 		CBaseEntity *pSpawnSpot = pPlayer->EntSelectSpawnPoint();
 
-		// drop down to ground
-		Vector GroundPos = DropToGround( pPlayer, pSpawnSpot->GetAbsOrigin(), VEC_HULL_MIN, VEC_HULL_MAX );
+	    // drop down to ground
+		Vector GroundPos = DropToGround( pPlayer, pSpawnSpot->GetAbsOrigin() + Vector( 0, 0, 16 ), VEC_HULL_MIN + Vector( -4, -4, 0 ), VEC_HULL_MAX + Vector( 4, 4, 0 ) );
 
-		// Move the player to the place it said.
-		pPlayer->Teleport( &pSpawnSpot->GetAbsOrigin(), &pSpawnSpot->GetLocalAngles(), &vec3_origin );
+	    // Move the player to the place it said.
+		pPlayer->Teleport( &GroundPos, &pSpawnSpot->GetLocalAngles(), &vec3_origin );
 		pPlayer->m_Local.m_viewPunchAngle = vec3_angle;
-		
 		return pSpawnSpot;
-	}
+    }
 	
 	// checks if the spot is clear of players
 	bool CCSGameRules::IsSpawnPointValid( CBaseEntity *pSpot, CBasePlayer *pPlayer )
 	{
-		if ( !pSpot->IsTriggered( pPlayer ) )
-		{
+		if ( !pSpot )
 			return false;
-		}
+
+		if ( !pSpot->IsTriggered( pPlayer ) )
+			return false;
 
 		Vector mins = GetViewVectors()->m_vHullMin;
 		Vector maxs = GetViewVectors()->m_vHullMax;
 
 		Vector vTestMins = pSpot->GetAbsOrigin() + mins;
 		Vector vTestMaxs = pSpot->GetAbsOrigin() + maxs;
-		
+
 		// First test the starting origin.
-		return UTIL_IsSpaceEmpty( pPlayer, vTestMins, vTestMaxs );
+		CTraceFilterSimple traceFilter( pPlayer, COLLISION_GROUP_PLAYER );
+		if ( !UTIL_IsSpaceEmpty( pPlayer, vTestMins, vTestMaxs, MASK_SOLID, &traceFilter ) )
+			return false;
+
+		// Test against other players potentially occupying this spot
+		for ( int k = 1; k <= gpGlobals->maxClients; ++k )
+		{
+			CBasePlayer *pOther = UTIL_PlayerByIndex( k );
+			if ( !pOther ) continue;
+			if ( pOther == pPlayer ) continue;
+			if ( (pOther->GetTeamNumber() != TEAM_TERRORIST)
+				 && (pOther->GetTeamNumber() != TEAM_CT) )
+				 continue;
+
+			if ( (pOther->GetAbsOrigin().AsVector2D() - pSpot->GetAbsOrigin().AsVector2D()).IsZero() )
+				return false;
+		}
+
+		return true;
 	}
 
 	bool CCSGameRules::IsSpawnPointHiddenFromOtherPlayers( CBaseEntity *pSpot, CBasePlayer *pPlayer, int nHideFromTeam )
@@ -7461,6 +8211,55 @@ void CCSGameRules::ClientSettingsChanged( CBasePlayer *pPlayer )
 	}
 }
 
+#ifndef CLIENT_DLL
+CON_COMMAND_F( sv_rethrow_last_grenade, "Emit the last grenade thrown on the server.", FCVAR_CHEAT )
+{
+	if ( CSGameRules() )
+		CSGameRules()->RethrowLastGrenade();
+}
+
+void CCSGameRules::RecordGrenadeThrow( Vector vecSrc, QAngle vecAngles, Vector vecVel, AngularImpulse angImpulse, CBaseCombatCharacter *pPlayer, CSWeaponID weaponID )
+{
+	m_pLastGrenade.bIsValid = true;
+	m_pLastGrenade.vecSrc = vecSrc;
+	m_pLastGrenade.vecAngles = vecAngles;
+	m_pLastGrenade.vecVel = vecVel;
+	m_pLastGrenade.angImpulse = angImpulse;
+	m_pLastGrenade.pPlayer = pPlayer;
+	m_pLastGrenade.weaponID = weaponID;
+}
+void CCSGameRules::RethrowLastGrenade()
+{
+	// PiMoN: cursed
+	if ( !m_pLastGrenade.bIsValid )
+		return;
+
+	switch ( m_pLastGrenade.weaponID )
+	{
+		case WEAPON_FLASHBANG:
+			CFlashbangProjectile::Create( m_pLastGrenade.vecSrc, m_pLastGrenade.vecAngles, m_pLastGrenade.vecVel, m_pLastGrenade.angImpulse, m_pLastGrenade.pPlayer );
+			break;
+		case WEAPON_DECOY:
+			CDecoyProjectile::Create( m_pLastGrenade.vecSrc, m_pLastGrenade.vecAngles, m_pLastGrenade.vecVel, m_pLastGrenade.angImpulse, m_pLastGrenade.pPlayer );
+			break;
+		case WEAPON_SMOKEGRENADE:
+			CSmokeGrenadeProjectile::Create( m_pLastGrenade.vecSrc, m_pLastGrenade.vecAngles, m_pLastGrenade.vecVel, m_pLastGrenade.angImpulse, m_pLastGrenade.pPlayer );
+			break;
+		case WEAPON_HEGRENADE:
+			CHEGrenadeProjectile::Create( m_pLastGrenade.vecSrc, m_pLastGrenade.vecAngles, m_pLastGrenade.vecVel, m_pLastGrenade.angImpulse, m_pLastGrenade.pPlayer, 3.0f ); // GRENADE_TIMER 3.0f
+			break;
+		case WEAPON_MOLOTOV:
+			CMolotovProjectile::Create( m_pLastGrenade.vecSrc, m_pLastGrenade.vecAngles, m_pLastGrenade.vecVel, m_pLastGrenade.angImpulse, m_pLastGrenade.pPlayer, false );
+			break;
+		case WEAPON_INCGRENADE:
+			CMolotovProjectile::Create( m_pLastGrenade.vecSrc, m_pLastGrenade.vecAngles, m_pLastGrenade.vecVel, m_pLastGrenade.angImpulse, m_pLastGrenade.pPlayer, true );
+			break;
+		default:
+			return;
+	}
+}
+#endif
+
 bool CCSGameRules::FAllowNPCs( void )
 {
 	return false;
@@ -7627,6 +8426,105 @@ int CCSGameRules::PlayerCashAwardValue( int reason )
 			AssertMsg( false, "Unhandled PlayerCashAwardReason" );
 			return 0;
 	};
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Gun game getter functions
+//////////////////////////////////////////////////////////////////////////
+
+// Determines the highest weapon index of all players in the arms race match
+void CCSGameRules::CalculateMaxGunGameProgressiveWeaponIndex( void )
+{
+    m_iMaxGunGameProgressiveWeaponIndex = 0;
+
+    if ( GetGamemode() == GameModes::ARMS_RACE )
+    {
+        // Loop through all players and find the max progressive weapon index
+        for ( int i = 1; i <= gpGlobals->maxClients; i++ )
+        {
+            CCSPlayer* pPlayer = ToCSPlayer( UTIL_PlayerByIndex( i ) );
+            if ( pPlayer )
+            {
+                if ( pPlayer->GetPlayerGunGameWeaponIndex() > m_iMaxGunGameProgressiveWeaponIndex )
+                {
+                    m_iMaxGunGameProgressiveWeaponIndex = pPlayer->GetPlayerGunGameWeaponIndex();
+                }
+            }
+        }
+    }
+}
+
+int CCSGameRules::GetCurrentGunGameWeapon( int nCurrentWeaponIndex, int nTeamID )
+{
+	if ( GetNumProgressiveGunGameWeapons( nTeamID ) == 0 )
+	{
+		// Don't process if weapon array is empty
+		return -1;
+	}
+
+	if ( nCurrentWeaponIndex < 0 || nCurrentWeaponIndex >= GetNumProgressiveGunGameWeapons( nTeamID ) )
+	{
+		// Don't process if out of the array bounds
+		return -1;
+	}
+
+	return GetProgressiveGunGameWeapon( nCurrentWeaponIndex, nTeamID );
+}
+
+int CCSGameRules::GetNextGunGameWeapon( int nCurrentWeaponIndex, int nTeamID )
+{
+	if ( GetNumProgressiveGunGameWeapons( nTeamID ) == 0 )
+	{
+		// Don't process if weapon array is empty
+		return -1;
+	}
+
+	if ( nCurrentWeaponIndex < 0 || nCurrentWeaponIndex >= GetNumProgressiveGunGameWeapons( nTeamID ) - 1 )
+	{
+		// Don't process if already at last weapon or out of the array bounds
+		return -1;
+	}
+
+	return GetProgressiveGunGameWeapon( nCurrentWeaponIndex + 1, nTeamID );
+}
+
+int CCSGameRules::GetPreviousGunGameWeapon( int nCurrentWeaponIndex, int nTeamID )
+{
+	if ( GetNumProgressiveGunGameWeapons( nTeamID ) == 0 )
+	{
+		// Don't process if weapon array is empty
+		return -1;
+	}
+
+	if ( nCurrentWeaponIndex <= 0 || nCurrentWeaponIndex >= GetNumProgressiveGunGameWeapons( nTeamID ) )
+	{
+		// Don't process if already at first weapon or out of the array bounds
+		return -1;
+	}
+
+	return GetProgressiveGunGameWeapon( nCurrentWeaponIndex - 1, nTeamID );
+}
+
+bool CCSGameRules::IsFinalGunGameProgressiveWeapon( int nCurrentWeaponIndex, int nTeamID )
+{
+	// Determine if the current weapon is the last in the list of gun game weapons
+	if ( nCurrentWeaponIndex == GetNumProgressiveGunGameWeapons( nTeamID ) - 1 )
+	{
+		return true;
+	}
+
+	return false;
+}
+
+int CCSGameRules::GetGunGameNumKillsRequiredForWeapon( int nCurrentWeaponIndex, int nTeamID )
+{
+	if ( nCurrentWeaponIndex < 0 || nCurrentWeaponIndex > GetNumProgressiveGunGameWeapons( nTeamID ) - 1 )
+	{
+		// Don't process if out of the array bounds
+		return -1;
+	}
+
+	return GetProgressiveGunGameWeaponKillRequirement( nCurrentWeaponIndex, nTeamID );
 }
 
 void CCSGameRules::AddTeamAccount( int team, int reason )
@@ -7865,6 +8763,22 @@ void CCSGameRules::UnfreezeAllPlayers( void )
 	}
 }
 
+void CCSGameRules::ClearGunGameData( void )
+{
+    for ( int i = 1; i <= MAX_PLAYERS; i++ )
+    {
+        CCSPlayer *pPlayer = ToCSPlayer( UTIL_PlayerByIndex( i ) );
+        if ( pPlayer )
+        {
+            // Reset all players' progressive weapon index values
+            pPlayer->ClearGunGameProgressiveWeaponIndex();
+			pPlayer->m_bMadeFinalGunGameProgressiveKill = false;
+        }
+    }
+
+    m_iMaxGunGameProgressiveWeaponIndex = 0;
+}
+
 void CCSGameRules::SwitchTeamsAtRoundReset( void )
 {
 	m_bSwitchingTeamsAtRoundReset = true;
@@ -7882,6 +8796,59 @@ void CCSGameRules::SwitchTeamsAtRoundReset( void )
 	}
 }
 #endif
+
+void CCSGameRules::AddGunGameWeapon( const char* pWeaponName, int nNumKillsToUpgrade, int nTeamID )
+{
+    if ( !pWeaponName )
+    {
+        return;
+    }
+
+    Assert( nNumKillsToUpgrade > 0 );
+    if ( nNumKillsToUpgrade <= 0 )
+    {
+        Warning( "CCSGameRules: Invalid number of kills-to-upgrade (%d) for weapon %s.\n", nNumKillsToUpgrade, pWeaponName );
+        nNumKillsToUpgrade = 1;
+    }
+
+    char weaponName[MAX_WEAPON_STRING];
+    weaponName[0] = '\0';
+    V_snprintf( weaponName, sizeof( weaponName ), "weapon_%s", pWeaponName );
+
+	int nWeaponID = WeaponIdFromString( weaponName );
+
+    if ( nWeaponID != WEAPON_NONE )
+    {
+        if ( nTeamID == TEAM_CT )
+        {
+            m_GGProgressiveWeaponOrderCT.Set( m_iNumGunGameProgressiveWeaponsCT, nWeaponID );
+            m_GGProgressiveWeaponKillUpgradeOrderCT.Set( m_iNumGunGameProgressiveWeaponsCT, nNumKillsToUpgrade );
+            m_iNumGunGameProgressiveWeaponsCT++;
+        }
+        else if ( nTeamID == TEAM_TERRORIST )
+        {
+            m_GGProgressiveWeaponOrderT.Set( m_iNumGunGameProgressiveWeaponsT, nWeaponID );
+            m_GGProgressiveWeaponKillUpgradeOrderT.Set( m_iNumGunGameProgressiveWeaponsT, nNumKillsToUpgrade );
+            m_iNumGunGameProgressiveWeaponsT++;
+        }
+    }
+    else
+    {
+        Warning( "CCSGameRules::AddGunGameWeapon: encountered an unknown weapon \"%s\".\n", pWeaponName );
+    }
+}
+
+int CCSGameRules::GetNumProgressiveGunGameWeapons( int nTeamID ) const
+{
+	if ( nTeamID == TEAM_CT )
+	{
+		return m_iNumGunGameProgressiveWeaponsCT;
+	}
+	else
+	{
+		return m_iNumGunGameProgressiveWeaponsT;
+	}
+}
 
 bool CCSGameRules::IsPlayingAnyCompetitiveStrictRuleset( void ) const
 {

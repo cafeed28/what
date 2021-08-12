@@ -210,11 +210,6 @@ void C_BaseViewModel::FormatViewModelAttachment( int nAttachment, matrix3x4_t &a
 }
 
 
-bool C_BaseViewModel::IsViewModel() const
-{
-	return true;
-}
-
 void C_BaseViewModel::UncorrectViewModelAttachment( Vector &vOrigin )
 {
 	// Unformat the attachment.
@@ -668,6 +663,15 @@ void C_BaseViewModel::UpdateAllViewmodelAddons( void )
 			pPlayer->m_pViewmodelArmConfig = NULL;
 	}
 #endif
+
+	int weaponID = pCSWeapon->GetCSWeaponID();
+
+	// Note: only arms race (gun game) knives change their bodygroup to indicate their team.
+	if ( weaponID == WEAPON_KNIFE_GG )
+	{
+		int bodyPartID = (pPlayer->GetTeamNumber() == TEAM_TERRORIST) ? 0 : 1;
+		SetBodygroup( 0, bodyPartID );
+	}
 
 	if ( pPlayer->m_pViewmodelArmConfig == NULL )
 	{

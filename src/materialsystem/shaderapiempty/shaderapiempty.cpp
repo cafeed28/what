@@ -382,11 +382,20 @@ public:
 	virtual void EnableGetAllTextures( bool bEnable ) {}
 	virtual KeyValues* GetDebugTextureList() { return NULL; }
 	virtual int GetTextureMemoryUsed( TextureMemoryType eTextureMemory ) { return 0; }
+	virtual void SetVertexShaderViewProj() {}
+	virtual void SetVertexShaderCameraPos() {}
 
 	// Methods of IShaderDynamicAPI
 	virtual void GetBackBufferDimensions( int& width, int& height ) const
 	{
 		s_ShaderDeviceEmpty.GetBackBufferDimensions( width, height );
+	}
+	// Get the current viewport
+	virtual void GetCurrentViewport( int& nX, int& nY, int& nWidth, int& nHeight ) const
+	{
+		nX = 0;
+		nY = 0;
+		s_ShaderDeviceEmpty.GetBackBufferDimensions( nWidth, nHeight );
 	}
 	virtual void GetCurrentColorCorrection( ShaderColorCorrectionInfo_t* pInfo )
 	{
@@ -897,6 +906,8 @@ public:
 	virtual bool SupportsFetch4() const { return false; }
 	virtual bool CanStretchRectFromTextures( void ) const { return false; }
 	virtual void EnableBuffer2FramesAhead( bool bEnable ) {}
+	virtual float GetShadowDepthBias() const { return 0.0f; }
+	virtual float GetShadowSlopeScaleDepthBias() const { return 0.0f; }
 
 	virtual void SetPSNearAndFarZ( int pshReg ) { }
 

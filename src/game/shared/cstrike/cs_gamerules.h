@@ -108,19 +108,152 @@ namespace PlayerCashAward
 	};
 };
 
+//--------------------------------------------------------------------------------------------------------------
+struct WeaponProgression
+{
+	CUtlString m_Name;
+	int m_Kills;
+};
+
+static WeaponProgression ggWeaponProgressionCT[] =
+{
+	{ "bizon",		2 },
+	{ "ump45",		2 },
+	{ "p90",		2 },
+	{ "nova",		2 },
+	{ "mag7",		2 },
+	{ "xm1014",		2 },
+	{ "sawedoff",	2 },
+	{ "galilar",	2 },
+	{ "ak47",		2 },
+	{ "m4a1",		2 },
+	{ "sg556",		2 },
+	{ "aug",		2 },
+	{ "awp",		2 },
+	{ "scar20",		2 },
+	{ "negev",		2 },
+	{ "tec9",		2 },
+	{ "p250",		2 },
+	{ "deagle",		2 },
+	{ "fiveseven",	2 },
+	{ "elite",		2 },
+	{ "knifegg",	1 }
+};
+
+struct GGWeaponAliasName
+{
+	CSWeaponID id;
+	const char *aliasName;
+};
+
+#define GGLIST_PISTOLS_TOTAL		9
+#define GGLIST_RIFLES_TOTAL			7
+#define GGLIST_MGS_TOTAL			2
+#define GGLIST_SGS_TOTAL			4
+#define GGLIST_SMGS_TOTAL			6
+#define GGLIST_SNIPERS_TOTAL		3
+
+#define GGLIST_PISTOLS_START	0
+#define GGLIST_PISTOLS_LAST		(GGLIST_PISTOLS_START+GGLIST_PISTOLS_TOTAL-1)
+#define GGLIST_RIFLES_START		GGLIST_PISTOLS_LAST+1
+#define GGLIST_RIFLES_LAST		(GGLIST_RIFLES_START+GGLIST_RIFLES_TOTAL-1)
+#define GGLIST_MGS_START		GGLIST_RIFLES_LAST+1
+#define GGLIST_MGS_LAST			(GGLIST_MGS_START+GGLIST_MGS_TOTAL-1)
+#define GGLIST_SGS_START		GGLIST_MGS_LAST+1
+#define GGLIST_SGS_LAST			(GGLIST_SGS_START+GGLIST_SGS_TOTAL-1)
+#define GGLIST_SMGS_START		GGLIST_SGS_LAST+1
+#define GGLIST_SMGS_LAST			(GGLIST_SMGS_START+GGLIST_SMGS_TOTAL-1)
+#define GGLIST_SNIPERS_START		GGLIST_SMGS_LAST+1
+#define GGLIST_SNIPERS_LAST			(GGLIST_SNIPERS_START+GGLIST_SNIPERS_TOTAL-1)
+
+//--------------------------------------------------------------------------------------------------------------
+// NOTE: Array must be NULL-terminated
+static GGWeaponAliasName ggWeaponAliasNameList[] =
+{
+	//pistols
+	{ WEAPON_DEAGLE, "deagle" },
+	{ WEAPON_REVOLVER, "revolver" },
+	{ WEAPON_ELITE, "elite" },
+	{ WEAPON_FIVESEVEN, "fiveseven" },
+	{ WEAPON_GLOCK, "glock" },
+	{ WEAPON_TEC9, "tec9" },
+	{ WEAPON_HKP2000, "hkp2000" },
+	{ WEAPON_USP, "usp_silencer" },
+	{ WEAPON_P250, "p250" },
+
+	//rifles
+	{ WEAPON_AK47, "ak47" },
+	{ WEAPON_AUG, "aug" },
+	{ WEAPON_FAMAS, "famas" },
+	{ WEAPON_GALILAR, "galilar" },
+	{ WEAPON_M4A4, "m4a4" },
+	{ WEAPON_M4A1, "m4a1_silencer" },
+	{ WEAPON_SG556, "sg556" },
+
+	//mgs
+	{ WEAPON_M249, "m249" },
+	{ WEAPON_NEGEV, "negev" },
+
+	//shotguns
+	{ WEAPON_XM1014, "xm1014" },
+	{ WEAPON_MAG7, "mag7" },
+	{ WEAPON_SAWEDOFF, "sawedoff" },
+	{ WEAPON_NOVA, "nova" },
+
+	//smgs
+	{ WEAPON_MAC10, "mac10" },
+	{ WEAPON_P90, "p90" },
+	{ WEAPON_UMP45, "ump45" },
+	{ WEAPON_BIZON, "bizon" },
+	{ WEAPON_MP7, "mp7" },
+	{ WEAPON_MP9, "mp9" },
+
+	//snipers
+	//	{ WEAPON_SSG08, "ssg08" },
+	{ WEAPON_SCAR20, "scar20" },
+	{ WEAPON_G3SG1, "g3sg1" },
+	{ WEAPON_AWP, "awp" },
+
+	{ WEAPON_NONE, "" }
+};
+
 #ifdef CLIENT_DLL
 	#define CCSGameRules C_CSGameRules
 	#define CCSGameRulesProxy C_CSGameRulesProxy
 #endif
 
 #ifndef CLIENT_DLL
-	struct playerscore_t
-	{
-		int iPlayerIndex;
-		int iScore;
-	};
-#endif
+struct playerscore_t
+{
+	int iPlayerIndex;
+	int iScore;
+};
 
+class SpawnPoint : public CServerOnlyPointEntity
+{
+	DECLARE_CLASS( SpawnPoint, CServerOnlyPointEntity );
+	DECLARE_DATADESC();
+public:
+	SpawnPoint();
+	void Spawn( void );
+	bool IsEnabled() { return m_bEnabled; }
+	void InputSetEnabled( inputdata_t &inputdata );
+	void InputSetDisabled( inputdata_t &inputdata );
+	void InputToggleEnabled( inputdata_t &inputdata );
+	void SetSpawnEnabled( bool bEnabled );
+
+	int		m_iPriority;
+	bool	m_bEnabled;
+	int		m_nType;
+
+	enum Type
+	{
+		Default = 0,
+		Deathmatch = 1,
+		ArmsRace = 2,
+	};
+};
+#endif
 
 class CCSGameRulesProxy : public CGameRulesProxy
 {
@@ -175,6 +308,9 @@ public:
 	int   SelectDefaultTeam( bool ignoreBots = false );
 	int   GetHumanTeam();			// TEAM_UNASSIGNED if no restrictions
 
+	void CalculateMaxGunGameProgressiveWeaponIndex( void );
+	int GetMaxGunGameProgressiveWeaponIndex( void ) { return m_iMaxGunGameProgressiveWeaponIndex; }
+
 	void	LoadMapProperties();
 #ifndef CLIENT_DLL
 	bool	UseMapFactionsForThisPlayer( CBasePlayer* pPlayer );
@@ -204,6 +340,17 @@ public:
 	bool IsTeammateSolid( void ) const;				// returns true if teammates are solid obstacles in the current game mode
 
 	bool HasHalfTime( void ) const;
+
+	int GetCurrentGunGameWeapon( int nCurrentWeaponIndex, int nTeamID );
+	int GetNextGunGameWeapon( int nCurrentWeaponIndex, int nTeamID );
+	int GetPreviousGunGameWeapon( int nCurrentWeaponIndex, int nTeamID );
+	bool IsFinalGunGameProgressiveWeapon( int nCurrentWeaponIndex, int nTeamID );
+	int GetGunGameNumKillsRequiredForWeapon( int nCurrentWeaponIndex, int nTeamID );
+
+	void AddGunGameWeapon( const char* pWeaponName, int nNumKillsToUpgrade, int nTeamID );
+	int GetNumProgressiveGunGameWeapons( int nTeamID ) const;
+	int GetProgressiveGunGameWeapon( int nWeaponIndex, int nTeamID ) const { return nTeamID == TEAM_CT ? m_GGProgressiveWeaponOrderCT[nWeaponIndex] : m_GGProgressiveWeaponOrderT[nWeaponIndex]; }
+	int GetProgressiveGunGameWeaponKillRequirement( int nWeaponIndex, int nTeamID ) const { return nTeamID == TEAM_CT ? m_GGProgressiveWeaponKillUpgradeOrderCT[nWeaponIndex] : m_GGProgressiveWeaponKillUpgradeOrderT[nWeaponIndex]; }
 
 	virtual int	DefaultFOV();
 
@@ -247,6 +394,12 @@ private:
 	CNetworkVar( bool, m_bMapHasBombTarget );
 	CNetworkVar( bool, m_bMapHasRescueZone );
 	CNetworkVar( bool, m_bLogoMap );		 // If there's an info_player_logo entity, then it's a logo map.
+	CNetworkVar( int, m_iNumGunGameProgressiveWeaponsCT );	// total number of CT gun game progressive weapons
+	CNetworkVar( int, m_iNumGunGameProgressiveWeaponsT );	// total number of T gun game progressive weapons
+	CNetworkArray( int, m_GGProgressiveWeaponOrderCT, 60 );	// CT gun game weapon order and # kills per weapon. Size is meant to be larger than the current number of different weapons defined in the CSWeaponID enum
+	CNetworkArray( int, m_GGProgressiveWeaponOrderT, 60 );	// T gun game weapon order and # kills per weapon. Size is meant to be larger than the current number of different weapons defined in the CSWeaponID enum
+	CNetworkArray( int, m_GGProgressiveWeaponKillUpgradeOrderCT, 60 );	// CT gun game number of kills per weapon. Size is meant to be larger than the current number of different weapons defined in the CSWeaponID enum
+	CNetworkArray( int, m_GGProgressiveWeaponKillUpgradeOrderT, 60 );	// T gun game number of kills per weapon. Size is meant to be larger than the current number of different weapons defined in the CSWeaponID enum
 	CNetworkVar( bool, m_bBlackMarket );
 	
 	int		m_iMapFactionCT;
@@ -294,6 +447,8 @@ public:
 
 	void SwitchTeamsAtRoundReset( void );
 
+	void ClearGunGameData( void );
+
 	void FreezePlayers( void );
 	void UnfreezeAllPlayers( void );
 
@@ -309,12 +464,9 @@ public:
 
 	virtual void ClientCommandKeyValues( edict_t *pEntity, KeyValues *pKeyValues );
 
-	//=============================================================================
-	// HPE_BEGIN:
 	// [menglish] Set up anything for all players that changes based on new players spawning mid-game
 	//				Find and return fun fact data
 	// [pfreese] Tracking of "pistol" round
-	//=============================================================================
 	virtual void SpawningLatePlayer(CCSPlayer* pLatePlayer);
 
 	bool IsPistolRound();
@@ -325,20 +477,8 @@ public:
 	bool WasHostageKilled() { return m_hostageWasKilled; }
 	bool WasHostageInjured() { return m_hostageWasInjured; }
 
-	//=============================================================================
-	// HPE_END
-	//=============================================================================
-
-    //=============================================================================
-    // HPE_BEGIN:
     // [tj] So game rules can react to damage taken
-    //=============================================================================
-
     void PlayerTookDamage(CCSPlayer* player, const CTakeDamageInfo &damageInfo);
-
-    //=============================================================================
-    // HPE_END
-    //=============================================================================
 
 
 	virtual bool PlayTextureSounds( void ) { return true; }
@@ -388,15 +528,22 @@ public:
 
 	void TerminateRound( float tmDelay, int reason );
 
-	//=============================================================================
-	// HPE_BEGIN:
 	// [tj] A place to check achievements that occur at the end of the round
-	//=============================================================================
 	void ProcessEndOfRoundAchievements(int iWinnerTeam, int iReason);
-	//=============================================================================
-	// HPE_END
-	//=============================================================================
 
+	// The following round-related functions are called as follows:
+	//
+	// At Match Start:
+	//		PreRestartRound() -> RestartRound() -> PostRestartRound()
+	//
+	// During Subsequent Round Gameplay:
+	//		RoundWin() is called at the point when the winner of the round has been determined - prior to free-play commencing
+	//		PreRestartRound() is called with 1 second remaining prior to the round officially ending (This is after a round
+	//						  winner has been chosen and players are allowed to continue playing)
+	//		RoundEnd() is then called when the round has completely ended
+	//		RestartRound() is then called immediately after RoundEnd()
+	//		PostRestartRound() is called immediately after RestartRound() has completed
+	void PreRestartRound( void );
 	void RestartRound( void );
 	void RoundWin( void );
 	void BalanceTeams( void );
@@ -459,6 +606,10 @@ public:
 	void BroadcastSound( const char *sound, int team = -1 );
 
 
+	// GUN GAME PROGRESSIVE FUNCTION
+	bool GunGameProgressiveEndCheck( void );
+
+
 	// VIP FUNCTIONS
 	bool VIPRoundEndCheck( bool bNeededPlayers );
 	void PickNextVIP();
@@ -483,6 +634,23 @@ public:
 	bool IsCareer( void ) const		{ return false; }		// returns true if this is a CZ "career" game
 
 	virtual bool FAllowNPCs( void );
+
+	struct GrenadeRecording_t
+	{
+		Vector vecSrc;
+		QAngle vecAngles;
+		Vector vecVel;
+		AngularImpulse angImpulse;
+		CBaseCombatCharacter *pPlayer;
+		CSWeaponID weaponID;
+		bool bIsValid;
+	};
+
+#ifndef CLIENT_DLL
+	void RecordGrenadeThrow( Vector vecSrc, QAngle vecAngles, Vector vecVel, AngularImpulse angImpulse, CBaseCombatCharacter *pPlayer, CSWeaponID weaponID );
+	void RethrowLastGrenade();
+	GrenadeRecording_t m_pLastGrenade;
+#endif
 
 protected:
 	virtual void GoToIntermission( void );
@@ -552,10 +720,6 @@ public:
 	int		m_iHostagesTouched;
 	float	m_flNextHostageAnnouncement;
 
-    //=============================================================================
-    // HPE_BEGIN
-    //=============================================================================
-
     // [tj] Accessor for weapons donation ability
     bool GetCanDonateWeapon() { return m_bCanDonateWeapons; }
 
@@ -603,10 +767,6 @@ public:
 
 	int m_nLastFreezeEndBeep;
 
-    //=============================================================================
-    // HPE_END
-    //=============================================================================
-
 
 	// PRISON ESCAPE VARIABLES
 	int		m_iHaveEscaped;
@@ -637,6 +797,29 @@ public:
 	int GetOvertimePlaying( void ) const { return m_nOvertimePlaying; }
 
 	int GetNumWinsToClinch( void ) const;
+
+public:
+	CBaseEntity* GetNextSpawnpoint( int teamNumber );
+
+	void DoCoopSpawnAndNavInit( void );
+	void AddSpawnPointToMasterList( SpawnPoint* pSpawnPoint );
+	void GenerateSpawnPointListsFirstTime( void );
+	void RefreshCurrentSpawnPointLists( void );
+
+	void ShuffleSpawnPointLists( void );
+	void ShuffleMasterSpawnPointLists( void );
+	void SortSpawnPointLists( void );
+	void SortMasterSpawnPointLists( void );
+	void ShufflePlayerList( CUtlVector< CCSPlayer* > &playersList );
+
+protected:
+	CUtlVector< SpawnPoint* >	m_CTSpawnPointsMasterList;			// The master list of CT spawn points (contains all points whether enabled or disabled)
+	CUtlVector< SpawnPoint* >	m_TerroristSpawnPointsMasterList;	// The master list of Terrorist spawn points (contains all points whether enabled or disabled)
+
+	int m_iNextCTSpawnPoint;						// Used when picking the next CT spawn point to assign
+	int m_iNextTerroristSpawnPoint;					// Used when picking the next Terrorist spawn point to assign
+	CUtlVector< SpawnPoint* >	m_CTSpawnPoints;		// List of CT spawn points sorted by their priorities
+	CUtlVector< SpawnPoint* >	m_TerroristSpawnPoints;	// List of Terrorist spawn points sorted by their priorities
 
 private:
 
@@ -683,6 +866,7 @@ protected:
 
 private:
 	bool m_bSwitchingTeamsAtRoundReset;
+	int m_iMaxGunGameProgressiveWeaponIndex;
 };
 
 //-----------------------------------------------------------------------------

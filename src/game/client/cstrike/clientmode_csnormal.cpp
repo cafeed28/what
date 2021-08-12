@@ -757,7 +757,8 @@ void ClientModeCSNormal::FireGameEvent( IGameEvent *event )
 		// [Forrest] Show all centerprint messages if the end-of-round panel is disabled.
 		static ConVarRef sv_nowinpanel( "sv_nowinpanel" );
 		static ConVarRef cl_nowinpanel( "cl_nowinpanel" );
-		if ( reason == Game_Commencing || sv_nowinpanel.GetBool() || cl_nowinpanel.GetBool() )
+		bool isFinishedGunGameRound = CSGameRules()->GetGamemode() == GameModes::ARMS_RACE && (reason == CTs_Win || reason == Terrorists_Win);
+		if ( isFinishedGunGameRound || reason == Game_Commencing || sv_nowinpanel.GetBool() || cl_nowinpanel.GetBool() )
 		{
 			internalCenterPrint->Print( hudtextmessage->LookupString( event->GetString("message") ) );
 
@@ -1083,11 +1084,12 @@ bool ShouldRecreateImageEntity( C_BaseAnimating *pEnt, const char *pNewModelName
 	return( Q_stricmp( pName, pNewModelName ) != 0 );
 }
 
+ConVar cl_simple_player_lighting( "cl_simple_player_lighting", "0", FCVAR_ARCHIVE );
 void UpdateImageEntity(
 	const char *szWeaponClassname,
 	const char *szPlayerModel,
 	int x, int y, int width, int height,
-	int viewX, int viewY, int viewZ,
+	float viewX, float viewY, float viewZ, float viewFOV,
 	bool bIsClassSelection )
 {
 	C_CSPlayer *pLocalPlayer = C_CSPlayer::GetLocalCSPlayer();
@@ -1104,6 +1106,7 @@ void UpdateImageEntity(
 	if ( !szPlayerModel || !szPlayerModel[0] )
 		szPlayerModel = modelinfo->GetModelName( pLocalPlayer->GetModel() );
 
+	bool bActiveWeapon = false;
 	if ( !szWeaponClassname || !szWeaponClassname[0] )
 	{
 		C_BaseCombatWeapon *pPrimaryWeapon = pLocalPlayer->Weapon_GetSlot( WEAPON_SLOT_RIFLE );
@@ -1112,13 +1115,25 @@ void UpdateImageEntity(
 		C_BaseCombatWeapon *pActiveWeapon = pLocalPlayer->GetActiveWeapon();
 
 		if ( pPrimaryWeapon )
+		{
 			szWeaponClassname = pPrimaryWeapon->GetClassname();
+			bActiveWeapon = true;
+		}
 		else if ( pSecondaryWeapon )
+		{
 			szWeaponClassname = pSecondaryWeapon->GetClassname();
+			bActiveWeapon = true;
+		}
 		else if ( pKnifeWeapon )
+		{
 			szWeaponClassname = pKnifeWeapon->GetClassname();
+			bActiveWeapon = true;
+		}
 		else if ( pActiveWeapon )
+		{
 			szWeaponClassname = pActiveWeapon->GetClassname();
+			bActiveWeapon = true;
+		}
 		else if ( bIsClassSelection )
 		{
 			szWeaponClassname = "weapon_ak47";
@@ -1146,9 +1161,13 @@ void UpdateImageEntity(
 	}
 	else
 	{
-		const char* szLoadoutWeapon = CSLoadout()->GetWeaponFromSlot( pLocalPlayer, CSLoadout()->GetSlotFromWeapon( iTeamNumber, szWeaponClassname + 7 ) ); // +7 to get rid of weapon_ prefix
-		if ( szLoadoutWeapon && szLoadoutWeapon[0] )
-			szWeaponClassname = UTIL_VarArgs( "weapon_%s", szLoadoutWeapon );
+		// don't swap active weapon for a loadout one
+		if ( !bActiveWeapon )
+		{
+			const char* szLoadoutWeapon = CSLoadout()->GetWeaponFromSlot( pLocalPlayer, CSLoadout()->GetSlotFromWeapon( iTeamNumber, szWeaponClassname + 7 ) ); // +7 to get rid of weapon_ prefix
+			if ( szLoadoutWeapon && szLoadoutWeapon[0] )
+				szWeaponClassname = UTIL_VarArgs( "weapon_%s", szLoadoutWeapon );
+		}
 
 		WEAPON_FILE_INFO_HANDLE	hWpnInfo = LookupWeaponInfoSlot( szWeaponClassname );
 		if ( hWpnInfo == GetInvalidWeaponInfoHandle() )
@@ -1293,7 +1312,7 @@ void UpdateImageEntity(
 
 	Vector playerPos = vec3_origin;
 	pPlayerModel->SetAbsOrigin( playerPos );
-	pPlayerModel->SetAbsAngles( QAngle( 0, 180, 0 ) );
+	pPlayerModel->SetAbsAngles( vec3_angle );
 
 	// now set the sequence for this player model if needed
 	if ( !bIsClassSelection )
@@ -1312,12 +1331,12 @@ void UpdateImageEntity(
 	view.height = height;
 
 	view.m_bOrtho = false;
-	view.fov = 42;
+	view.fov = viewFOV;
 
 	Vector viewOrigin = playerPos + Vector( viewX, viewY, viewZ );
 	view.origin = viewOrigin;
 
-	view.angles.Init();
+	view.angles.Init( 0.0f, 180.0f, 0.0f );
 	view.zNear = VIEW_NEARZ;
 	view.zFar = 1000;
 
@@ -1330,8 +1349,19 @@ void UpdateImageEntity(
 	pRenderContext->SetAmbientLight( 0.4, 0.4, 0.4 );
 
 	// PiMoN: let this model have a proper lighting for once!
-	LightDesc_t spotLight( playerPos + Vector( -128, 0, 128 ), Vector( 1, 1, 1 ), playerPos + Vector( 0, 0, 64 ), 0.5f, 1.0f );
-	g_pStudioRender->SetLocalLights( 1, &spotLight );
+	if ( cl_simple_player_lighting.GetBool() )
+	{
+		static LightDesc_t spotLight( Vector( 128, 0, 128 ), Vector( 1, 1, 1 ), Vector( 0, 0, 64 ), 0.5f, 1.0f );
+		g_pStudioRender->SetLocalLights( 1, &spotLight );
+	}
+	else
+	{
+		static LightDesc_t lights[3];
+		lights[0].InitDirectional( Vector( -0.50f, 0.80f, 0.00f ), Vector( 0.21f, 0.21f, 0.22f ) );
+		lights[1].InitDirectional( Vector( 0.70f, -0.80f, 0.00f ), Vector( 0.07f, 0.10f, 0.13f ) );
+		lights[2].InitSpot( Vector( 66.32f, -17.06f, 124.60f ), Vector( 1.10f, 1.25f, 1.35f ), Vector( 0.0f, 0.0f, 56.0f ), 0.25f, 1.0f );
+		g_pStudioRender->SetLocalLights( 3, lights );
+	}
 
 	Frustum dummyFrustum;
 	render->Push3DView( view, 0, NULL, dummyFrustum );
@@ -1354,6 +1384,7 @@ void UpdateImageEntity(
 	render->PopView( dummyFrustum );
 
 	pRenderContext->BindLocalCubemap( NULL );
+	pRenderContext.SafeRelease();
 }
 
 bool WillPanelBeVisible( vgui::VPANEL hPanel )
@@ -1382,12 +1413,12 @@ void ClientModeCSNormal::PostRenderVGui()
 			pPanel->LocalToScreen( x, y );
 
 			// Allow for the border.
-			x += 2;
-			y += 5;
-			w -= 4;
-			h -= 10;
+			x += 1;
+			y += 1;
+			w -= 2;
+			h -= 2;
 
-			UpdateImageEntity( NULL, pPanel->m_ModelName, x, y, w, h, pPanel->m_ViewXPos, pPanel->m_ViewYPos, pPanel->m_ViewZPos, true );
+			UpdateImageEntity( NULL, pPanel->m_ModelName, x, y, w, h, pPanel->m_ViewXPos, pPanel->m_ViewYPos, pPanel->m_ViewZPos, pPanel->m_ViewFOV, true );
 			return;
 		}
 	}
@@ -1403,12 +1434,12 @@ void ClientModeCSNormal::PostRenderVGui()
 			pPanel->GetBounds( x, y, w, h );
 
 			// Allow for the border.
-			x += 2;
-			y += 5;
-			w -= 4;
-			h -= 10;
+			x += 1;
+			y += 1;
+			w -= 2;
+			h -= 2;
 
-			UpdateImageEntity( NULL, NULL, x, y, w, h, pPanel->m_ViewXPos, pPanel->m_ViewYPos, pPanel->m_ViewZPos, false );
+			UpdateImageEntity( NULL, NULL, x, y, w, h, pPanel->m_ViewXPos, pPanel->m_ViewYPos, pPanel->m_ViewZPos, pPanel->m_ViewFOV, false );
 			return;
 		}
 	}
@@ -1425,12 +1456,12 @@ void ClientModeCSNormal::PostRenderVGui()
 			pPanel->LocalToScreen( x, y );
 
 			// Allow for the border.
-			x += 3;
-			y += 5;
+			x += 1;
+			y += 1;
 			w -= 2;
-			h -= 10;
+			h -= 2;
 
-			UpdateImageEntity( pPanel->m_WeaponName, NULL, x, y, w, h, pPanel->m_ViewXPos, pPanel->m_ViewYPos, pPanel->m_ViewZPos, false );
+			UpdateImageEntity( pPanel->m_WeaponName, NULL, x, y, w, h, pPanel->m_ViewXPos, pPanel->m_ViewYPos, pPanel->m_ViewZPos, pPanel->m_ViewFOV, false );
 			return;
 		}
 	}
