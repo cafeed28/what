@@ -558,6 +558,8 @@ void C_CSRagdoll::CreateLowViolenceRagdoll( void )
 		{
 			// move my current model instance to the ragdoll's so decals are preserved.
 			pPlayer->SnatchModelInstance( this );
+			// copy bodygroup state
+			m_nBody = pPlayer->GetBody();
 		}
 
 		SetAbsAngles( pPlayer->GetRenderAngles() );
@@ -608,6 +610,8 @@ void C_CSRagdoll::CreateCSRagdoll()
 	{
 		// move my current model instance to the ragdoll's so decals are preserved.
 		pPlayer->SnatchModelInstance( this );
+		// copy bodygroup state
+		m_nBody = pPlayer->GetBody();
 	
 		VarMapping_t *varMap = GetVarMapping();
 
@@ -700,7 +704,7 @@ void C_CSRagdoll::CreateCSRagdoll()
 		{
 			bDissolveEntity = false;
 			// Make us a ragdoll..
-			m_nRenderFX = kRenderFxRagdoll;
+			m_bClientSideRagdoll = true;
 			Vector vRagdollOrigin = GetAbsOrigin(), vPlayerOrigin = pPlayer->GetAbsOrigin();
 
 			matrix3x4_t currentBones[ MAXSTUDIOBONES ];
@@ -775,7 +779,8 @@ void C_CSRagdoll::CreateGlovesModel()
 		if ( m_pGlovesModel->InitializeAsClientEntity( GetGlovesInfo( CSLoadout()->GetGlovesForPlayer( pPlayer, pPlayer->GetTeamNumber() ) )->szWorldModel, RENDER_GROUP_OPAQUE_ENTITY ) )
 		{
 			// hide the gloves first
-			SetBodygroup( FindBodygroupByName( "gloves" ), 1 );
+			// UNDONE: m_nBody = pPlayer->GetBody(); is now handling this
+			//SetBodygroup( FindBodygroupByName( "gloves" ), 1 );
 
 			m_pGlovesModel->FollowEntity( this ); // attach to player model
 			m_pGlovesModel->AddEffects( EF_BONEMERGE_FASTCULL ); // EF_BONEMERGE is already applied on FollowEntity()
@@ -795,7 +800,9 @@ void C_CSRagdoll::CreateGlovesModel()
 		else
 		{
 			m_pGlovesModel->Release();
-			SetBodygroup( FindBodygroupByName( "gloves" ), 0 );
+			m_pGlovesModel = NULL;
+			// UNDONE: m_nBody = pPlayer->GetBody(); is now handling this
+			//SetBodygroup( FindBodygroupByName( "gloves" ), 0 );
 		}
 	}
 }
@@ -863,7 +870,7 @@ void C_CSRagdoll::OnDataChanged( DataUpdateType_t type )
 		if ( !cl_ragdoll_physics_enable.GetInt() )
 		{
 			// Don't let it set us back to a ragdoll with data from the server.
-			m_nRenderFX = kRenderFxNone;
+			m_bClientSideRagdoll = false;
 		}
 	}
 }
@@ -1077,31 +1084,27 @@ void __MsgFunc_ReloadEffect( bf_read &msg )
 USER_MESSAGE_REGISTER( ReloadEffect );
 
 BEGIN_RECV_TABLE_NOBASE( C_CSPlayer, DT_CSLocalPlayerExclusive )
+	RecvPropVectorXY( RECVINFO_NAME( m_vecNetworkOrigin, m_vecOrigin ) ),
+	RecvPropFloat( RECVINFO_NAME( m_vecNetworkOrigin[2], m_vecOrigin[2] ) ),
+
 	RecvPropFloat( RECVINFO(m_flStamina) ),
 	RecvPropInt( RECVINFO( m_iDirection ) ),
 	RecvPropInt( RECVINFO( m_iShotsFired ) ),
-	RecvPropFloat( RECVINFO( m_flVelocityModifier ) ),
 	RecvPropBool( RECVINFO( m_bDuckOverride ) ),
+	RecvPropFloat( RECVINFO( m_flVelocityModifier ) ),
 
 	RecvPropVector( RECVINFO_NAME( m_vecNetworkOrigin, m_vecOrigin ) ),
 
-    //=============================================================================
-    // HPE_BEGIN:
     // [tj]Set up the receive table for per-client domination data
-    //=============================================================================
-
     RecvPropArray3( RECVINFO_ARRAY( m_bPlayerDominated ), RecvPropBool( RECVINFO( m_bPlayerDominated[0] ) ) ),
     RecvPropArray3( RECVINFO_ARRAY( m_bPlayerDominatingMe ), RecvPropBool( RECVINFO( m_bPlayerDominatingMe[0] ) ) )
-
-    //=============================================================================
-    // HPE_END
-    //=============================================================================
 
 END_RECV_TABLE()
 
 
 BEGIN_RECV_TABLE_NOBASE( C_CSPlayer, DT_CSNonLocalPlayerExclusive )
-	RecvPropVector( RECVINFO_NAME( m_vecNetworkOrigin, m_vecOrigin ) ),
+	RecvPropVectorXY( RECVINFO_NAME( m_vecNetworkOrigin, m_vecOrigin ) ),
+	RecvPropFloat( RECVINFO_NAME( m_vecNetworkOrigin[2], m_vecOrigin[2] ) ),
 END_RECV_TABLE()
 
 
@@ -1110,11 +1113,11 @@ IMPLEMENT_CLIENTCLASS_DT( C_CSPlayer, DT_CSPlayer, CCSPlayer )
 	RecvPropDataTable( "csnonlocaldata", 0, 0, &REFERENCE_RECV_TABLE(DT_CSNonLocalPlayerExclusive) ),
 	RecvPropFloat( RECVINFO( m_angEyeAngles[0] ) ),
 	RecvPropFloat( RECVINFO( m_angEyeAngles[1] ) ),
+	RecvPropInt( RECVINFO( m_iThrowGrenadeCounter ) ),
 	RecvPropInt( RECVINFO( m_iAddonBits ) ),
 	RecvPropInt( RECVINFO( m_iPrimaryAddon ) ),
 	RecvPropInt( RECVINFO( m_iSecondaryAddon ) ),
 	RecvPropInt( RECVINFO( m_iKnifeAddon ) ),
-	RecvPropInt( RECVINFO( m_iThrowGrenadeCounter ) ),
 	RecvPropInt( RECVINFO( m_iPlayerState ) ),
 	RecvPropInt( RECVINFO( m_iAccount ) ),
 	RecvPropBool( RECVINFO( m_bInBombZone ) ),
@@ -1124,8 +1127,6 @@ IMPLEMENT_CLIENTCLASS_DT( C_CSPlayer, DT_CSPlayer, CCSPlayer )
 	RecvPropInt( RECVINFO( m_iMoveState ) ),
 	RecvPropInt( RECVINFO( m_iClass ) ),
 	RecvPropInt( RECVINFO( m_ArmorValue ) ),
-	RecvPropQAngles( RECVINFO( m_angEyeAngles ) ),
-	RecvPropFloat( RECVINFO( m_flStamina ) ),
 	RecvPropInt( RECVINFO( m_bHasDefuser ), 0, RecvProxy_HasDefuser ),
 	RecvPropInt( RECVINFO( m_bNightVisionOn), 0, RecvProxy_NightVision ),
 	RecvPropBool( RECVINFO( m_bHasNightVision ) ),
@@ -1136,28 +1137,14 @@ IMPLEMENT_CLIENTCLASS_DT( C_CSPlayer, DT_CSPlayer, CCSPlayer )
 	RecvPropBool( RECVINFO( m_bIsWalking ) ),
 	RecvPropFloat( RECVINFO( m_flGroundAccelLinearFracLastTime ) ),
 
-
-    //=============================================================================
-    // HPE_BEGIN:
-    // [dwenger] Added for fun-fact support
-    //=============================================================================
-
-    //RecvPropBool( RECVINFO( m_bPickedUpDefuser ) ),
-    //RecvPropBool( RECVINFO( m_bDefusedWithPickedUpKit ) ),
-
-    //=============================================================================
-    // HPE_END
-    //=============================================================================
-
     RecvPropBool( RECVINFO( m_bInHostageRescueZone ) ),
-	RecvPropInt( RECVINFO( m_ArmorValue ) ),
 	RecvPropBool( RECVINFO( m_bIsDefusing ) ),
 	RecvPropBool( RECVINFO( m_bResumeZoom ) ),
-	RecvPropFloat( RECVINFO( m_fImmuneToDamageTime ) ),
-	RecvPropBool( RECVINFO( m_bImmunity ) ),
 	RecvPropBool( RECVINFO( m_bHasMovedSinceSpawn ) ),
 	RecvPropBool( RECVINFO( m_bMadeFinalGunGameProgressiveKill ) ),
 	RecvPropInt( RECVINFO( m_iGunGameProgressiveWeaponIndex ) ),
+	RecvPropFloat( RECVINFO( m_fImmuneToDamageTime ) ),
+	RecvPropBool( RECVINFO( m_bImmunity ) ),
 	RecvPropInt( RECVINFO( m_iLastZoom ) ),
 
 #ifdef CS_SHIELD_ENABLED
@@ -1165,7 +1152,6 @@ IMPLEMENT_CLIENTCLASS_DT( C_CSPlayer, DT_CSPlayer, CCSPlayer )
 	RecvPropBool( RECVINFO( m_bShieldDrawn ) ),
 #endif
 	RecvPropInt( RECVINFO( m_bHasHelmet ) ),
-	RecvPropVector( RECVINFO( m_vecRagdollVelocity ) ),
 	RecvPropFloat( RECVINFO( m_flFlashDuration ), 0, RecvProxy_FlashTime ),
 	RecvPropFloat( RECVINFO( m_flFlashMaxAlpha)),
 	RecvPropInt( RECVINFO( m_iProgressBarDuration ) ),
@@ -1179,8 +1165,8 @@ IMPLEMENT_CLIENTCLASS_DT( C_CSPlayer, DT_CSPlayer, CCSPlayer )
 	RecvPropBool( RECVINFO( m_bCanControlObservedBot ) ),
 	RecvPropInt( RECVINFO( m_iControlledBotEntIndex ) ),
 #endif
-	RecvPropBool( RECVINFO( m_bIsHoldingLookAtWeapon ) ),
 	RecvPropBool( RECVINFO( m_bIsLookingAtWeapon ) ),
+	RecvPropBool( RECVINFO( m_bIsHoldingLookAtWeapon ) ),
 
 	RecvPropFloat( RECVINFO( m_flLowerBodyYawTarget ) ),
 	RecvPropBool( RECVINFO( m_bStrafing ) ),
@@ -1751,14 +1737,14 @@ void C_CSPlayer::CreateAddonModel( int i )
 	pAddon->m_iAttachmentPoint = iAttachment;
 	pEnt->SetParent( this, pAddon->m_iAttachmentPoint );
 
-	int iHolsterBone = pEnt->LookupBone( "weapon_holster_center" );
-	if ( iHolsterBone != -1 )
+	int iHolsterAttachment = pEnt->LookupAttachment( "weapon_holster_center" );
+	if ( iHolsterAttachment > 0 )
 	{
-		Vector holsterBonePos;
-		QAngle holsterBoneAng;
-		pEnt->GetBonePosition( iHolsterBone, holsterBonePos, holsterBoneAng );
-		pEnt->SetLocalOrigin( -holsterBonePos );
-		pEnt->SetLocalAngles( holsterBoneAng );
+		Vector holsterPos;
+		QAngle holsterAng;
+		pEnt->GetAttachment( iHolsterAttachment, holsterPos, holsterAng );
+		pEnt->SetLocalOrigin( -holsterPos );
+		pEnt->SetLocalAngles( holsterAng );
 	}
 	else
 	{
@@ -1772,6 +1758,10 @@ void C_CSPlayer::CreateAddonModel( int i )
 		pEnt->SetSolid( SOLID_NONE );
 		pEnt->RemoveEFlags( EFL_USE_PARTITION_WHEN_NOT_SOLID );
 	}
+
+	int iHolsterstrapBodygroup = pEnt->FindBodygroupByName( "holsterstrap" );
+	if ( iHolsterstrapBodygroup != -1 )
+		pEnt->SetBodygroup( iHolsterstrapBodygroup, 1 );
 }
 
 //-----------------------------------------------------------------------------
@@ -2930,7 +2920,7 @@ ConVar clTaserShakeTimeTotal( "clTaserShakeTimeTotal", "7.0", 0, "time the taser
 
 void C_CSPlayer::HandleTaserAnimation()
 {
-	if ( m_bKilledByTaser )
+	if ( m_bClientSideRagdoll && m_bKilledByTaser )
 	{
 		if ( m_nextTaserShakeTime < gpGlobals->curtime )
 		{

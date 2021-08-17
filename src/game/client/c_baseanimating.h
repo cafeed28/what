@@ -216,7 +216,7 @@ public:
 	float	SetPoseParameter( CStudioHdr *pStudioHdr, int iParameter, float flValue );
 	inline float SetPoseParameter( int iParameter, float flValue ) { return SetPoseParameter( GetModelPtr(), iParameter, flValue ); }
 
-	float	GetPoseParameter( int iPoseParameter );
+	float	GetPoseParameter( int iParameter );
 
 	bool	GetPoseParameterRange( int iPoseParameter, float &minValue, float &maxValue );
 
@@ -307,7 +307,6 @@ public:
 
 	// returns true if we're currently being ragdolled
 	bool							IsRagdoll() const;
-	bool							IsAboutToRagdoll() const;
 	virtual C_BaseAnimating			*BecomeRagdollOnClient();
 	C_BaseAnimating					*CreateRagdollCopy();
 	bool							InitAsClientRagdoll( const matrix3x4_t *pDeltaBones0, const matrix3x4_t *pDeltaBones1, const matrix3x4_t *pCurrentBonePosition, float boneDt, bool bFixedConstraints=false );
