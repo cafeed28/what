@@ -151,6 +151,9 @@ hammer.lib
 hammer_dll.pdb
 hammer_dll.dll
 hammer_dll.lib
+FileSystemOpenDialog.pdb
+FileSystemOpenDialog.dll
+FileSystemOpenDialog.lib
 
 # ignore this files since they have to be builded manually any way
 mathlib.lib
