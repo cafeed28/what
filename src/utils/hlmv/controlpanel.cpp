@@ -3516,23 +3516,23 @@ void ControlPanel::OnLoadModel( void )
 	if ( g_viewerSettings.guessModelFOV )
 	{
 		// guess the category and set a reasonable default fov
-		if ( V_stristr( g_pStudioModel->GetFileName(), "\\player\\" ) )
+		if ( V_stristr( g_pStudioModel->GetFileName(), "player/" ) )
 		{
 			setFOV( 90.0f );
 		}
-		else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons\\v_" ) )
+		else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons/v_" ) )
 		{
 			setFOV( 54.0f );
 		}
-		else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons\\v_models\\" ) )
+		else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons/v_models/" ) )
 		{
 			setFOV( 54.0f );
 		}
-		else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons\\w_" ) )
+		else if ( V_stristr( g_pStudioModel->GetFileName(), "weapon/w_" ) )
 		{
 			setFOV( 90.0f );
 		}
-		else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons\\w_models\\" ) )
+		else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons/w_models/" ) )
 		{
 			setFOV( 90.0f );
 		}
