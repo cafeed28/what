@@ -1093,8 +1093,6 @@ BEGIN_RECV_TABLE_NOBASE( C_CSPlayer, DT_CSLocalPlayerExclusive )
 	RecvPropBool( RECVINFO( m_bDuckOverride ) ),
 	RecvPropFloat( RECVINFO( m_flVelocityModifier ) ),
 
-	RecvPropVector( RECVINFO_NAME( m_vecNetworkOrigin, m_vecOrigin ) ),
-
     // [tj]Set up the receive table for per-client domination data
     RecvPropArray3( RECVINFO_ARRAY( m_bPlayerDominated ), RecvPropBool( RECVINFO( m_bPlayerDominated[0] ) ) ),
     RecvPropArray3( RECVINFO_ARRAY( m_bPlayerDominatingMe ), RecvPropBool( RECVINFO( m_bPlayerDominatingMe[0] ) ) )
@@ -1342,28 +1340,6 @@ void C_CSPlayer::UpdateOnRemove( void )
 	BaseClass::UpdateOnRemove();
 }
 
-//--------------------------------------------------------------------------------------------------------
-void C_CSPlayer::OnSetDormant( bool bDormant )
-{
-	if ( bDormant )
-	{
-		if ( !IsAnimLODflagSet( ANIMLODFLAG_DORMANT ) )
-		{
-			m_nAnimLODflagsOld &= ~ANIMLODFLAG_DORMANT;
-		}
-		SetAnimLODflag( ANIMLODFLAG_DORMANT );
-	}
-	else
-	{
-		if ( IsAnimLODflagSet( ANIMLODFLAG_DORMANT ) )
-		{
-			m_nAnimLODflagsOld |= ANIMLODFLAG_DORMANT;
-		}
-		UnSetAnimLODflag( ANIMLODFLAG_DORMANT );
-	}
-
-	BaseClass::OnSetDormant( bDormant );
-}
 
 bool C_CSPlayer::HasDefuser() const
 {
@@ -1443,9 +1419,8 @@ bool C_CSPlayer::HasHelmet() const
 
 int C_CSPlayer::DrawModel( int flags )
 {
-	if ( IsAnimLODflagSet(ANIMLODFLAG_OUTSIDEVIEWFRUSTUM) || IsDormant() || !IsVisible() )
+	if ( IsDormant() || !IsVisible() )
 	{
-
 		if ( !IsVisible() )
 		{
 			// fixme: players spectators fly towards return false to IsVisible? Special case for now:
@@ -1593,7 +1568,7 @@ public:
 		{
 			C_CSPlayer *pCSPlayer = static_cast<C_CSPlayer *>( pMoveParent );
 
-			if ( pCSPlayer && ( pCSPlayer->IsAnimLODflagSet(ANIMLODFLAG_OUTSIDEVIEWFRUSTUM) || pCSPlayer->IsDormant() || !pCSPlayer->IsVisible() ) )
+			if ( pCSPlayer && ( pCSPlayer->IsDormant() || !pCSPlayer->IsVisible() ) )
 				return pCSPlayer->GetAbsOrigin();
 
 		}
@@ -1607,7 +1582,7 @@ public:
 		if ( pMoveParent && pMoveParent->IsPlayer() )
 		{
 			C_CSPlayer *pCSPlayer = static_cast<C_CSPlayer *>( pMoveParent );
-			if ( pCSPlayer && ( pCSPlayer->IsAnimLODflagSet(ANIMLODFLAG_OUTSIDEVIEWFRUSTUM) || pCSPlayer->IsDormant() || !pCSPlayer->IsVisible() ) )
+			if ( pCSPlayer && ( pCSPlayer->IsDormant() || !pCSPlayer->IsVisible() ) )
 				return false;
 		}
 
@@ -1624,6 +1599,15 @@ public:
 
 void C_CSPlayer::CreateAddonModel( int i )
 {
+	if ( m_bUseNewAnimstate )
+	{
+		/** Removed for partner depot **/
+		// PiMoN: haha get that? removed for partner depot LOL!
+		// but yea actually just removing that cuz its broken with new animations
+		// until I figure out why
+		return;
+	}
+
 	COMPILE_TIME_ASSERT( (sizeof( g_AddonInfo ) / sizeof( g_AddonInfo[0] )) == NUM_ADDON_BITS );
 
 	// Create the model entity.
@@ -2249,7 +2233,6 @@ void C_CSPlayer::ClientThink()
 	if ( IsAlive() )
 	{
 		m_vecLastAliveLocalVelocity = (m_vecLastAliveLocalVelocity * 0.8) + (GetLocalVelocity() * 0.2);
-		ReevauluateAnimLOD();
 	}
 
 	BaseClass::ClientThink();
@@ -3096,7 +3079,7 @@ bool C_CSPlayer::ShouldDraw( void )
 
 bool C_CSPlayer::GetAttachment( int number, matrix3x4_t &matrix )
 {
-	if ( IsAnimLODflagSet(ANIMLODFLAG_OUTSIDEVIEWFRUSTUM) || IsDormant() )
+	if ( IsDormant() )
 	{
 		MatrixCopy( EntityToWorldTransform(), matrix );
 		matrix.SetOrigin( matrix.GetOrigin() + APPROX_CENTER_PLAYER );
@@ -3108,7 +3091,7 @@ bool C_CSPlayer::GetAttachment( int number, matrix3x4_t &matrix )
 
 bool C_CSPlayer::GetAttachment( int number, Vector &origin )
 {
-	if ( IsAnimLODflagSet(ANIMLODFLAG_OUTSIDEVIEWFRUSTUM) || IsDormant() )
+	if ( IsDormant() )
 	{
 		origin = GetAbsOrigin() + APPROX_CENTER_PLAYER;
 		return true;
@@ -3118,7 +3101,7 @@ bool C_CSPlayer::GetAttachment( int number, Vector &origin )
 
 bool C_CSPlayer::GetAttachment( int number, Vector &origin, QAngle &angles )
 {
-	if ( IsAnimLODflagSet(ANIMLODFLAG_OUTSIDEVIEWFRUSTUM) || IsDormant() )
+	if ( IsDormant() )
 	{
 		origin = GetAbsOrigin() + APPROX_CENTER_PLAYER;
 		angles = GetAbsAngles();
@@ -3127,137 +3110,8 @@ bool C_CSPlayer::GetAttachment( int number, Vector &origin, QAngle &angles )
 	return BaseClass::GetAttachment( number, origin, angles );
 }
 
-//-----------------------------------------------------------------------------
-//
-//-----------------------------------------------------------------------------
-#ifdef DEBUG
-ConVar cl_animlod_dotproduct( "cl_animlod_dotproduct", "0.3" );
-#define animlod_dotproduct cl_animlod_dotproduct.GetFloat()
-#else
-#define animlod_dotproduct 0.3
-#endif
-void C_CSPlayer::ReevauluateAnimLOD( int boneMask )
-{
-	
-	if ( !engine->IsHLTV() && gpGlobals->framecount != m_nComputedLODframe )
-	{
-		m_nCustomBlendingRuleMask = -1;
-
-		bool bFirstSetup = ( m_nComputedLODframe == 0 );
-
-		m_nComputedLODframe = gpGlobals->framecount;
-
-		// save off the old flags before we reset and recompute the new ones, so we have a one-step record of change
-		m_nAnimLODflagsOld = m_nAnimLODflags;
-
-		ClearAnimLODflags();
-
-		if ( !bFirstSetup )
-		{
-			if ( !IsVisible() || IsDormant() || (IsLocalPlayer() && !C_BasePlayer::ShouldDrawLocalPlayer()) || !ShouldDraw() )
-			{
-				// always do cheap bone setup for an invisible local player
-				SetAnimLODflag( ANIMLODFLAG_INVISIBLELOCALPLAYER );
-			}
-			else
-			{
-
-				// is this player being interpolated towards by an observer camera?
-				C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer();
-				bool bTargetOfInterpolatingObsCam = ( pLocalPlayer && pLocalPlayer->GetObserverMode() == OBS_MODE_IN_EYE && 
-					pLocalPlayer->GetObserverTarget() == ToBasePlayer(this) && 
-					pLocalPlayer->GetObserverInterpState() != OBSERVER_INTERP_NONE );
-
-				if ( !bTargetOfInterpolatingObsCam )
-				{
-					// if this player is behind the camera and beyond a certain distance, perform only cheap and simple bone setup.
-					Vector vecEyeToPlayer = EyePosition() - MainViewOrigin();
-					m_flDistanceFromCamera = vecEyeToPlayer.Length();
-
-					if ( m_flDistanceFromCamera > 400.0f )
-					{
-						SetAnimLODflag( ANIMLODFLAG_DISTANT );
-
-						Vector vecEyeDir = MainViewForward();
-						float flEyeDirToPlayerDirDot = DotProduct( vecEyeToPlayer.Normalized(), vecEyeDir.Normalized() );
-
-						if ( flEyeDirToPlayerDirDot < animlod_dotproduct )
-						{
-							SetAnimLODflag( ANIMLODFLAG_OUTSIDEVIEWFRUSTUM );
-						}
-					}
-				}
-			}
-		}
-
-		// weapon world model mimics player's anim lod flags
-		C_BaseCombatWeapon *pWeapon = GetActiveWeapon();
-		if ( pWeapon )
-		{
-			CBaseWeaponWorldModel *pWeaponWorldModel = pWeapon->m_hWeaponWorldModel.Get();
-			if ( pWeaponWorldModel )
-			{
-				pWeaponWorldModel->m_nAnimLODflags = m_nAnimLODflags;
-				pWeaponWorldModel->m_nAnimLODflagsOld = m_nAnimLODflagsOld;
-			}
-		}
-
-		bool bCrossedDistanceThreshold = ((m_nAnimLODflags & ANIMLODFLAG_DISTANT) != 0) != ((m_nAnimLODflagsOld & ANIMLODFLAG_DISTANT) != 0);
-
-		// unless this is the first setup or the lod state is changing this frame, use a much more conservative bone mask for distant lod
-		if ( !bFirstSetup && IsAnimLODflagSet( ANIMLODFLAG_DISTANT ) && !bCrossedDistanceThreshold )
-		{
-			m_nCustomBlendingRuleMask = (BONE_USED_BY_ATTACHMENT | BONE_USED_BY_HITBOX);
-		}
-
-		// if the player has just become awake (no longer dormant) then we should set up all the bones (treat it like a first setup)
-		if ( bFirstSetup || (IsDormant() && !(m_nAnimLODflagsOld & ANIMLODFLAG_DORMANT)) )
-		{
-			m_nCustomBlendingRuleMask = -1;
-		}
-
-		//if ( bCrossedDistanceThreshold )
-		//{
-		//	if ( IsAnimLODflagSet( ANIMLODFLAG_DISTANT ) )
-		//	{
-		//		debugoverlay->AddTextOverlay( GetAbsOrigin(), 5, "Distant" );
-		//	}
-		//	else
-		//	{
-		//		debugoverlay->AddTextOverlay( GetAbsOrigin(), 5, "Closer" );
-		//	}
-		//}
-		//
-		//bool bEnteredFrustum = ((m_nAnimLODflags & ANIMLODFLAG_OUTSIDEVIEWFRUSTUM) != 0) != ((m_nAnimLODflagsOld & ANIMLODFLAG_OUTSIDEVIEWFRUSTUM) != 0);
-		//
-		//if ( bEnteredFrustum )
-		//{
-		//	if ( !IsAnimLODflagSet( ANIMLODFLAG_OUTSIDEVIEWFRUSTUM ) )
-		//	{
-		//		debugoverlay->AddTextOverlay( GetAbsOrigin(), 2, "Enter frustum" );
-		//	}
-		//}
-
-	}
-
-	//	// player models don't have explicit levels of vertex lod - yet. This is how vert lod would be masked:
-	//	studiohwdata_t *pHardwareData = g_pMDLCache->GetHardwareData( modelinfo->GetCacheHandle( GetModel() ) );
-	//	int nHighLod = MAX( pHardwareData->m_RootLOD, pHardwareData->m_NumLODs - 1 );
-	//	m_nCustomBlendingRuleMask ... BONE_USED_BY_VERTEX_AT_LOD(nHighLod);
-}
-
-bool C_CSPlayer::SetupBones( matrix3x4_t *pBoneToWorldOut, int nMaxBones, int boneMask, float currentTime )
-{
-	ReevauluateAnimLOD( boneMask );
-
-	return BaseClass::SetupBones( pBoneToWorldOut, nMaxBones, boneMask, currentTime );
-}
-
 void C_CSPlayer::AccumulateLayers( IBoneSetup &boneSetup, Vector pos[], Quaternion q[], float currentTime )
 {
-	if ( !engine->IsHLTV() && IsAnimLODflagSet( ANIMLODFLAG_DORMANT | ANIMLODFLAG_OUTSIDEVIEWFRUSTUM ) )
-		return;
-
 	C_BaseCombatWeapon *pWeapon = GetActiveWeapon();
 	CBaseWeaponWorldModel *pWeaponWorldModel = NULL;
 	if ( pWeapon )
@@ -3335,7 +3189,7 @@ void CBoneSnapshot::Update( CBaseAnimating* pEnt, bool bReadOnly )
 	}
 
 	C_CSPlayer* pPlayer = ToCSPlayer( m_pEnt );
-	if ( pPlayer && ( pPlayer->IsAnimLODflagSet(ANIMLODFLAG_INVISIBLELOCALPLAYER|ANIMLODFLAG_DORMANT|ANIMLODFLAG_OUTSIDEVIEWFRUSTUM) || (gpGlobals->curtime - pPlayer->m_flLastSpawnTimeIndex) <= 0.5f ) )
+	if ( pPlayer && ( (gpGlobals->curtime - pPlayer->m_flLastSpawnTimeIndex) <= 0.5f ) )
 	{
 		AbandonAnyPending();
 		return;
@@ -3497,7 +3351,7 @@ bool C_CSPlayer::IsAnyBoneSnapshotPending( void )
 #define cl_player_toe_length 4.5
 void C_CSPlayer::DoExtraBoneProcessing( CStudioHdr *pStudioHdr, Vector pos[], Quaternion q[], matrix3x4_t boneToWorld[], CBoneBitList &boneComputed, CIKContext *pIKContext )
 {
-	if ( !m_bUseNewAnimstate || !m_PlayerAnimStateCSGO || IsAnimLODflagSet(ANIMLODFLAG_DORMANT|ANIMLODFLAG_INVISIBLELOCALPLAYER|ANIMLODFLAG_OUTSIDEVIEWFRUSTUM) )
+	if ( !m_bUseNewAnimstate || !m_PlayerAnimStateCSGO )
 		return;
 	
 	if ( !IsVisible() || (IsLocalPlayer() && !C_BasePlayer::ShouldDrawLocalPlayer()) || !ShouldDraw() )

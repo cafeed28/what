@@ -70,6 +70,11 @@ $Project "fgdlib"
 	"fgdlib\fgdlib.vpc" [$WIN32]
 }
 
+$Project "FileSystemOpenDialog"
+{
+	"utils\FileSystemOpenDialog\FileSystemOpenDialog.vpc" [$WIN32]
+}
+
 $Project "game_shader_dx9"
 {
 	"materialsystem\stdshaders\game_shader_dx9_hl2mp.vpc" [$HL2MP]

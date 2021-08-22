@@ -57,7 +57,7 @@ void InitViewerSettings ( const char *subkey )
 	g_viewerSettings.showOrbitCircle = false;
 	g_viewerSettings.allowOrbitYaw = false;
 
-	g_viewerSettings.guessModelFOV = false;
+	g_viewerSettings.guessModelFOV = true;
 
 	strcpy( g_viewerSettings.registrysubkey, subkey );
 

@@ -687,12 +687,6 @@ C_BaseAnimating::C_BaseAnimating() :
 {
 	m_nLastNonSkippedFrame = 0;
 
-	m_nCustomBlendingRuleMask = -1;
-
-	ClearAnimLODflags();
-	m_nComputedLODframe = 0;
-	m_flDistanceFromCamera = 0;
-
 	m_bMaintainSequenceTransitions = true;
 
 	m_vecForce.Init();
@@ -2949,11 +2943,6 @@ bool C_BaseAnimating::SetupBones( matrix3x4_t *pBoneToWorldOut, int nMaxBones, i
 			{
 				int nTempMask = boneMask;
 
-				if ( m_nCustomBlendingRuleMask != -1 )
-				{
-					nTempMask &= m_nCustomBlendingRuleMask;
-				}
-
 				nTempMask |= BONE_ALWAYS_SETUP; // make sure we always set up these bones
 
 				StandardBlendingRules( hdr, pos, q, currentTime, nTempMask );
@@ -4378,7 +4367,6 @@ bool C_BaseAnimating::Interpolate( float flCurrentTime )
 
 	Vector oldOrigin;
 	QAngle oldAngles;
-	Vector oldVel;
 	float flOldCycle = GetCycle();
 	int nChangeFlags = 0;
 
@@ -4386,7 +4374,7 @@ bool C_BaseAnimating::Interpolate( float flCurrentTime )
 		m_iv_flCycle.SetLooping( IsSequenceLooping( GetSequence() ) );
 
 	int bNoMoreChanges;
-	int retVal = BaseInterpolatePart1( flCurrentTime, oldOrigin, oldAngles, oldVel, bNoMoreChanges );
+	int retVal = BaseInterpolatePart1( flCurrentTime, oldOrigin, oldAngles, bNoMoreChanges );
 	if ( retVal == INTERPOLATE_STOP )
 	{
 		if ( bNoMoreChanges )
@@ -4402,7 +4390,7 @@ bool C_BaseAnimating::Interpolate( float flCurrentTime )
 	if ( bNoMoreChanges )
 		RemoveFromInterpolationList();
 	
-	BaseInterpolatePart2( oldOrigin, oldAngles, oldVel, nChangeFlags );
+	BaseInterpolatePart2( oldOrigin, oldAngles, nChangeFlags );
 	return true;
 }
 

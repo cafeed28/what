@@ -854,23 +854,23 @@ MDLViewer::handleEvent (mxEvent *event)
 			if ( g_viewerSettings.guessModelFOV )
 			{
 				// guess the category and set a reasonable default fov
-				if ( V_stristr( g_pStudioModel->GetFileName(), "\\player\\" ) )
+				if ( V_stristr( g_pStudioModel->GetFileName(), "player/" ) )
 				{
 					g_ControlPanel->setFOV( 90.0f );
 				}
-				else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons\\v_" ) )
+				else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons/v_" ) )
 				{
 					g_ControlPanel->setFOV( 54.0f );
 				}
-				else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons\\v_models\\" ) )
+				else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons/v_models/" ) )
 				{
 					g_ControlPanel->setFOV( 54.0f );
 				}
-				else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons\\w_" ) )
+				else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons/w_" ) )
 				{
 					g_ControlPanel->setFOV( 90.0f );
 				}
-				else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons\\w_models\\" ) )
+				else if ( V_stristr( g_pStudioModel->GetFileName(), "weapons/w_models/" ) )
 				{
 					g_ControlPanel->setFOV( 90.0f );
 				}
