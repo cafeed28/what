@@ -3889,6 +3889,15 @@ bool CBaseFileSystem::IsDirectory( const char *pFileName, const char *pathID )
 				//if ( !Q_stricmp( outDir[i], pFileName ) )
 				if ( !Q_strncmp( outDir[i], pFileName, V_strlen( pFileName ) ) )
 					return true;
+
+				// the path might have both "\\" and "/" slashes
+				// but packed store is explicitly "/"
+				// what the fuck is this Valve?
+				char szFixedFileName[MAX_PATH];
+				V_strcpy( szFixedFileName, pFileName );
+				V_FixSlashes( szFixedFileName, '/' );
+				if ( !Q_strncmp( outDir[i], szFixedFileName, V_strlen( szFixedFileName ) ) )
+					return true;
 			}
 
 		}
