@@ -32,7 +32,7 @@ ConVar loadout_stattrak( "loadout_stattrak", "0", FCVAR_ARCHIVE | FCVAR_USERINFO
 #endif
 
 CCSLoadout*	g_pCSLoadout = NULL;
-CCSLoadout::CCSLoadout() : CAutoGameSystemPerFrame("CCSLoadout")
+CCSLoadout::CCSLoadout()
 {
 	Assert( !g_pCSLoadout );
 	g_pCSLoadout = this;
@@ -78,6 +78,7 @@ LoadoutSlot_t CCSLoadout::GetSlotFromWeapon( int team, const char* weaponName )
 		if ( slot != SLOT_NONE )
 			break;
 	}
+
 	return slot;
 }
 const char* CCSLoadout::GetWeaponFromSlot( CBasePlayer* pPlayer, LoadoutSlot_t slot )
@@ -185,14 +186,14 @@ int CCSLoadout::GetKnifeForPlayer( CCSPlayer* pPlayer, int team )
 	switch ( team )
 	{
 		case TEAM_CT:
-			value = pPlayer->m_iLoadoutSlotKnifeWeaponCT + 2;
+			value = pPlayer->m_iLoadoutSlotKnifeWeaponCT;
 			break;
 		case TEAM_TERRORIST:
-			value = pPlayer->m_iLoadoutSlotKnifeWeaponT + 2;
+			value = pPlayer->m_iLoadoutSlotKnifeWeaponT;
 			break;
 		default:
 			break;
 	}
 
-	return value;
+	return value - 1; // arrays are started with index 0 not 1
 }
