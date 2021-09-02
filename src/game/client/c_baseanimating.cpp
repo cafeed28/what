@@ -2821,11 +2821,6 @@ bool C_BaseAnimating::SetupBones( matrix3x4_t *pBoneToWorldOut, int nMaxBones, i
 			m_BoneAccessor.SetReadableBones( 0 );
 			m_BoneAccessor.SetWritableBones( 0 );
 			m_flLastBoneSetupTime = currentTime;
-
-#if defined( DBGFLAG_ASSERT )
-			m_vBoneSetupCachedOrigin = GetRenderOrigin();
-			m_qBoneSetupCachedAngles = GetRenderAngles();
-#endif
 		}
 		m_iPrevBoneMask = m_iAccumulatedBoneMask;
 		m_iAccumulatedBoneMask = 0;
@@ -3021,7 +3016,6 @@ bool C_BaseAnimating::SetupBones( matrix3x4_t *pBoneToWorldOut, int nMaxBones, i
 	if ( pBoneToWorldOut )
 	{
 		AssertMsgOnce( !IsEFlagSet( EFL_DIRTY_ABSTRANSFORM ), "Cached bone data has old abs origin/angles" );
-		//AssertMsgOnce( (m_vBoneSetupCachedOrigin == GetRenderOrigin()) && (m_qBoneSetupCachedAngles == GetRenderAngles()), "Renderable moved since cached" );
 		if ( nMaxBones >= m_CachedBoneData.Count() )
 		{
 			Plat_FastMemcpy( pBoneToWorldOut, m_CachedBoneData.Base(), sizeof( matrix3x4_t ) * m_CachedBoneData.Count() );
