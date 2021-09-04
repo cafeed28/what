@@ -161,6 +161,10 @@ const CSmartPtr< CSafeObject< CMapClass > >& CMapClass::GetSafeObjectSmartPtr()
 //-----------------------------------------------------------------------------
 void CMapClass::AddDependent(CMapClass *pDependent)
 {
+	Assert( pDependent != NULL );
+	if ( !pDependent )
+		return;
+
 	//
 	// Never add ourselves to our dependents. It creates a circular dependency
 	// which is bad.
@@ -464,7 +468,7 @@ CMapClass *CMapClass::GetNextDescendent(EnumChildrenPos_t &pos)
 
 			// If this object has children, push it onto the stack.
 
-			if ( pChild->m_Children.Count() )
+			if ( pChild && pChild->m_Children.Count() )
 			{
 				pos.nDepth++;
 
@@ -681,7 +685,7 @@ void CMapClass::AddChild(CMapClass *pChild)
 	}
 
 	m_Children.AddToTail(pChild);
-	pChild->m_pParent = this;
+	pChild->SetParent( this );
 
 	//
 	// Update our bounds with the child's bounds.
@@ -785,6 +789,12 @@ void CMapClass::CalcBounds(BOOL bFullUpdate)
 	FOR_EACH_OBJ( m_Children, pos )
 	{
 		CMapClass *pChild = m_Children.Element(pos);
+
+		if ( !pChild )
+		{
+			continue;
+		}
+
 		if (bFullUpdate)
 		{
 			pChild->CalcBounds(TRUE);
@@ -870,6 +880,10 @@ BOOL CMapClass::EnumChildren(ENUMMAPCHILDRENPROC pfn, unsigned int dwParam, MAPC
 	FOR_EACH_OBJ( m_Children, pos )
 	{
 		CMapClass *pChild = m_Children.Element(pos);
+
+		if ( !pChild )
+			continue;
+
 		if (!Type || pChild->IsMapClass(Type))
 		{
 			if(!(*pfn)(pChild, dwParam))
@@ -939,6 +953,12 @@ CMapEntity *CMapClass::FindChildByKeyValue( const char* key, const char* value, 
 	FOR_EACH_OBJ( m_Children, pos )
 	{
 		CMapClass *pChild = m_Children.Element( pos );
+
+		if ( !pChild )
+		{
+			continue;
+		}
+
 		CMapEntity *e = pChild->FindChildByKeyValue( key, value, bIsInInstance, InstanceMatrix );
 		if ( e )
 			return e;
@@ -1665,7 +1685,7 @@ void CMapClass::SetVisible(bool bVisible)
 	FOR_EACH_OBJ( m_Children, pos )
 	{
 		CMapClass *pChild = m_Children.Element(pos);
-		pChild->SetVisible(bVisible);
+		pChild ? pChild->SetVisible(bVisible) : NULL;;
 	}
 
 	m_bVisible = bVisible;
