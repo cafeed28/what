@@ -1084,6 +1084,7 @@ $Project
 		$File	"$SRCDIR\public\vallocator.h"
 		$File	"$SRCDIR\public\vcollide.h"
 		$File	"$SRCDIR\public\vcollide_parse.h"
+		$File	"$SRCDIR\public\vgui_controls\VectorImagePanel.h"
 		$File	"$SRCDIR\public\mathlib\vector.h"
 		$File	"$SRCDIR\public\mathlib\vector2d.h"
 		$File	"$SRCDIR\public\mathlib\vector4d.h"
@@ -1248,6 +1249,7 @@ $Project
 		$Lib		tier2
 		$Lib		tier3
 		$Lib		vgui_controls
+		$Lib		lunasvg
 		$Lib		vtf
 		$ImpLib		steam_api
 		

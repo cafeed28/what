@@ -32,7 +32,7 @@ ConVar loadout_stattrak( "loadout_stattrak", "0", FCVAR_ARCHIVE | FCVAR_USERINFO
 #endif
 
 CCSLoadout*	g_pCSLoadout = NULL;
-CCSLoadout::CCSLoadout() : CAutoGameSystemPerFrame("CCSLoadout")
+CCSLoadout::CCSLoadout()
 {
 	Assert( !g_pCSLoadout );
 	g_pCSLoadout = this;
@@ -47,8 +47,8 @@ CLoadout WeaponLoadout[]
 {
 	{	SLOT_M4,		"loadout_slot_m4_weapon",			"m4a4",			"m4a1_silencer"	},
 	{	SLOT_HKP2000,	"loadout_slot_hkp2000_weapon",		"hkp2000",		"usp_silencer"	},
-	{	SLOT_FIVESEVEN,	"loadout_slot_fiveseven_weapon",	"fiveseven",	"cz75"			},
-	{	SLOT_TEC9,		"loadout_slot_tec9_weapon",			"tec9",			"cz75"			},
+	{	SLOT_FIVESEVEN,	"loadout_slot_fiveseven_weapon",	"fiveseven",	"cz75a"			},
+	{	SLOT_TEC9,		"loadout_slot_tec9_weapon",			"tec9",			"cz75a"			},
 	{	SLOT_MP7_CT,	"loadout_slot_mp7_weapon_ct",		"mp7",			"mp5sd"			},
 	{	SLOT_MP7_T,		"loadout_slot_mp7_weapon_t",		"mp7",			"mp5sd"			},
 	{	SLOT_DEAGLE_CT,	"loadout_slot_deagle_weapon_ct",	"deagle",		"revolver"		},
@@ -78,6 +78,7 @@ LoadoutSlot_t CCSLoadout::GetSlotFromWeapon( int team, const char* weaponName )
 		if ( slot != SLOT_NONE )
 			break;
 	}
+
 	return slot;
 }
 const char* CCSLoadout::GetWeaponFromSlot( CBasePlayer* pPlayer, LoadoutSlot_t slot )
@@ -185,14 +186,14 @@ int CCSLoadout::GetKnifeForPlayer( CCSPlayer* pPlayer, int team )
 	switch ( team )
 	{
 		case TEAM_CT:
-			value = pPlayer->m_iLoadoutSlotKnifeWeaponCT + 2;
+			value = pPlayer->m_iLoadoutSlotKnifeWeaponCT;
 			break;
 		case TEAM_TERRORIST:
-			value = pPlayer->m_iLoadoutSlotKnifeWeaponT + 2;
+			value = pPlayer->m_iLoadoutSlotKnifeWeaponT;
 			break;
 		default:
 			break;
 	}
 
-	return value;
+	return value - 1; // arrays are started with index 0 not 1
 }

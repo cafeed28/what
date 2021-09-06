@@ -3881,7 +3881,22 @@ bool CBaseFileSystem::IsDirectory( const char *pFileName, const char *pathID )
 			pSearchPath->GetPackedStore()->GetFileAndDirLists( outDir, outFile, false );
 			FOR_EACH_VEC( outDir, i )
 			{
-				if ( !Q_stricmp( outDir[i], pFileName ) )
+				// PiMoN: hack for folders with only subfolders inside (no files)
+				// those files are ignored by vpklib because in order for it
+				// to build an array of folders, it looks for files only
+				// so if there isn't a file in a folder, it will ignore it
+				// even if there is a subfolder
+				//if ( !Q_stricmp( outDir[i], pFileName ) )
+				if ( !Q_strncmp( outDir[i], pFileName, V_strlen( pFileName ) ) )
+					return true;
+
+				// the path might have both "\\" and "/" slashes
+				// but packed store is explicitly "/"
+				// what the fuck is this Valve?
+				char szFixedFileName[MAX_PATH];
+				V_strcpy( szFixedFileName, pFileName );
+				V_FixSlashes( szFixedFileName, '/' );
+				if ( !Q_strncmp( outDir[i], szFixedFileName, V_strlen( szFixedFileName ) ) )
 					return true;
 			}
 

@@ -225,6 +225,11 @@ $Project "vpk"
 	"utils\vpk\vpk.vpc" [$WINDOWS||$LINUX||$OSXALL]
 }
 
+$Project "vpklib"
+{
+	"vpklib\vpklib.vpc"
+}
+
 $Project "vrad_dll"
 {
 	"utils\vrad\vrad_dll.vpc" [$WIN32]

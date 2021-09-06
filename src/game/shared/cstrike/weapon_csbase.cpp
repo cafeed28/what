@@ -148,7 +148,7 @@ WeaponAliasInfo s_weaponAliasInfo[] =
 	{ WEAPON_TEC9,				"tec9" },
 	{ WEAPON_M4A4,				"m4a4" },
 	{ WEAPON_REVOLVER,			"revolver" },
-	{ WEAPON_CZ75,				"cz75" },
+	{ WEAPON_CZ75A,				"cz75a" },
 	{ WEAPON_MAG7,				"mag7" },
 	{ WEAPON_SAWEDOFF,			"sawedoff" },
 	{ WEAPON_NEGEV,				"negev" },
@@ -1395,7 +1395,7 @@ Activity CWeaponCSBase::GetDeployActivity( void )
 	CBaseCombatCharacter *pOwner = GetOwner();
 	if (pOwner)
 	{
-		if ( GetReserveAmmoCount( AMMO_POSITION_PRIMARY ) <= 0 && LookupActivity( "ACT_VM_EMPTY_DRAW" ) > 0 )
+		if ( m_iClip1 <= 0 && LookupActivity( "ACT_VM_EMPTY_DRAW" ) > 0 )
 		{
 			return ACT_VM_EMPTY_DRAW;
 		}

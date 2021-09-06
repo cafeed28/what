@@ -1077,6 +1077,7 @@ $Project "engine"
 		$File	"$SRCDIR\public\mathlib\vector.h"
 		$File	"$SRCDIR\public\mathlib\vector2d.h"
 		$File	"$SRCDIR\public\mathlib\vector4d.h"
+		$File	"$SRCDIR\public\vgui_controls\VectorImagePanel.h"
 		$File	"$SRCDIR\public\vgui\VGUI.h"
 		$File	"$SRCDIR\public\view_shared.h"
 		$File	"$SRCDIR\public\mathlib\vmatrix.h"
@@ -1108,6 +1109,7 @@ $Project "engine"
 		$Lib	tier3
 		$Lib	vtf
 		$Lib	vgui_controls						[!$DEDICATED]
+		$Lib	lunasvg								[!$DEDICATED]
 
 		$ImpLibexternal steam_api
 

@@ -170,9 +170,7 @@ void CFileSystemOpenDlg::OnOK()
 	CString testFilename;
 	m_FilenameControl.GetWindowText( testFilename );
 
-	// PiMoN: changed from "\\" because some funny Valve guy thinks that putting
-	// a double back slash is a good idea in a path that uses single forward slash
-	CString fullFilename = m_CurrentDir + "/" + testFilename;
+	CString fullFilename = m_CurrentDir + "\\" + testFilename;
  	if ( m_pFileSystem->IsDirectory( fullFilename, GetPathID() ) )
 	{
 		m_CurrentDir = fullFilename;
