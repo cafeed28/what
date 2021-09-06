@@ -1109,6 +1109,7 @@ $Project "engine"
 		$Lib	tier3
 		$Lib	vtf
 		$Lib	vgui_controls						[!$DEDICATED]
+		$Lib	lunasvg								[!$DEDICATED]
 
 		$ImpLibexternal steam_api
 
