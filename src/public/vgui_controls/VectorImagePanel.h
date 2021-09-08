@@ -29,8 +29,9 @@ public:
 
 public:
 	virtual void ApplySettings( KeyValues *inResourceData );
-
 	virtual void Paint();
+
+	void DestroyTexture();
 
 private:
 	int	m_nTextureId;
