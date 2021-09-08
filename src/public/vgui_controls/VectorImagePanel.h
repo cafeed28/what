@@ -31,6 +31,7 @@ public:
 	virtual void ApplySettings( KeyValues *inResourceData );
 	virtual void Paint();
 
+	void SetTexture( const char *szFilePath );
 	void DestroyTexture();
 
 private:
