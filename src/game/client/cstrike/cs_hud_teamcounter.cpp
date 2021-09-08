@@ -27,9 +27,10 @@ class CHudTeamCounter: public CHudElement, public EditablePanel
 
 public:
 	CHudTeamCounter( const char *pElementName );
+	virtual void Init( void );
 	virtual void ApplySettings( KeyValues *inResourceData );
 	virtual bool ShouldDraw();
-	virtual void Think();
+	virtual void OnThink();
 
 private:
 	Label	*m_pCTWinCounterLabel;
@@ -57,8 +58,6 @@ CHudTeamCounter::CHudTeamCounter( const char *pElementName ): CHudElement( pElem
 
 	SetHiddenBits( HIDEHUD_PLAYERDEAD );
 
-	m_bIsAtTheBottom = false;
-
 	m_pCTWinCounterLabel = new Label( this, "CTWinCounterLabel", "0" );
 	m_pCTAliveCounterLabel = new Label( this, "CTAliveCounterLabel", "0" );
 	m_pCTAliveTextLabel = new Label( this, "CTAliveTextLabel", "#Cstrike_PlayerCount_Alive" );
@@ -70,6 +69,11 @@ CHudTeamCounter::CHudTeamCounter( const char *pElementName ): CHudElement( pElem
 	m_pTSkullImage = new ImagePanel( this, "TSkullImage" );
 
 	LoadControlSettings( "resource/hud/teamcounter.res" );
+}
+
+void CHudTeamCounter::Init( void )
+{
+	m_bIsAtTheBottom = false;
 }
 
 void CHudTeamCounter::ApplySettings( KeyValues *inResourceData )
@@ -91,7 +95,7 @@ bool CHudTeamCounter::ShouldDraw()
 	return true;
 }
 
-void CHudTeamCounter::Think()
+void CHudTeamCounter::OnThink()
 {
 	if ( m_bIsAtTheBottom != hud_playercount_pos.GetBool() )
 	{
@@ -110,10 +114,18 @@ void CHudTeamCounter::Think()
 
 	C_CSTeam *teamCT = GetGlobalCSTeam( TEAM_CT );
 	C_CSTeam *teamT = GetGlobalCSTeam( TEAM_TERRORIST );
+
+	wchar_t unicode[8];
 	if ( teamCT )
-		m_pCTWinCounterLabel->SetText( UTIL_VarArgs( "%d", teamCT->Get_Score() ) );
+	{
+		V_snwprintf( unicode, ARRAYSIZE( unicode ), L"%d", teamCT->Get_Score() );
+		m_pCTWinCounterLabel->SetText( unicode );
+	}
 	if ( teamT )
-		m_pTWinCounterLabel->SetText( UTIL_VarArgs( "%d", teamT->Get_Score() ) );
+	{
+		V_snwprintf( unicode, ARRAYSIZE( unicode ), L"%d", teamT->Get_Score() );
+		m_pCTWinCounterLabel->SetText( unicode );
+	}
 
 	if ( g_PR )
 	{
@@ -132,8 +144,11 @@ void CHudTeamCounter::Think()
 			}
 		}
 
-		m_pCTAliveCounterLabel->SetText( UTIL_VarArgs( "%d", iCTCounter ) );
-		m_pTAliveCounterLabel->SetText( UTIL_VarArgs( "%d", iTCounter ) );
+		V_snwprintf( unicode, ARRAYSIZE( unicode ), L"%d", iCTCounter );
+		m_pCTAliveCounterLabel->SetText( unicode );
+
+		V_snwprintf( unicode, ARRAYSIZE( unicode ), L"%d", iTCounter );
+		m_pTAliveCounterLabel->SetText( unicode );
 
 		m_pCTAliveCounterLabel->SetVisible( iCTCounter > 0 );
 		m_pCTAliveTextLabel->SetVisible( iCTCounter > 0 );
@@ -184,7 +199,6 @@ void CHudTeamCounter::Think()
 	int iMinutes = iTimer / 60;
 	int iSeconds = iTimer % 60;
 
-	wchar_t unicode[8];
 	V_snwprintf( unicode, ARRAYSIZE( unicode ), L"%d : %.2d", iMinutes, iSeconds );
 	m_pRoundTimerLabel->SetText( unicode );
 }

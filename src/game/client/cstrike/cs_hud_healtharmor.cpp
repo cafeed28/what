@@ -327,6 +327,7 @@ void CHudHealthArmor::OnThink()
 	realHealth = MAX( local->GetHealth(), 0 );
 	realArmor = MAX( local->ArmorValue(), 0 );
 
+	wchar_t unicode[8];
 	// Only update the fade if we've changed health
 	if ( realHealth != m_iHealth )
 	{
@@ -348,16 +349,18 @@ void CHudHealthArmor::OnThink()
 
 		m_iHealth = realHealth;
 
-		m_pHealthLabel->SetText( UTIL_VarArgs( "%d", m_iHealth ) );
+		V_snwprintf( unicode, ARRAYSIZE( unicode ), L"%d", m_iHealth );
+		m_pHealthLabel->SetText( unicode );
 		m_pHealthProgress->SetProgress( clamp( m_iHealth / 100.0f, 0.0f, 1.0f ) );
 	}
 
 	if ( realArmor != m_iArmor )
 	{
 		m_iArmor = realArmor;
-		const char *szArmorText = UTIL_VarArgs( "%d", m_iArmor );
-		m_pArmorLabel->SetText( szArmorText );
-		m_pSimpleArmorLabel->SetText( szArmorText );
+
+		V_snwprintf( unicode, ARRAYSIZE( unicode ), L"%d", m_iArmor );
+		m_pArmorLabel->SetText( unicode );
+		m_pSimpleArmorLabel->SetText( unicode );
 		m_pArmorProgress->SetProgress( clamp( m_iArmor / 100.0f, 0.0f, 1.0f ) );
 	}
 
