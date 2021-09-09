@@ -5836,7 +5836,7 @@ public:
 	int	ExtractValue( Panel *pPanel, const char *pszKey )
 	{
 		int nPos = 0;
-		ComputePos( pPanel, pszKey, nPos, GetPanelDimension( pPanel ), GetScreenSize( pPanel ), true, OP_ADD );
+		ComputePos( pPanel, pszKey, nPos, GetPanelDimension( pPanel ), GetScreenSize( pPanel ), true, OP_SET );
 		return nPos;
 	}
 
