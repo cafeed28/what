@@ -108,8 +108,10 @@ void CHudAccount::OnThink()
 	if ( realAccount != m_iAccount )
 	{
 		m_iAccount = realAccount;
-		const char *szMoneyText = UTIL_VarArgs( "$%d", realAccount );
-		m_pAccountLabel->SetText( szMoneyText );
+
+		wchar_t unicode[8];
+		V_snwprintf( unicode, ARRAYSIZE( unicode ), L"$%d", realAccount );
+		m_pAccountLabel->SetText( unicode );
 		m_pAccountLabel->WideToContents();
 
 		SetWide( m_pAccountLabel->GetXPos() + m_pAccountLabel->GetWide() + margin_right );
