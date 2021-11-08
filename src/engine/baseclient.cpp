@@ -1495,7 +1495,7 @@ bool CBaseClient::IsNameChangeOnCooldown( bool bShowStatusMessage /*= false*/ )
 			// Cooldown period still active; throttle the name change
 			if ( bShowStatusMessage )
 			{
-				ClientPrintf( "You have changed your name recently, and must wait %i seconds.\n", (int)abs( timeNow - dNextChangeTime ) );
+				ClientPrintf( "You have changed your name recently, and must wait %i seconds.\n", (int)fabsf( timeNow - dNextChangeTime ) );
 			}
 			return true;
 		}

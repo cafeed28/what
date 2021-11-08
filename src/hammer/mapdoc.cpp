@@ -6597,7 +6597,7 @@ void CMapDoc::OnToolsHollow(void)
 	}
 	iWallWidth = atoi(dlg.m_string);
 
-	if (abs(iWallWidth) < 2)
+	if (fabsf(iWallWidth) < 2)
 	{
 		AfxMessageBox("The width of the walls must be less than -1 or greater than 1.");
 		return;

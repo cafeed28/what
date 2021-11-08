@@ -970,7 +970,7 @@ bool CCSPlayer::RunMimicCommand( CUserCmd& cmd )
 	if ( !IsBot() )
 		return false;
 
-	int iMimic = abs( bot_mimic.GetInt() );
+	int iMimic = fabsf( bot_mimic.GetInt() );
 	if ( iMimic > gpGlobals->maxClients )
 		return false;
 
@@ -3922,7 +3922,7 @@ void CCSPlayer::AddAccountAward( int reason, int amount, const CWeaponCSBase *pW
 	}
 
 	char strAmount[64];
-	Q_snprintf( strAmount, sizeof( strAmount ), "%s%d", sign_string, abs( amount ) );
+	Q_snprintf( strAmount, sizeof( strAmount ), "%s%d", sign_string, fabsf( amount ) );
 
 	ClientPrint( this, HUD_PRINTTALK, awardReasonToken, strAmount, szWeaponName );
 
@@ -3944,7 +3944,7 @@ void CCSPlayer::AddAccount( int amount, bool bTrackChange, bool bItemBought, con
 	}
 	else if( amount < 0 && bItemBought)
 	{
-		CCS_GameStats.Event_MoneySpent( this, ABS(amount), pItemName );
+		CCS_GameStats.Event_MoneySpent( this, fabsf(amount), pItemName );
 	}
 
 	//=============================================================================

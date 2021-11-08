@@ -344,7 +344,7 @@ bool Tool3D::OnMouseMove2D( CMapView2D *pView, UINT nFlags, const Vector2D &vPoi
 				// check if mouse was dragged if button is pressed down
 				Vector2D sizeDragged = vPoint - m_vMouseStart[i];
 
-				if ((abs(sizeDragged.x) > DRAG_THRESHHOLD) || (abs(sizeDragged.y) > DRAG_THRESHHOLD))
+				if ((fabsf(sizeDragged.x) > DRAG_THRESHHOLD) || (fabsf(sizeDragged.y) > DRAG_THRESHHOLD))
 				{
 					// If here, means we've dragged the mouse
 					m_bMouseDragged[i] = true;
@@ -405,7 +405,7 @@ bool Tool3D::OnMouseMove3D( CMapView3D *pView, UINT nFlags, const Vector2D &vPoi
 				// check if mouse was dragged if button is pressed down
 				Vector2D sizeDragged = vPoint - m_vMouseStart[i];
 
-				if ((abs(sizeDragged.x) > DRAG_THRESHHOLD) || (abs(sizeDragged.y) > DRAG_THRESHHOLD))
+				if ((fabsf(sizeDragged.x) > DRAG_THRESHHOLD) || (fabsf(sizeDragged.y) > DRAG_THRESHHOLD))
 				{
 					// If here, means we've dragged the mouse
 					m_bMouseDragged[i] = true;

@@ -19,7 +19,7 @@
 
 #define SIGN(d)				((d)<0?-1:1)
 
-#define ABS(a)	abs(a)
+#define fabsf(a)	fabsf(a)
 
 #define MSEC_TO_SAMPS(a)	(((a)*SOUND_DMA_SPEED) / 1000)		// convert milliseconds to # samples in equivalent time
 #define SEC_TO_SAMPS(a)		((a)*SOUND_DMA_SPEED)				// convert seconds to # samples in equivalent time
@@ -1845,7 +1845,7 @@ void RMP_Init( rmp_t *prmp, float ramptime, int initval, int targetval, bool bEn
 	// init fixed point iterator to iterate along the height of the ramp 'rise'
 	// always iterates from 0..'rise', increasing in value
 
-	POS_ONE_Init( &prmp->ps, ABS( rise ), ABS((float) rise) / ((float) run) );
+	POS_ONE_Init( &prmp->ps, fabsf( rise ), fabsf((float) rise) / ((float) run) );
 	
 	prmp->yprev = initval;
 	prmp->initval = initval;
@@ -1904,7 +1904,7 @@ inline int RMP_GetNext( rmp_t *prmp )
 	
 	if (prmp->bEndAtTime)
 	{
-		if ( ABS( y - prmp->yprev ) >= 1 )
+		if ( fabsf( y - prmp->yprev ) >= 1 )
 			prmp->yprev += prmp->sign;
 	}
 	else
@@ -2414,9 +2414,9 @@ rva_t * RVA_Alloc ( int *D, int *a, int *b, int m, flt_t *pflt, int fparallel, f
 		// if filter specified and parallel specified, alloc 1 filter per delay
 
 		if ( DLY_HAS_FILTER(dtype) )
-			prva->pdlys[i] = DLY_AllocLP( D[i], abs(a[i]), b[i], dtype, pflt->M, pflt->L, pflt->a, pflt->b );
+			prva->pdlys[i] = DLY_AllocLP( D[i], fabsf(a[i]), b[i], dtype, pflt->M, pflt->L, pflt->a, pflt->b );
 		else
-			prva->pdlys[i] = DLY_Alloc( D[i], abs(a[i]), b[i], dtype );
+			prva->pdlys[i] = DLY_Alloc( D[i], fabsf(a[i]), b[i], dtype );
 
 		if ( DLY_HAS_MULTITAP(dtype) )
 		{
@@ -3662,7 +3662,7 @@ ptc_t * PTC_Alloc( float timeslice, float timexfade, float fstep )
 
 	// get size of region to cut or duplicate
 
-	tcutdup = abs((fstep - 1.0) * timeslice);
+	tcutdup = fabsf((fstep - 1.0) * timeslice);
 
 	// to prevent buffer overruns:
 
@@ -4343,7 +4343,7 @@ efo_t *EFO_Alloc ( float threshold, float attack_sec, float decay_sec, bool bexp
 inline int EFO_GetNext( efo_t *pefo, int x )
 {
 	int r;
-	int xa = abs(x);
+	int xa = fabsf(x);
 	int xdif; 
 
 

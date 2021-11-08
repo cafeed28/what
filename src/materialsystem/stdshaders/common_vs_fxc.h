@@ -190,7 +190,7 @@ const float4x3 cModel[53]				: register( c58 );
 void _DecompressShort2Tangent( float2 inputTangent, out float4 outputTangent )
 {
 	float2 ztSigns		= sign( inputTangent );				// sign bits for z and tangent (+1 or -1)
-	float2 xyAbs		= abs(  inputTangent );				// 1..32767
+	float2 xyAbs		= fabsf(  inputTangent );				// 1..32767
 	outputTangent.xy	= (xyAbs - 16384.0f) / 16384.0f;	// x and y
 	outputTangent.z		= ztSigns.x * sqrt( saturate( 1.0f - dot( outputTangent.xy, outputTangent.xy ) ) );
 	outputTangent.w		= ztSigns.y;
@@ -226,11 +226,11 @@ void _DecompressUByte4NormalTangent( float4 inputNormal,
 	float fOne   = 1.0f;
 
 	float4 ztztSignBits	= ( inputNormal - 128.0f ) < 0;						// sign bits for zs and binormal (1 or 0)  set-less-than (slt) asm instruction
-	float4 xyxyAbs		= abs( inputNormal - 128.0f ) - ztztSignBits;		// 0..127
+	float4 xyxyAbs		= fabsf( inputNormal - 128.0f ) - ztztSignBits;		// 0..127
 	float4 xyxySignBits	= ( xyxyAbs - 64.0f ) < 0;							// sign bits for xs and ys (1 or 0)
-	float4 normTan		= (abs( xyxyAbs - 64.0f ) - xyxySignBits) / 63.0f;	// abs({nX, nY, tX, tY})
-	outputNormal.xy		= normTan.xy;										// abs({nX, nY, __, __})
-	outputTangent.xy	= normTan.zw;										// abs({tX, tY, __, __})
+	float4 normTan		= (fabsf( xyxyAbs - 64.0f ) - xyxySignBits) / 63.0f;	// fabsf({nX, nY, tX, tY})
+	outputNormal.xy		= normTan.xy;										// fabsf({nX, nY, __, __})
+	outputTangent.xy	= normTan.zw;										// fabsf({tX, tY, __, __})
 
 	float4 xyxySigns	= 1 - 2*xyxySignBits;								// Convert sign bits to signs
 	float4 ztztSigns	= 1 - 2*ztztSignBits;								// ( [1,0] -> [-1,+1] )
@@ -258,9 +258,9 @@ void _DecompressUByte4Normal( float4 inputNormal,
 	float fOne			= 1.0f;
 
 	float2 ztSigns		= ( inputNormal.xy - 128.0f ) < 0;				// sign bits for zs and binormal (1 or 0)  set-less-than (slt) asm instruction
-	float2 xyAbs		= abs( inputNormal.xy - 128.0f ) - ztSigns;		// 0..127
+	float2 xyAbs		= fabsf( inputNormal.xy - 128.0f ) - ztSigns;		// 0..127
 	float2 xySigns		= ( xyAbs -  64.0f ) < 0;						// sign bits for xs and ys (1 or 0)
-	outputNormal.xy		= ( abs( xyAbs - 64.0f ) - xySigns ) / 63.0f;	// abs({nX, nY})
+	outputNormal.xy		= ( fabsf( xyAbs - 64.0f ) - xySigns ) / 63.0f;	// fabsf({nX, nY})
 
 	outputNormal.z		= 1.0f - outputNormal.x - outputNormal.y;		// Project onto x+y+z=1
 	outputNormal.xyz	= normalize( outputNormal.xyz );				// Normalize onto unit sphere

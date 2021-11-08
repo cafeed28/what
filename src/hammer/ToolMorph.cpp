@@ -2117,7 +2117,7 @@ bool Morph3D::OnMouseMove3D(CMapView3D *pView, UINT nFlags, const Vector2D &vPoi
 		if (!m_bMovingSelected)
 		{
 			Vector2D sizeMoved = vPoint - m_vLastMouseMovement;
-			if ((abs(sizeMoved.x) > 3) || (abs(sizeMoved.y) > 3))
+			if ((fabsf(sizeMoved.x) > 3) || (fabsf(sizeMoved.y) > 3))
 			{
 				m_bMovingSelected = true;
 

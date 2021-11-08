@@ -1679,7 +1679,7 @@ void SDEBUG_GetAvgValue( int ibuf, int count, float *pav )
 	float av = 0.0;
 	
 	for (int i = 0; i < count; i++)
-		av += (float)(abs(g_paintBuffers[ibuf].pbuf->left) + abs(g_paintBuffers[ibuf].pbuf->right))/2.0;
+		av += (float)(fabsf(g_paintBuffers[ibuf].pbuf->left) + fabsf(g_paintBuffers[ibuf].pbuf->right))/2.0;
 	
 	*pav = av / count;
 #endif // DEBUG
@@ -4104,7 +4104,7 @@ void SND_MoveMouth8( channel_t *ch, CAudioSource *pSource, int count )
 		while ( i < availableSamples && scount < CAVGSAMPLES )
 		{
 			data = pdata[i];
-			savg += abs(data);	
+			savg += fabsf(data);	
 
 			i += 80 + ((byte)data & 0x1F);
 			scount++;

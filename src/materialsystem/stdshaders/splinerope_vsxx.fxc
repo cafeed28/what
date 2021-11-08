@@ -48,7 +48,7 @@ VS_OUTPUT main( const VS_INPUT v )
 		float4 projPos2 = mul( float4( viewPos2, 1.0f ), cProj );
 
 		// Get the distance of the two points from each other in normalized screen space.
-		float projectedDiameterInPixels = abs( ( projPos1.x / projPos1.w ) - ( projPos2.x / projPos2.w ) );
+		float projectedDiameterInPixels = fabsf( ( projPos1.x / projPos1.w ) - ( projPos2.x / projPos2.w ) );
 
 		// Compare the distance between the two points to the minimum allowed to keep from skipping pixels and causing aliasing.
 		if ( projectedDiameterInPixels < g_MinPixelSize )

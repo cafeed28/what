@@ -107,7 +107,7 @@ void CPredictedViewModel::CalcViewModelLag( Vector& origin, QAngle& angles, QAng
 	m_vPredictedOffset = forward*vForwardDiff.x + right*-vForwardDiff.y + up*vForwardDiff.z;
 
 	// reduce offset as viewmodel angle approaches nearly vertical
-	float flMult = clamp( abs(DotProduct(up, Vector(0,0,1))) - 0.02f, 0, 1 );
+	float flMult = clamp( fabsf(DotProduct(up, Vector(0,0,1))) - 0.02f, 0, 1 );
 
 	origin += (m_vPredictedOffset * flMult);
 #endif
@@ -194,7 +194,7 @@ void CPredictedViewModel::ApplyViewModelPitchAndDip( CBasePlayer *owner, Vector&
 	// 		float flAccuracy = m_bShouldIgnoreOffsetAndAccuracy ? 0 : pWeapon->GetInaccuracy();
 	// 		//float flAccuracyFishtail = m_bShouldIgnoreOffsetAndAccuracy ? 0 : pWeapon->GetAccuracyFishtail();
 	// 		// get the difference between the two
-	// 		float flAccuracyDiff = m_bShouldIgnoreOffsetAndAccuracy ? 0 : abs((flAccuracy - flBaseAccuracy) * flMultiplier);
+	// 		float flAccuracyDiff = m_bShouldIgnoreOffsetAndAccuracy ? 0 : fabsf((flAccuracy - flBaseAccuracy) * flMultiplier);
 	// 
 	// 		float flApproachSpeed = 25.0f;
 	// 		// if we are in the air, we just jumped, we are running really fast,
@@ -211,16 +211,16 @@ void CPredictedViewModel::ApplyViewModelPitchAndDip( CBasePlayer *owner, Vector&
 	// 				flDiv = 5.0f;
 	// 			}
 	// 
-	// 			float flOldToNewDiff = abs( ((flAccuracyDiff - m_flOldAccuracyDiffSmoothed) / flDiv) * flApproachSpeed );
+	// 			float flOldToNewDiff = fabsf( ((flAccuracyDiff - m_flOldAccuracyDiffSmoothed) / flDiv) * flApproachSpeed );
 	// 			// small differences, we go faster, large differences and we go slower
 	// 			flApproachSpeed = clamp( flApproachSpeed - flOldToNewDiff, 5.0f, flMax );
 	// 		}
 	// 		
 	// 		// save off the accuracy difference
-	// 		m_flOldAccuracyDiffSmoothed = Approach( flAccuracyDiff, m_flOldAccuracyDiffSmoothed, abs( ((flAccuracyDiff)-m_flOldAccuracyDiffSmoothed )*gpGlobals->frametime) * 0.5f );
+	// 		m_flOldAccuracyDiffSmoothed = Approach( flAccuracyDiff, m_flOldAccuracyDiffSmoothed, fabsf( ((flAccuracyDiff)-m_flOldAccuracyDiffSmoothed )*gpGlobals->frametime) * 0.5f );
 	// 
 	// 		// smooth out the tilting
-	// 		m_flInaccuracyTilt = Approach( flAccuracyDiff, m_flInaccuracyTilt, abs( (flAccuracyDiff-m_flInaccuracyTilt)*gpGlobals->frametime) * flApproachSpeed );
+	// 		m_flInaccuracyTilt = Approach( flAccuracyDiff, m_flInaccuracyTilt, fabsf( (flAccuracyDiff-m_flInaccuracyTilt)*gpGlobals->frametime) * flApproachSpeed );
 	// 		m_flInaccuracyTilt = MIN( m_flInaccuracyTilt, 3.0f );
 	// 		//Msg ( "owner->GetAbsVelocity().Length2D() = %f, flAccuracyDiff = %f,  m_flInaccuracyTilt = %f, flMultiplier = %f\n", owner->GetAbsVelocity().Length2D(), flAccuracyDiff, m_flInaccuracyTilt, flMultiplier );
 	// 		//Msg ( "flApproachSpeed = %f, flAccuracyDiff = %f,  m_flOldAccuracyDiffSmoothed = %f\n", flApproachSpeed, flAccuracyDiff, m_flOldAccuracyDiffSmoothed );

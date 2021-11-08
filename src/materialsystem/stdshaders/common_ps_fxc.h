@@ -796,7 +796,7 @@ float DepthFeathering( sampler DepthSampler, const float2 vScreenPos, float fPro
 			flSceneDepth = tex2D( DepthSampler, vScreenPos ).a;	// PC uses dest alpha of the frame buffer
 			flSpriteDepth = SoftParticleDepth( fProjZ );
 
-			flFeatheredAlpha = abs(flSceneDepth - flSpriteDepth) * vDepthBlendConstants.x;
+			flFeatheredAlpha = fabsf(flSceneDepth - flSpriteDepth) * vDepthBlendConstants.x;
 			flFeatheredAlpha = max( smoothstep( 0.75f, 1.0f, flSceneDepth ), flFeatheredAlpha ); //as the sprite approaches the edge of our compressed depth space, the math stops working. So as the sprite approaches the far depth, smoothly remove feathering.
 			flFeatheredAlpha = saturate( flFeatheredAlpha );
 		}

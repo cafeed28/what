@@ -239,8 +239,8 @@ void CMapAlignedBox::Render2D(CRender2D *pRender)
 		pRender->TransformPoint(pt, vecMins);
 		pRender->TransformPoint(pt2, vecMaxs);
 
-		int sizex = abs(pt.x - pt2.x)+1;
-		int sizey = abs(pt.y - pt2.y)+1;
+		int sizex = fabsf(pt.x - pt2.x)+1;
+		int sizey = fabsf(pt.y - pt2.y)+1;
 		
 		// dont draw handle if object is too small
 		if ( sizex > 6 && sizey > 6 )

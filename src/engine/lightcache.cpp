@@ -2581,11 +2581,11 @@ lightcache_t *FindNearestCache( int x, int y, int z, int leafIndex )
 		lightcache_t *pCache = &lightcache[current];
 		int dist = 0;
 		dx = pCache->x - x;
-		dx = abs(dx);
+		dx = fabsf(dx);
 		dy = pCache->y - y;
-		dy = abs(dy);
+		dy = fabsf(dy);
 		dz = pCache->z - z;
-		dz = abs(dz);
+		dz = fabsf(dz);
 		if ( leafIndex != pCache->leaf )
 		{
 			dist += 2;

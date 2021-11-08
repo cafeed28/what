@@ -723,7 +723,7 @@ void CInput::JoyStickMove( float frametime, CUserCmd *cmd )
 			// y=ax^b; where a = 300 and b = 1.3
 			// also x values are in increments of 800 (so this is factored out)
 			// then bounds check result to level out excessively high spin rates
-			float fTemp = 300.0 * pow(abs(fAxisValue) / 800.0, 1.3);
+			float fTemp = 300.0 * pow(fabsf(fAxisValue) / 800.0, 1.3);
 			if (fTemp > 14000.0)
 				fTemp = 14000.0;
 			// restore direction information

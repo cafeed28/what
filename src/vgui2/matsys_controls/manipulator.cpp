@@ -128,7 +128,7 @@ void CPotteryWheelManip::OnCursorMoved( int x, int y )
 		int dy = y - m_lasty;
 		int dx = x - m_lastx;
 
-		if ( abs( dx ) < 2 * abs( dy ) )
+		if ( fabsf( dx ) < 2 * fabsf( dy ) )
 		{
 			UpdateZoom( 0.2f * dy );
 		}

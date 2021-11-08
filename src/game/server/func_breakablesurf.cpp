@@ -480,7 +480,7 @@ void CBreakableSurface::TraceAttack( const CTakeDamageInfo &info, const Vector &
 			{
 				for (int height =nHeight-4;height<nHeight+4;height++)
 				{
-					if ((abs(nWidth-width)+abs(nHeight-height))<random->RandomInt(2,5))
+					if ((fabsf(nWidth-width)+fabsf(nHeight-height))<random->RandomInt(2,5))
 					{
 						ShatterPane(width, height,vecDir*500,ptr->endpos);
 					}

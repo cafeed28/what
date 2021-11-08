@@ -201,7 +201,7 @@ void CHudScope::Paint( void )
 		// then animate towards it at speed 19.0f
 		// (where did these numbers come from?)
 		float flInsetGoal = fSpreadDistance * (0.4f / 30.0f);
-		m_fAnimInset = Approach( flInsetGoal, m_fAnimInset, abs( ( ( flInsetGoal )-m_fAnimInset )*gpGlobals->frametime ) * 19.0f );
+		m_fAnimInset = Approach( flInsetGoal, m_fAnimInset, fabsf( ( ( flInsetGoal )-m_fAnimInset )*gpGlobals->frametime ) * 19.0f );
 
 		// Approach speed chosen so we get 90% there in 3 frames if we are running at 192 fps vs a 64tick client/server.
 		// If our fps is lower we will reach the target faster, if higher it is slightly slower

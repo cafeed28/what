@@ -23,7 +23,7 @@ $Configuration "Debug"
 		$PreprocessorDefinitions		"VPC"
 		$PreprocessorDefinitions		"$BASE;STAGING_ONLY" [$STAGING_ONLY]
 		$PreprocessorDefinitions		"$BASE;TF_BETA" [$TF_BETA]
-		$PreprocessorDefinitions		"$BASE;RAD_TELEMETRY_DISABLED"
+		$PreprocessorDefinitions		"$BASE;RAD_TELEMETRY_DISABLED" [$RAD_DISABLE_TELEMETRY]
 		$PreprocessorDefinitions		"$BASE;WORKSHOP_IMPORT_DISABLE"
 		$PreprocessorDefinitions		"$BASE;SIXENSE_DISABLE"
 		$PreprocessorDefinitions		"$BASE;NO_X360_XDK"
@@ -42,7 +42,7 @@ $Configuration "Release"
 		$PreprocessorDefinitions		"VPC"
 		$PreprocessorDefinitions		"$BASE;STAGING_ONLY" [$STAGING_ONLY]
 		$PreprocessorDefinitions		"$BASE;TF_BETA" [$TF_BETA]
-		$PreprocessorDefinitions		"$BASE;RAD_TELEMETRY_DISABLED"
+		$PreprocessorDefinitions		"$BASE;RAD_TELEMETRY_DISABLED" [$RAD_DISABLE_TELEMETRY]
 		$PreprocessorDefinitions		"$BASE;WORKSHOP_IMPORT_DISABLE"
 		$PreprocessorDefinitions		"$BASE;SIXENSE_DISABLE"
 		$PreprocessorDefinitions		"$BASE;NO_X360_XDK"

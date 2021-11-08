@@ -88,7 +88,7 @@ bool AlmostEqual(float a, float b, int maxUlps)
 
     // Now we can compare aInt and bInt to find out how far apart a and b
     // are.
-    int intDiff = abs(aInt - bInt);
+    int intDiff = fabsf(aInt - bInt);
     if (intDiff <= maxUlps)
         return true;
     return false;

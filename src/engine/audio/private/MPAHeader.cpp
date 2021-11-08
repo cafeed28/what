@@ -138,7 +138,7 @@ m_pMPAFile( pMPAFile ), m_dwSyncOffset( dwExpectedOffset ), m_dwRealFrameSize( 0
 		}
 
 		// is new offset within valid range?
-		if( nSyncOffset < 0 || nSyncOffset > (int)((pMPAFile->m_dwEnd - pMPAFile->m_dwBegin) - MPA_HEADER_SIZE) || abs( (long)(nSyncOffset-dwExpectedOffset) ) > m_dwMaxRange )
+		if( nSyncOffset < 0 || nSyncOffset > (int)((pMPAFile->m_dwEnd - pMPAFile->m_dwBegin) - MPA_HEADER_SIZE) || fabsf( (long)(nSyncOffset-dwExpectedOffset) ) > m_dwMaxRange )
 		{
 			// out of tolerance range
 			throw CMPAException( CMPAException::NoFrame, pMPAFile->GetFilename() ? pMPAFile->GetFilename() : "??" );

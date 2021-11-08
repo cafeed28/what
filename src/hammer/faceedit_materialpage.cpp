@@ -299,7 +299,7 @@ void IntegerToSpin(int nValue, CSpinButtonCtrl *pSpin)
 	}
 	else
 	{
-		sprintf(szNew, "%d", abs(nValue));
+		sprintf(szNew, "%d", fabsf(nValue));
 	}
 
 	pSpin->SetPos(atoi(szNew));
@@ -370,7 +370,7 @@ void TransferToInteger( CWnd *pWnd, int &nValue )
 
 	if( !str.IsEmpty() )
 	{
-		nValue = abs( atoi( str ) );
+		nValue = fabsf( atoi( str ) );
 	}
 }
 

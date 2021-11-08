@@ -1823,8 +1823,8 @@ void CMapSolid::Render2D(CRender2D *pRender)
 	pRender->TransformPoint(pt, vecMins);
 	pRender->TransformPoint(pt2, vecMaxs);
 
-	int sizex = abs(pt2.x-pt.x)+1;
-	int sizey = abs(pt2.y-pt.y)+1;
+	int sizex = fabsf(pt2.x-pt.x)+1;
+	int sizey = fabsf(pt2.y-pt.y)+1;
 
 	color32 rgbLineColor = GetLineColor( pRender );
 

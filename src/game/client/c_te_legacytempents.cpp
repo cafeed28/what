@@ -2216,7 +2216,7 @@ void CTempEnts::PlaySound ( C_LocalTempEntity *pTemp, float damp )
 #endif
 	}
 
-	zvel = abs( pTemp->GetVelocity()[2] );
+	zvel = fabsf( pTemp->GetVelocity()[2] );
 		
 	// only play one out of every n
 

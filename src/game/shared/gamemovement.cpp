@@ -2982,7 +2982,7 @@ int CGameMovement::TryPlayerMove( Vector *pFirstDest, trace_t *pFirstTrace )
 		}
 		// If the plane has a zero z component in the normal, then it's a 
 		//  step or wall
-		if ( abs(pm.plane.normal[2]) < EFFECTIVELY_HORIZONTAL_NORMAL_Z )
+		if ( fabsf(pm.plane.normal[2]) < EFFECTIVELY_HORIZONTAL_NORMAL_Z )
 		{
 			pm.plane.normal[2] = 0;
 			blocked |= 2;		// step / wall
@@ -3204,7 +3204,7 @@ bool CGameMovement::LadderMove( void )
 			player->GetGroundEntity() == NULL &&								// in the air
 			mv->m_vecVelocity.z <= 0 &&											// not flying upward
 			mv->m_vecVelocity.z > -50.0f &&										// not falling too fast
-			( abs(mv->m_vecVelocity.x) > 0 && abs(mv->m_vecVelocity.y) > 0 )	// lateral velocity present
+			( fabsf(mv->m_vecVelocity.x) > 0 && fabsf(mv->m_vecVelocity.y) > 0 )	// lateral velocity present
 			)
 		{
 

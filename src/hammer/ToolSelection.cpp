@@ -1265,7 +1265,7 @@ bool Selection3D::OnMouseMoveLogical(CMapViewLogical *pView, UINT nFlags, const 
 			// check if mouse was dragged if button is pressed down
 			Vector2D sizeDragged = vPoint - m_vLDownLogicalClient;
 			
-			if ((abs(sizeDragged.x) > DRAG_THRESHHOLD) || (abs(sizeDragged.y) > DRAG_THRESHHOLD))
+			if ((fabsf(sizeDragged.x) > DRAG_THRESHHOLD) || (fabsf(sizeDragged.y) > DRAG_THRESHHOLD))
 			{
 				// If here, means we've dragged the mouse
 				m_bLeftDragged = true;

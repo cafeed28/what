@@ -194,7 +194,7 @@ float MoveToward( float cur, float goal, float lag )
 {
 	if( cur != goal )
 	{
-		if( abs( cur - goal ) > 180.0 )
+		if( fabsf( cur - goal ) > 180.0 )
 		{
 			if( cur < goal )
 				cur += 360.0;
@@ -536,7 +536,7 @@ void CInput::CAM_Think( void )
 		if( camOffset[ PITCH ] - viewangles[ PITCH ] != cam_idealpitch.GetFloat() )
 			camOffset[ PITCH ] = MoveToward( camOffset[ PITCH ], cam_idealpitch.GetFloat() + viewangles[ PITCH ], lag );
 		
-		if( abs( camOffset[ DIST ] - cam_idealdist.GetFloat() ) < 2.0 )
+		if( fabsf( camOffset[ DIST ] - cam_idealdist.GetFloat() ) < 2.0 )
 			camOffset[ DIST ] = cam_idealdist.GetFloat();
 		else
 			camOffset[ DIST ] += ( cam_idealdist.GetFloat() - camOffset[ DIST ] ) / lag;
@@ -628,7 +628,7 @@ void CInput::CAM_CameraThirdThink( void )
 	{
 		vecCamOffset[YAW] = MoveToward( vecCamOffset[YAW], ( m_pCameraThirdData->m_flYaw + angView[YAW] ), flLag );
 	}
-	if( abs( vecCamOffset[DIST] - m_pCameraThirdData->m_flDist ) < 2.0 )
+	if( fabsf( vecCamOffset[DIST] - m_pCameraThirdData->m_flDist ) < 2.0 )
 	{
 		vecCamOffset[DIST] = m_pCameraThirdData->m_flDist;
 	}

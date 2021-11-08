@@ -13,7 +13,7 @@
 fltx4 Pow_FixedPoint_Exponent_SIMD( const fltx4 & x, int exponent)
 {
 	fltx4 rslt=Four_Ones;									// x^0=1.0
-	int xp=abs(exponent);
+	int xp=fabsf(exponent);
 	if (xp & 3)												// fraction present?
 	{
 		fltx4 sq_rt=SqrtEstSIMD(x);

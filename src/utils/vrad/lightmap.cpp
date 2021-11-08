@@ -2318,9 +2318,9 @@ void GetPhongNormal( int facenum, Vector const& spot, Vector& phongnormal )
 			//int e1 = dsurfedges[f->firstedge + ((j+f->numedges-1)%f->numedges)];
 			//int e2 = dsurfedges[f->firstedge + ((j+1)%f->numedges)];
 
-			//edgeshare_t	*es = &edgeshare[abs(e)];
-			//edgeshare_t	*es1 = &edgeshare[abs(e1)];
-			//edgeshare_t	*es2 = &edgeshare[abs(e2)];
+			//edgeshare_t	*es = &edgeshare[fabsf(e)];
+			//edgeshare_t	*es1 = &edgeshare[fabsf(e1)];
+			//edgeshare_t	*es2 = &edgeshare[fabsf(e2)];
 			// dface_t	*f2;
 			float		a1, a2, aa, bb, ab;
 			int			vert1, vert2;

@@ -4259,13 +4259,13 @@ void CTriggerWind::WindThink( void )
 	{
 		bool bDone = true;
 		// either ramp up, or sleep till change
-		if (abs(m_nSpeedTarget - m_nSpeedCurrent) > MAX_WIND_CHANGE)
+		if (fabsf(m_nSpeedTarget - m_nSpeedCurrent) > MAX_WIND_CHANGE)
 		{
 			m_nSpeedCurrent += (m_nSpeedTarget > m_nSpeedCurrent) ? MAX_WIND_CHANGE : -MAX_WIND_CHANGE;
 			bDone = false;
 		}
 
-		if (abs(m_nDirTarget - m_nDirCurrent) > MAX_WIND_CHANGE)
+		if (fabsf(m_nDirTarget - m_nDirCurrent) > MAX_WIND_CHANGE)
 		{
 
 			m_nDirCurrent = UTIL_ApproachAngle( m_nDirTarget, m_nDirCurrent, MAX_WIND_CHANGE );

@@ -2274,18 +2274,18 @@ void SixenseInput::SetPlayerHandPositions( CUserCmd *pCmd, float flFrametime )
 				screen.y = clamp( screen.y, -1.0f, 1.0f );
 
 				// horizontal
-				if ( abs( screen.x ) > 1.0 - hold_spin_start_screen_ratio )
+				if ( fabsf( screen.x ) > 1.0 - hold_spin_start_screen_ratio )
 				{
-					horiz_speed_mult = ( ( abs( screen.x ) - ( 1.0 - hold_spin_start_screen_ratio ) ) / hold_spin_start_screen_ratio );
+					horiz_speed_mult = ( ( fabsf( screen.x ) - ( 1.0 - hold_spin_start_screen_ratio ) ) / hold_spin_start_screen_ratio );
 					horiz_speed_mult = Bias( horiz_speed_mult, hold_spin_speed_bias );
 
 					if ( screen.x > 0 ) horiz_speed_mult *= -1;
 				}
 
 				// vertical
-				if ( abs( screen.y ) > 1.0 - hold_spin_start_screen_ratio )
+				if ( fabsf( screen.y ) > 1.0 - hold_spin_start_screen_ratio )
 				{
-					vert_speed_mult = ( ( abs( screen.y ) - ( 1.0 - hold_spin_start_screen_ratio ) ) / hold_spin_start_screen_ratio );
+					vert_speed_mult = ( ( fabsf( screen.y ) - ( 1.0 - hold_spin_start_screen_ratio ) ) / hold_spin_start_screen_ratio );
 					vert_speed_mult = Bias( vert_speed_mult, hold_spin_speed_bias );
 
 					if ( screen.y > 0 ) vert_speed_mult *= -1;

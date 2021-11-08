@@ -121,6 +121,16 @@ $Project "motionmapper"
 	"utils\motionmapper\motionmapper.vpc" [$WIN32]
 }
 
+$Project "movieobjects"
+{
+	"movieobjects\movieobjects.vpc" [$WIN32]
+}
+
+$Project "mxtoolkitwin32"
+{
+	"utils\mxtk\mxtoolkitwin32.vpc" [$WIN32]
+}
+
 $Project "pet"
 {
 	"tools\pet\pet.vpc" [$WIN32]
@@ -136,9 +146,19 @@ $Project "raytrace"
 	"raytrace\raytrace.vpc" [$WIN32||$X360||$POSIX]
 }
 
+$Project "replay_common"
+{
+	"replay\common\replay_common.vpc" [$WINDOWS||$POSIX]
+}
+
 $Project "qc_eyes"
 {
 	"utils\qc_eyes\qc_eyes.vpc" [$WIN32]
+}
+
+$Project "ServerBrowser"
+{
+	"serverbrowser\ServerBrowser.vpc" [$WINDOWS||$X360||$POSIX]
 }
 
 $Project "serverplugin_empty"
@@ -218,6 +238,11 @@ $Project "matsys_controls"
 $Project "vice"
 {
 	"utils\vice\vice.vpc" [$WIN32]
+}
+
+$Project "vmpi"
+{
+	"utils\vmpi\vmpi.vpc" [$WIN32]
 }
 
 $Project "vpk"

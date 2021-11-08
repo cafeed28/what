@@ -30,6 +30,6 @@ float SparseConvolutionNoise(Vector const &pnt, float (*pNoiseShapeFunction)(flo
 // returns a 1/f noise. more octaves take longer
 float FractalNoise( Vector const &pnt, int n_octaves );
 
-// returns a abs(f)*1/f noise i.e. turbulence
+// returns a fabsf(f)*1/f noise i.e. turbulence
 float Turbulence( Vector const &pnt, int n_octaves );
 #endif // NOISE_H

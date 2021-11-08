@@ -455,8 +455,8 @@ void CMapStudioModel::Render2D(CRender2D *pRender)
 		pRender->SetHandleColor( rgbColor.r, rgbColor.g, rgbColor.b );
 	}
 
-	int sizeX = abs(pt2.x-pt.x);
-	int sizeY = abs(pt2.y-pt.y);
+	int sizeX = fabsf(pt2.x-pt.x);
+	int sizeY = fabsf(pt2.y-pt.y);
 
 	//
 	// Don't draw the center handle if the model is smaller than the handle cross 	

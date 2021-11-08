@@ -492,7 +492,7 @@ int Box3D::GetVisibleHandles( Vector *handles, CMapView *pView, int nMode )
 				if ( bIs2D && (z != 0) && (fabs(vViewAxis.z) == 1) )
 					continue;
 
-				int n = abs(x) + abs(y) + abs(z);
+				int n = fabsf(x) + fabsf(y) + fabsf(z);
 
 				if ( n == 0 )
 				{

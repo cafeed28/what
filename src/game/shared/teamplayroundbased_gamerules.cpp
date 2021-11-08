@@ -2351,7 +2351,7 @@ void CTeamplayRoundBasedRules::SetWinningTeam( int team, int iWinReason, bool bF
 		}
 
 		// Did we hit our win delta?
-		int nWinDelta = abs( m_GameTeams[1] - m_GameTeams[0] );
+		int nWinDelta = fabsf( m_GameTeams[1] - m_GameTeams[0] );
 		if ( nWinDelta >= mp_scrambleteams_auto_windifference.GetInt() )
 		{
 			// Let the server know we're going to scramble on round restart

@@ -392,7 +392,7 @@ int CubeDeltaGammaSpace( Vector *pCube0, Vector *pCube1 )
 		{
 			int val0 = LinearToScreenGamma( pCube0[i][j] );
 			int val1 = LinearToScreenGamma( pCube1[i][j] );
-			int delta = abs(val0-val1);
+			int delta = fabsf(val0-val1);
 			if ( delta > maxDelta )
 				maxDelta = delta;
 		}

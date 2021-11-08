@@ -163,7 +163,7 @@ int CEnvScreenOverlay::UpdateTransmitState()
 void CEnvScreenOverlay::InputSwitchOverlay( inputdata_t &inputdata )
 {
 	int iNewOverlay = inputdata.value.Int() - 1;
-	iNewOverlay = abs( iNewOverlay );
+	iNewOverlay = fabsf( iNewOverlay );
 
 	if ( m_iszOverlayNames[iNewOverlay] == NULL_STRING )
 	{

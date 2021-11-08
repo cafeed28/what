@@ -1221,7 +1221,7 @@ float CWeaponCSBase::GetInaccuracy() const
 	// CS-PRO TEST FEATURE
 	// Adding movement penalty here results in an instaneous penalty that doesn't persist.
 #if !MOVEMENT_ACCURACY_DECAYED
-	float flVerticalSpeed = abs( pPlayer->GetAbsVelocity().z );
+	float flVerticalSpeed = fabsf( pPlayer->GetAbsVelocity().z );
 
 	float flMovementInaccuracyScale = RemapValClamped(pPlayer->GetAbsVelocity().Length2D(), 
 		fMaxSpeed * CS_PLAYER_SPEED_DUCK_MODIFIER, 
@@ -3001,7 +3001,7 @@ float CalcViewModelBobHelper( CBasePlayer *player, BobState_t *pBobState, int nV
 		if ( pWeapon->m_flGunAccuracyPosition > 0.0f )
 		Msg( "m_flGunAccuracyPosition1 = %f, flAccuracy = %f\n", pWeapon->m_flGunAccuracyPosition, flAccuracy );
 		*/
-		pWeapon->m_flGunAccuracyPosition = Approach( (flAccuracyDiff * 80), pWeapon->m_flGunAccuracyPosition, abs( ((flAccuracyDiff * 80) - pWeapon->m_flGunAccuracyPosition)*gpGlobals->frametime ) * 4.0f );
+		pWeapon->m_flGunAccuracyPosition = Approach( (flAccuracyDiff * 80), pWeapon->m_flGunAccuracyPosition, fabsf( ((flAccuracyDiff * 80) - pWeapon->m_flGunAccuracyPosition)*gpGlobals->frametime ) * 4.0f );
 		flGunAccPos = pWeapon->m_flGunAccuracyPosition;
 	}
 	else

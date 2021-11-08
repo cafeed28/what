@@ -1651,7 +1651,7 @@ float *	C_CSPlayer::GetRenderClipPlane( void )
 				Vector vecSurfNormal = tr_StockToMuzzle.plane.normal;
 				Vector vecFallBackNormal = -vecEyeForwardFlat;
 
-				if ( abs(vecSurfNormal.z) >= 1 )
+				if ( fabsf(vecSurfNormal.z) >= 1 )
 				{
 					vecSurfNormal = vecFallBackNormal;
 				}

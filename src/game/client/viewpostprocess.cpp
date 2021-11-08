@@ -1184,7 +1184,7 @@ static void SetToneMapScale(IMatRenderContext *pRenderContext, float newvalue, f
 		int sample_pt = ARRAYSIZE( s_MovingAverageToneMapScale ) / 2;
 		for( int i = 0;i < ARRAYSIZE( s_MovingAverageToneMapScale );i ++ )
 		{
-			float weight = abs( i - sample_pt ) * ( 1.0 / ( ARRAYSIZE( s_MovingAverageToneMapScale ) / 2 ));
+			float weight = fabsf( i - sample_pt ) * ( 1.0 / ( ARRAYSIZE( s_MovingAverageToneMapScale ) / 2 ));
 			sumweights += weight;
 			avg += weight * s_MovingAverageToneMapScale[i];
 		}

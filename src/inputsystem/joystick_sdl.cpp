@@ -446,7 +446,7 @@ void CInputSystem::JoystickAxisMotion( int joystickId, int axis, int value )
 	}
 
 	int minValue = joy_axis_deadzone.GetFloat() * 32767;
-	if ( abs(value) < minValue )
+	if ( fabsf(value) < minValue )
 	{
 		value = 0;
 	}
@@ -538,7 +538,7 @@ void CInputSystem::SetXDeviceRumble( float fLeftMotor, float fRightMotor, int us
 	}
 
 	// If there's little change, then don't change the rumble strength.
-	if ( info.m_bRumbleEnabled && abs(info.m_fCurrentRumble - strength) < 0.01f )
+	if ( info.m_bRumbleEnabled && fabsf(info.m_fCurrentRumble - strength) < 0.01f )
 	{
 		return;
 	}

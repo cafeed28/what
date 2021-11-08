@@ -20,7 +20,7 @@ $Configuration
 
 	$Linker
 	{
-		$AdditionalDependencies			"$BASE ws2_32.lib" [$WIN32]
+		$AdditionalDependencies			"$BASE ws2_32.lib legacy_stdio_definitions.lib" [$WIN32]
 	}
 }
 

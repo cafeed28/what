@@ -11554,7 +11554,7 @@ void CAI_BaseNPC::InputSetEnemyFilter( inputdata_t &inputdata )
 void CAI_BaseNPC::InputSetHealth( inputdata_t &inputdata )
 {
 	int iNewHealth = inputdata.value.Int();
-	int iDelta = abs(GetHealth() - iNewHealth);
+	int iDelta = fabsf(GetHealth() - iNewHealth);
 	if ( iNewHealth > GetHealth() )
 	{
 		TakeHealth( iDelta, DMG_GENERIC );

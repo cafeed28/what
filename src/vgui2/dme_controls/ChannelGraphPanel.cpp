@@ -112,7 +112,7 @@ void CChannelGraphPanel::OnCursorMoved( int mx, int my )
 
 	if ( bInTimeLegend )
 	{
-		if ( abs( dy ) > abs( dx ) )
+		if ( fabsf( dy ) > fabsf( dx ) )
 		{
 			m_graphMinTime -= DmeTime_t( dy / m_flTimeToPixel );
 			m_graphMaxTime += DmeTime_t( dy / m_flTimeToPixel );
@@ -131,7 +131,7 @@ void CChannelGraphPanel::OnCursorMoved( int mx, int my )
 	}
 	else if ( bInValueLegend )
 	{
-		if ( abs( dx ) > abs( dy ) )
+		if ( fabsf( dx ) > fabsf( dy ) )
 		{
 			m_graphMinValue += dx / m_flValueToPixel;
 			m_graphMaxValue -= dx / m_flValueToPixel;

@@ -344,10 +344,10 @@ float4 main( PS_INPUT i ) : COLOR
 			
    
 			// smooth blend the three projections across the object-space surface normals
-			float yBlend = abs( dot( fvNormal.xyz, float3( 0.0f, 1.0f, 0.0f ) ) );
+			float yBlend = fabsf( dot( fvNormal.xyz, float3( 0.0f, 1.0f, 0.0f ) ) );
 			yBlend = pow( yBlend, g_flBlendYPow );
 
-			float zBlend = abs( dot( fvNormal.xyz, float3( 0.0f, 0.0f, 1.0f ) ) );
+			float zBlend = fabsf( dot( fvNormal.xyz, float3( 0.0f, 0.0f, 1.0f ) ) );
 			zBlend = pow( zBlend, g_flBlendZPow );
    
 			float3 fvPatternMask = lerp( lerp( fvTexX, fvTexY, yBlend ), fvTexZ, zBlend );

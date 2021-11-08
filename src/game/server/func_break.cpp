@@ -932,7 +932,7 @@ void CBreakable::Die( void )
 	// The more negative m_iHealth, the louder
 	// the sound should be.
 
-	fvol = random->RandomFloat(0.85, 1.0) + (abs(m_iHealth) / 100.0);
+	fvol = random->RandomFloat(0.85, 1.0) + (fabsf(m_iHealth) / 100.0);
 	if (fvol > 1.0)
 	{
 		fvol = 1.0;

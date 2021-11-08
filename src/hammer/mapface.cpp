@@ -2335,8 +2335,8 @@ void CMapFace::Render2D(CRender2D *pRender)
 		pRender->TransformPoint(pt, mins );
 		pRender->TransformPoint(pt2, maxs );
 
-		int sizeX = abs(pt2.x-pt.x);
-		int sizeY = abs(pt2.y-pt.y);
+		int sizeX = fabsf(pt2.x-pt.x);
+		int sizeY = fabsf(pt2.y-pt.y);
 
 		bool bDrawDispMap = Options.view2d.bDrawModels && ( (sizeX+sizeY) > 50 || bRenderSelected );
 

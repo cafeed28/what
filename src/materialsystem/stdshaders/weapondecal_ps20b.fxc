@@ -423,7 +423,7 @@ float4 main( PS_INPUT i ) : COLOR
 	#if ( HIGHLIGHT > 0 )
 		// cheap highlighting base pass
 		float flModdedCycle = fmod( 0.5f * i.vBaseUV_PatternUV.x + i.vBaseUV_PatternUV.y + g_flHighlightCycle, 1.5f );
-		flModdedCycle = smoothstep( 0.2f, 0.6f, abs( flModdedCycle - 0.5f ) );
+		flModdedCycle = smoothstep( 0.2f, 0.6f, fabsf( flModdedCycle - 0.5f ) );
 		
 		#if (CUBEMAP == 1)
 			vReflect.r += flModdedCycle;
@@ -467,7 +467,7 @@ float4 main( PS_INPUT i ) : COLOR
 			flEdgeAlphaDetect += step( 0.1f, flAlphaTap );
 		}
 		
-		flEdgeAlphaDetect = step( abs( (flEdgeAlphaDetect * ONE_OVER_SIXTEEN) - 0.5f ), 0.499f );
+		flEdgeAlphaDetect = step( fabsf( (flEdgeAlphaDetect * ONE_OVER_SIXTEEN) - 0.5f ), 0.499f );
 		
 		cOut = lerp( cOut, float4(selectionColor, 1), flEdgeAlphaDetect * g_flHighlightAmount );
 		

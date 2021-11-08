@@ -224,7 +224,7 @@ void CCSBot::UpdateLookAngles( void )
 		if (toCurrent * toDesired < 0.0f)
 		{
 			// if the sum of the angles is greater than 180, turn the "long" way around
-			if (abs( toCurrent - toDesired ) >= 180.0f)
+			if (fabsf( toCurrent - toDesired ) >= 180.0f)
 			{
 				if (angleDiff > 0.0f)
 					angleDiff -= 360.0f;

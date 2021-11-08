@@ -31,24 +31,29 @@ extern "C" {
 #define MCGEN_TRACE_CONTEXT_DEF
 typedef struct _MCGEN_TRACE_CONTEXT
 {
-    TRACEHANDLE     RegistrationHandle;
-    TRACEHANDLE     Logger;
-    ULONGLONG       MatchAnyKeyword;
-    ULONGLONG       MatchAllKeyword;
-    ULONG           Flags;
-    ULONG           IsEnabled;
-    UCHAR           Level; 
-    UCHAR           Reserve;
+    TRACEHANDLE            RegistrationHandle;
+    TRACEHANDLE            Logger;
+    ULONGLONG              MatchAnyKeyword;
+    ULONGLONG              MatchAllKeyword;
+    ULONG                  Flags;
+    ULONG                  IsEnabled;
+    UCHAR                  Level; 
+    UCHAR                  Reserve;
+    USHORT                 EnableBitsCount;
+    PULONG                 EnableBitMask;
+    const ULONGLONG*       EnableKeyWords;
+    const UCHAR*           EnableLevel;
 } MCGEN_TRACE_CONTEXT, *PMCGEN_TRACE_CONTEXT;
 #endif
 
-#if !defined(MCGEN_EVENT_ENABLED_DEF)
-#define MCGEN_EVENT_ENABLED_DEF
+#if !defined(MCGEN_LEVEL_KEYWORD_ENABLED_DEF)
+#define MCGEN_LEVEL_KEYWORD_ENABLED_DEF
 FORCEINLINE
 BOOLEAN
-McGenEventEnabled(
-    __in PMCGEN_TRACE_CONTEXT EnableInfo,
-    __in PCEVENT_DESCRIPTOR EventDescriptor
+McGenLevelKeywordEnabled(
+    _In_ PMCGEN_TRACE_CONTEXT EnableInfo,
+    _In_ UCHAR Level,
+    _In_ ULONGLONG Keyword
     )
 {
     //
@@ -58,21 +63,36 @@ McGenEventEnabled(
     // all levels are enabled.
     //
 
-    if ((EventDescriptor->Level <= EnableInfo->Level) || // This also covers the case of Level == 0.
+    if ((Level <= EnableInfo->Level) || // This also covers the case of Level == 0.
         (EnableInfo->Level == 0)) {
 
         //
         // Check if Keyword is enabled
         //
 
-        if ((EventDescriptor->Keyword == (ULONGLONG)0) ||
-            ((EventDescriptor->Keyword & EnableInfo->MatchAnyKeyword) &&
-             ((EventDescriptor->Keyword & EnableInfo->MatchAllKeyword) == EnableInfo->MatchAllKeyword))) {
+        if ((Keyword == (ULONGLONG)0) ||
+            ((Keyword & EnableInfo->MatchAnyKeyword) &&
+             ((Keyword & EnableInfo->MatchAllKeyword) == EnableInfo->MatchAllKeyword))) {
             return TRUE;
         }
     }
 
     return FALSE;
+
+}
+#endif
+
+#if !defined(MCGEN_EVENT_ENABLED_DEF)
+#define MCGEN_EVENT_ENABLED_DEF
+FORCEINLINE
+BOOLEAN
+McGenEventEnabled(
+    _In_ PMCGEN_TRACE_CONTEXT EnableInfo,
+    _In_ PCEVENT_DESCRIPTOR EventDescriptor
+    )
+{
+
+    return McGenLevelKeywordEnabled(EnableInfo, EventDescriptor->Level, EventDescriptor->Keyword);
 
 }
 #endif
@@ -92,13 +112,13 @@ DECLSPEC_NOINLINE __inline
 VOID
 __stdcall
 McGenControlCallbackV2(
-    __in LPCGUID SourceId,
-    __in ULONG ControlCode,
-    __in UCHAR Level,
-    __in ULONGLONG MatchAnyKeyword,
-    __in ULONGLONG MatchAllKeyword,
-    __in_opt PEVENT_FILTER_DESCRIPTOR FilterData,
-    __inout_opt PVOID CallbackContext
+    _In_ LPCGUID SourceId,
+    _In_ ULONG ControlCode,
+    _In_ UCHAR Level,
+    _In_ ULONGLONG MatchAnyKeyword,
+    _In_ ULONGLONG MatchAllKeyword,
+    _In_opt_ PEVENT_FILTER_DESCRIPTOR FilterData,
+    _Inout_opt_ PVOID CallbackContext
     )
 /*++
 
@@ -133,6 +153,7 @@ Remarks:
 --*/
 {
     PMCGEN_TRACE_CONTEXT Ctx = (PMCGEN_TRACE_CONTEXT)CallbackContext;
+    ULONG Ix;
 #ifndef MCGEN_PRIVATE_ENABLE_CALLBACK_V2
     UNREFERENCED_PARAMETER(SourceId);
     UNREFERENCED_PARAMETER(FilterData);
@@ -149,6 +170,14 @@ Remarks:
             Ctx->MatchAnyKeyword = MatchAnyKeyword;
             Ctx->MatchAllKeyword = MatchAllKeyword;
             Ctx->IsEnabled = EVENT_CONTROL_CODE_ENABLE_PROVIDER;
+
+            for (Ix = 0; Ix < Ctx->EnableBitsCount; Ix += 1) {
+                if (McGenLevelKeywordEnabled(Ctx, Ctx->EnableLevel[Ix], Ctx->EnableKeyWords[Ix]) != FALSE) {
+                    Ctx->EnableBitMask[Ix >> 5] |= (1 << (Ix % 32));
+                } else {
+                    Ctx->EnableBitMask[Ix >> 5] &= ~(1 << (Ix % 32));
+                }
+            }
             break;
 
         case EVENT_CONTROL_CODE_DISABLE_PROVIDER:
@@ -156,6 +185,9 @@ Remarks:
             Ctx->Level = 0;
             Ctx->MatchAnyKeyword = 0;
             Ctx->MatchAllKeyword = 0;
+            if (Ctx->EnableBitsCount > 0) {
+                RtlZeroMemory(Ctx->EnableBitMask, (((Ctx->EnableBitsCount - 1) / 32) + 1) * sizeof(ULONG));
+            }
             break;
  
         default:
@@ -268,19 +300,27 @@ EXTERN_C __declspec(selectany) const EVENT_DESCRIPTOR Thread_ID = {0x71, 0x0, 0x
 // Globals 
 //
 
-EXTERN_C __declspec(selectany) REGHANDLE Valve_MainHandle = (REGHANDLE)0;
 
-EXTERN_C __declspec(selectany) MCGEN_TRACE_CONTEXT VALVE_MAIN_Context = {0};
+//
+// Event Enablement Bits
+//
+
+EXTERN_C __declspec(selectany) DECLSPEC_CACHEALIGN ULONG Valve_MainEnableBits[1];
+EXTERN_C __declspec(selectany) const ULONGLONG Valve_MainKeywords[2] = {0x0, 0x0};
+EXTERN_C __declspec(selectany) const UCHAR Valve_MainLevels[2] = {0, 4};
+EXTERN_C __declspec(selectany) MCGEN_TRACE_CONTEXT VALVE_MAIN_Context = {0, 0, 0, 0, 0, 0, 0, 0, 2, Valve_MainEnableBits, Valve_MainKeywords, Valve_MainLevels};
+
+EXTERN_C __declspec(selectany) REGHANDLE Valve_MainHandle = (REGHANDLE)0;
 
 #if !defined(McGenEventRegisterUnregister)
 #define McGenEventRegisterUnregister
 DECLSPEC_NOINLINE __inline
 ULONG __stdcall
 McGenEventRegister(
-    __in LPCGUID ProviderId,
-    __in_opt PENABLECALLBACK EnableCallback,
-    __in_opt PVOID CallbackContext,
-    __inout PREGHANDLE RegHandle
+    _In_ LPCGUID ProviderId,
+    _In_opt_ PENABLECALLBACK EnableCallback,
+    _In_opt_ PVOID CallbackContext,
+    _Inout_ PREGHANDLE RegHandle
     )
 /*++
 
@@ -321,7 +361,7 @@ Remarks:
 
 DECLSPEC_NOINLINE __inline
 ULONG __stdcall
-McGenEventUnregister(__inout PREGHANDLE RegHandle)
+McGenEventUnregister(_Inout_ PREGHANDLE RegHandle)
 /*++
 
 Routine Description:
@@ -366,114 +406,198 @@ Remarks:
 #endif
 
 //
+// Enablement check macro for Start
+//
+
+#define EventEnabledStart() ((Valve_MainEnableBits[0] & 0x00000001) != 0)
+
+//
 // Event Macro for Start
 //
 #define EventWriteStart(Description, Depth)\
-        MCGEN_ENABLE_CHECK(VALVE_MAIN_Context, Start) ?\
+        EventEnabledStart() ?\
         Template_sd(Valve_MainHandle, &Start, Description, Depth)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for Stop
+//
+
+#define EventEnabledStop() ((Valve_MainEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for Stop
 //
 #define EventWriteStop(Description, Depth, Duration__ms_)\
-        MCGEN_ENABLE_CHECK(VALVE_MAIN_Context, Stop) ?\
+        EventEnabledStop() ?\
         Template_sdf(Valve_MainHandle, &Stop, Description, Depth, Duration__ms_)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for Mark
+//
+
+#define EventEnabledMark() ((Valve_MainEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for Mark
 //
 #define EventWriteMark(Description)\
-        MCGEN_ENABLE_CHECK(VALVE_MAIN_Context, Mark) ?\
+        EventEnabledMark() ?\
         Template_s(Valve_MainHandle, &Mark, Description)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for Mark1F
+//
+
+#define EventEnabledMark1F() ((Valve_MainEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for Mark1F
 //
 #define EventWriteMark1F(Description, Data_1)\
-        MCGEN_ENABLE_CHECK(VALVE_MAIN_Context, Mark1F) ?\
+        EventEnabledMark1F() ?\
         Template_sf(Valve_MainHandle, &Mark1F, Description, Data_1)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for Mark2F
+//
+
+#define EventEnabledMark2F() ((Valve_MainEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for Mark2F
 //
 #define EventWriteMark2F(Description, Data_1, Data_2)\
-        MCGEN_ENABLE_CHECK(VALVE_MAIN_Context, Mark2F) ?\
+        EventEnabledMark2F() ?\
         Template_sff(Valve_MainHandle, &Mark2F, Description, Data_1, Data_2)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for Mark3F
+//
+
+#define EventEnabledMark3F() ((Valve_MainEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for Mark3F
 //
 #define EventWriteMark3F(Description, Data_1, Data_2, Data_3)\
-        MCGEN_ENABLE_CHECK(VALVE_MAIN_Context, Mark3F) ?\
+        EventEnabledMark3F() ?\
         Template_sfff(Valve_MainHandle, &Mark3F, Description, Data_1, Data_2, Data_3)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for Mark4F
+//
+
+#define EventEnabledMark4F() ((Valve_MainEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for Mark4F
 //
 #define EventWriteMark4F(Description, Data_1, Data_2, Data_3, Data_4)\
-        MCGEN_ENABLE_CHECK(VALVE_MAIN_Context, Mark4F) ?\
+        EventEnabledMark4F() ?\
         Template_sffff(Valve_MainHandle, &Mark4F, Description, Data_1, Data_2, Data_3, Data_4)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for Mark1I
+//
+
+#define EventEnabledMark1I() ((Valve_MainEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for Mark1I
 //
 #define EventWriteMark1I(Description, Data_1)\
-        MCGEN_ENABLE_CHECK(VALVE_MAIN_Context, Mark1I) ?\
+        EventEnabledMark1I() ?\
         Template_sd(Valve_MainHandle, &Mark1I, Description, Data_1)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for Mark2I
+//
+
+#define EventEnabledMark2I() ((Valve_MainEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for Mark2I
 //
 #define EventWriteMark2I(Description, Data_1, Data_2)\
-        MCGEN_ENABLE_CHECK(VALVE_MAIN_Context, Mark2I) ?\
+        EventEnabledMark2I() ?\
         Template_sdd(Valve_MainHandle, &Mark2I, Description, Data_1, Data_2)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for Mark3I
+//
+
+#define EventEnabledMark3I() ((Valve_MainEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for Mark3I
 //
 #define EventWriteMark3I(Description, Data_1, Data_2, Data_3)\
-        MCGEN_ENABLE_CHECK(VALVE_MAIN_Context, Mark3I) ?\
+        EventEnabledMark3I() ?\
         Template_sddd(Valve_MainHandle, &Mark3I, Description, Data_1, Data_2, Data_3)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for Mark4I
+//
+
+#define EventEnabledMark4I() ((Valve_MainEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for Mark4I
 //
 #define EventWriteMark4I(Description, Data_1, Data_2, Data_3, Data_4)\
-        MCGEN_ENABLE_CHECK(VALVE_MAIN_Context, Mark4I) ?\
+        EventEnabledMark4I() ?\
         Template_sdddd(Valve_MainHandle, &Mark4I, Description, Data_1, Data_2, Data_3, Data_4)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for Mark1S
+//
+
+#define EventEnabledMark1S() ((Valve_MainEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for Mark1S
 //
 #define EventWriteMark1S(Description, Data_1)\
-        MCGEN_ENABLE_CHECK(VALVE_MAIN_Context, Mark1S) ?\
+        EventEnabledMark1S() ?\
         Template_ss(Valve_MainHandle, &Mark1S, Description, Data_1)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for Mark2S
+//
+
+#define EventEnabledMark2S() ((Valve_MainEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for Mark2S
 //
 #define EventWriteMark2S(Description, Data_1, Data_2)\
-        MCGEN_ENABLE_CHECK(VALVE_MAIN_Context, Mark2S) ?\
+        EventEnabledMark2S() ?\
         Template_sss(Valve_MainHandle, &Mark2S, Description, Data_1, Data_2)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for Thread_ID
+//
+
+#define EventEnabledThread_ID() ((Valve_MainEnableBits[0] & 0x00000002) != 0)
 
 //
 // Event Macro for Thread_ID
 //
 #define EventWriteThread_ID(ThreadID, ThreadName)\
-        MCGEN_ENABLE_CHECK(VALVE_MAIN_Context, Thread_ID) ?\
+        EventEnabledThread_ID() ?\
         Template_ds(Valve_MainHandle, &Thread_ID, ThreadID, ThreadName)\
         : ERROR_SUCCESS\
 
@@ -526,19 +650,27 @@ EXTERN_C __declspec(selectany) const EVENT_DESCRIPTOR SimFrameMark = {0xc9, 0x0,
 // Globals 
 //
 
-EXTERN_C __declspec(selectany) REGHANDLE Valve_FrameRateHandle = (REGHANDLE)0;
 
-EXTERN_C __declspec(selectany) MCGEN_TRACE_CONTEXT VALVE_FRAMERATE_Context = {0};
+//
+// Event Enablement Bits
+//
+
+EXTERN_C __declspec(selectany) DECLSPEC_CACHEALIGN ULONG Valve_FrameRateEnableBits[1];
+EXTERN_C __declspec(selectany) const ULONGLONG Valve_FrameRateKeywords[1] = {0x0};
+EXTERN_C __declspec(selectany) const UCHAR Valve_FrameRateLevels[1] = {0};
+EXTERN_C __declspec(selectany) MCGEN_TRACE_CONTEXT VALVE_FRAMERATE_Context = {0, 0, 0, 0, 0, 0, 0, 0, 1, Valve_FrameRateEnableBits, Valve_FrameRateKeywords, Valve_FrameRateLevels};
+
+EXTERN_C __declspec(selectany) REGHANDLE Valve_FrameRateHandle = (REGHANDLE)0;
 
 #if !defined(McGenEventRegisterUnregister)
 #define McGenEventRegisterUnregister
 DECLSPEC_NOINLINE __inline
 ULONG __stdcall
 McGenEventRegister(
-    __in LPCGUID ProviderId,
-    __in_opt PENABLECALLBACK EnableCallback,
-    __in_opt PVOID CallbackContext,
-    __inout PREGHANDLE RegHandle
+    _In_ LPCGUID ProviderId,
+    _In_opt_ PENABLECALLBACK EnableCallback,
+    _In_opt_ PVOID CallbackContext,
+    _Inout_ PREGHANDLE RegHandle
     )
 /*++
 
@@ -579,7 +711,7 @@ Remarks:
 
 DECLSPEC_NOINLINE __inline
 ULONG __stdcall
-McGenEventUnregister(__inout PREGHANDLE RegHandle)
+McGenEventUnregister(_Inout_ PREGHANDLE RegHandle)
 /*++
 
 Routine Description:
@@ -624,18 +756,30 @@ Remarks:
 #endif
 
 //
+// Enablement check macro for RenderFrameMark
+//
+
+#define EventEnabledRenderFrameMark() ((Valve_FrameRateEnableBits[0] & 0x00000001) != 0)
+
+//
 // Event Macro for RenderFrameMark
 //
 #define EventWriteRenderFrameMark(Frame_number, Duration__ms_)\
-        MCGEN_ENABLE_CHECK(VALVE_FRAMERATE_Context, RenderFrameMark) ?\
+        EventEnabledRenderFrameMark() ?\
         Template_df(Valve_FrameRateHandle, &RenderFrameMark, Frame_number, Duration__ms_)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for SimFrameMark
+//
+
+#define EventEnabledSimFrameMark() ((Valve_FrameRateEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for SimFrameMark
 //
 #define EventWriteSimFrameMark(Frame_number, Duration__ms_)\
-        MCGEN_ENABLE_CHECK(VALVE_FRAMERATE_Context, SimFrameMark) ?\
+        EventEnabledSimFrameMark() ?\
         Template_df(Valve_FrameRateHandle, &SimFrameMark, Frame_number, Duration__ms_)\
         : ERROR_SUCCESS\
 
@@ -688,19 +832,27 @@ EXTERN_C __declspec(selectany) const EVENT_DESCRIPTOR ServerSimFrameMark = {0x12
 // Globals 
 //
 
-EXTERN_C __declspec(selectany) REGHANDLE Valve_ServerFrameRateHandle = (REGHANDLE)0;
 
-EXTERN_C __declspec(selectany) MCGEN_TRACE_CONTEXT VALVE_SERVERFRAMERATE_Context = {0};
+//
+// Event Enablement Bits
+//
+
+EXTERN_C __declspec(selectany) DECLSPEC_CACHEALIGN ULONG Valve_ServerFrameRateEnableBits[1];
+EXTERN_C __declspec(selectany) const ULONGLONG Valve_ServerFrameRateKeywords[1] = {0x0};
+EXTERN_C __declspec(selectany) const UCHAR Valve_ServerFrameRateLevels[1] = {0};
+EXTERN_C __declspec(selectany) MCGEN_TRACE_CONTEXT VALVE_SERVERFRAMERATE_Context = {0, 0, 0, 0, 0, 0, 0, 0, 1, Valve_ServerFrameRateEnableBits, Valve_ServerFrameRateKeywords, Valve_ServerFrameRateLevels};
+
+EXTERN_C __declspec(selectany) REGHANDLE Valve_ServerFrameRateHandle = (REGHANDLE)0;
 
 #if !defined(McGenEventRegisterUnregister)
 #define McGenEventRegisterUnregister
 DECLSPEC_NOINLINE __inline
 ULONG __stdcall
 McGenEventRegister(
-    __in LPCGUID ProviderId,
-    __in_opt PENABLECALLBACK EnableCallback,
-    __in_opt PVOID CallbackContext,
-    __inout PREGHANDLE RegHandle
+    _In_ LPCGUID ProviderId,
+    _In_opt_ PENABLECALLBACK EnableCallback,
+    _In_opt_ PVOID CallbackContext,
+    _Inout_ PREGHANDLE RegHandle
     )
 /*++
 
@@ -741,7 +893,7 @@ Remarks:
 
 DECLSPEC_NOINLINE __inline
 ULONG __stdcall
-McGenEventUnregister(__inout PREGHANDLE RegHandle)
+McGenEventUnregister(_Inout_ PREGHANDLE RegHandle)
 /*++
 
 Routine Description:
@@ -786,18 +938,30 @@ Remarks:
 #endif
 
 //
+// Enablement check macro for ServerRenderFrameMark
+//
+
+#define EventEnabledServerRenderFrameMark() ((Valve_ServerFrameRateEnableBits[0] & 0x00000001) != 0)
+
+//
 // Event Macro for ServerRenderFrameMark
 //
 #define EventWriteServerRenderFrameMark(Frame_number, Duration__ms_)\
-        MCGEN_ENABLE_CHECK(VALVE_SERVERFRAMERATE_Context, ServerRenderFrameMark) ?\
+        EventEnabledServerRenderFrameMark() ?\
         Template_df(Valve_ServerFrameRateHandle, &ServerRenderFrameMark, Frame_number, Duration__ms_)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for ServerSimFrameMark
+//
+
+#define EventEnabledServerSimFrameMark() ((Valve_ServerFrameRateEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for ServerSimFrameMark
 //
 #define EventWriteServerSimFrameMark(Frame_number, Duration__ms_)\
-        MCGEN_ENABLE_CHECK(VALVE_SERVERFRAMERATE_Context, ServerSimFrameMark) ?\
+        EventEnabledServerSimFrameMark() ?\
         Template_df(Valve_ServerFrameRateHandle, &ServerSimFrameMark, Frame_number, Duration__ms_)\
         : ERROR_SUCCESS\
 
@@ -861,19 +1025,27 @@ EXTERN_C __declspec(selectany) const EVENT_DESCRIPTOR Mouse_Wheel = {0x194, 0x0,
 // Globals 
 //
 
-EXTERN_C __declspec(selectany) REGHANDLE Valve_InputHandle = (REGHANDLE)0;
 
-EXTERN_C __declspec(selectany) MCGEN_TRACE_CONTEXT VALVE_INPUT_Context = {0};
+//
+// Event Enablement Bits
+//
+
+EXTERN_C __declspec(selectany) DECLSPEC_CACHEALIGN ULONG Valve_InputEnableBits[1];
+EXTERN_C __declspec(selectany) const ULONGLONG Valve_InputKeywords[1] = {0x0};
+EXTERN_C __declspec(selectany) const UCHAR Valve_InputLevels[1] = {0};
+EXTERN_C __declspec(selectany) MCGEN_TRACE_CONTEXT VALVE_INPUT_Context = {0, 0, 0, 0, 0, 0, 0, 0, 1, Valve_InputEnableBits, Valve_InputKeywords, Valve_InputLevels};
+
+EXTERN_C __declspec(selectany) REGHANDLE Valve_InputHandle = (REGHANDLE)0;
 
 #if !defined(McGenEventRegisterUnregister)
 #define McGenEventRegisterUnregister
 DECLSPEC_NOINLINE __inline
 ULONG __stdcall
 McGenEventRegister(
-    __in LPCGUID ProviderId,
-    __in_opt PENABLECALLBACK EnableCallback,
-    __in_opt PVOID CallbackContext,
-    __inout PREGHANDLE RegHandle
+    _In_ LPCGUID ProviderId,
+    _In_opt_ PENABLECALLBACK EnableCallback,
+    _In_opt_ PVOID CallbackContext,
+    _Inout_ PREGHANDLE RegHandle
     )
 /*++
 
@@ -914,7 +1086,7 @@ Remarks:
 
 DECLSPEC_NOINLINE __inline
 ULONG __stdcall
-McGenEventUnregister(__inout PREGHANDLE RegHandle)
+McGenEventUnregister(_Inout_ PREGHANDLE RegHandle)
 /*++
 
 Routine Description:
@@ -959,42 +1131,72 @@ Remarks:
 #endif
 
 //
+// Enablement check macro for Mouse_down
+//
+
+#define EventEnabledMouse_down() ((Valve_InputEnableBits[0] & 0x00000001) != 0)
+
+//
 // Event Macro for Mouse_down
 //
 #define EventWriteMouse_down(x, y, Button_Type)\
-        MCGEN_ENABLE_CHECK(VALVE_INPUT_Context, Mouse_down) ?\
+        EventEnabledMouse_down() ?\
         Template_ddd(Valve_InputHandle, &Mouse_down, x, y, Button_Type)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for Mouse_up
+//
+
+#define EventEnabledMouse_up() ((Valve_InputEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for Mouse_up
 //
 #define EventWriteMouse_up(x, y, Button_Type)\
-        MCGEN_ENABLE_CHECK(VALVE_INPUT_Context, Mouse_up) ?\
+        EventEnabledMouse_up() ?\
         Template_ddd(Valve_InputHandle, &Mouse_up, x, y, Button_Type)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for Key_down
+//
+
+#define EventEnabledKey_down() ((Valve_InputEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for Key_down
 //
 #define EventWriteKey_down(Character, Scan_Code, Virtual_Code)\
-        MCGEN_ENABLE_CHECK(VALVE_INPUT_Context, Key_down) ?\
+        EventEnabledKey_down() ?\
         Template_sdd(Valve_InputHandle, &Key_down, Character, Scan_Code, Virtual_Code)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for Mouse_Move
+//
+
+#define EventEnabledMouse_Move() ((Valve_InputEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for Mouse_Move
 //
 #define EventWriteMouse_Move(x, y)\
-        MCGEN_ENABLE_CHECK(VALVE_INPUT_Context, Mouse_Move) ?\
+        EventEnabledMouse_Move() ?\
         Template_dd(Valve_InputHandle, &Mouse_Move, x, y)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for Mouse_Wheel
+//
+
+#define EventEnabledMouse_Wheel() ((Valve_InputEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for Mouse_Wheel
 //
 #define EventWriteMouse_Wheel(x, y, wheelDelta)\
-        MCGEN_ENABLE_CHECK(VALVE_INPUT_Context, Mouse_Wheel) ?\
+        EventEnabledMouse_Wheel() ?\
         Template_ddd(Valve_InputHandle, &Mouse_Wheel, x, y, wheelDelta)\
         : ERROR_SUCCESS\
 
@@ -1052,19 +1254,27 @@ EXTERN_C __declspec(selectany) const EVENT_DESCRIPTOR ReadPacket = {0x1f6, 0x0, 
 // Globals 
 //
 
-EXTERN_C __declspec(selectany) REGHANDLE Valve_NetworkHandle = (REGHANDLE)0;
 
-EXTERN_C __declspec(selectany) MCGEN_TRACE_CONTEXT VALVE_NETWORK_Context = {0};
+//
+// Event Enablement Bits
+//
+
+EXTERN_C __declspec(selectany) DECLSPEC_CACHEALIGN ULONG Valve_NetworkEnableBits[1];
+EXTERN_C __declspec(selectany) const ULONGLONG Valve_NetworkKeywords[1] = {0x0};
+EXTERN_C __declspec(selectany) const UCHAR Valve_NetworkLevels[1] = {0};
+EXTERN_C __declspec(selectany) MCGEN_TRACE_CONTEXT VALVE_NETWORK_Context = {0, 0, 0, 0, 0, 0, 0, 0, 1, Valve_NetworkEnableBits, Valve_NetworkKeywords, Valve_NetworkLevels};
+
+EXTERN_C __declspec(selectany) REGHANDLE Valve_NetworkHandle = (REGHANDLE)0;
 
 #if !defined(McGenEventRegisterUnregister)
 #define McGenEventRegisterUnregister
 DECLSPEC_NOINLINE __inline
 ULONG __stdcall
 McGenEventRegister(
-    __in LPCGUID ProviderId,
-    __in_opt PENABLECALLBACK EnableCallback,
-    __in_opt PVOID CallbackContext,
-    __inout PREGHANDLE RegHandle
+    _In_ LPCGUID ProviderId,
+    _In_opt_ PENABLECALLBACK EnableCallback,
+    _In_opt_ PVOID CallbackContext,
+    _Inout_ PREGHANDLE RegHandle
     )
 /*++
 
@@ -1105,7 +1315,7 @@ Remarks:
 
 DECLSPEC_NOINLINE __inline
 ULONG __stdcall
-McGenEventUnregister(__inout PREGHANDLE RegHandle)
+McGenEventUnregister(_Inout_ PREGHANDLE RegHandle)
 /*++
 
 Routine Description:
@@ -1150,26 +1360,44 @@ Remarks:
 #endif
 
 //
+// Enablement check macro for SendPacket
+//
+
+#define EventEnabledSendPacket() ((Valve_NetworkEnableBits[0] & 0x00000001) != 0)
+
+//
 // Event Macro for SendPacket
 //
 #define EventWriteSendPacket(To, WireSize, outSequenceNR, outSequenceNrAck, CumulativeWireSize)\
-        MCGEN_ENABLE_CHECK(VALVE_NETWORK_Context, SendPacket) ?\
+        EventEnabledSendPacket() ?\
         Template_sdddd(Valve_NetworkHandle, &SendPacket, To, WireSize, outSequenceNR, outSequenceNrAck, CumulativeWireSize)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for Throttled
+//
+
+#define EventEnabledThrottled() ((Valve_NetworkEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for Throttled
 //
 #define EventWriteThrottled()\
-        MCGEN_ENABLE_CHECK(VALVE_NETWORK_Context, Throttled) ?\
+        EventEnabledThrottled() ?\
         TemplateEventDescriptor(Valve_NetworkHandle, &Throttled)\
         : ERROR_SUCCESS\
+
+//
+// Enablement check macro for ReadPacket
+//
+
+#define EventEnabledReadPacket() ((Valve_NetworkEnableBits[0] & 0x00000001) != 0)
 
 //
 // Event Macro for ReadPacket
 //
 #define EventWriteReadPacket(From, WireSize, inSequenceNR, outSequenceNrAck, CumulativeWireSize)\
-        MCGEN_ENABLE_CHECK(VALVE_NETWORK_Context, ReadPacket) ?\
+        EventEnabledReadPacket() ?\
         Template_sdddd(Valve_NetworkHandle, &ReadPacket, From, WireSize, inSequenceNR, outSequenceNrAck, CumulativeWireSize)\
         : ERROR_SUCCESS\
 
@@ -1192,10 +1420,10 @@ Remarks:
 ETW_INLINE
 ULONG
 Template_sd(
-    __in REGHANDLE RegHandle,
-    __in PCEVENT_DESCRIPTOR Descriptor,
-    __in_opt LPCSTR  Description,
-    __in const signed int  Depth
+    _In_ REGHANDLE RegHandle,
+    _In_ PCEVENT_DESCRIPTOR Descriptor,
+    _In_opt_ LPCSTR  _Arg0,
+    _In_ const signed int  _Arg1
     )
 {
 #define ARGUMENT_COUNT_sd 2
@@ -1203,10 +1431,10 @@ Template_sd(
     EVENT_DATA_DESCRIPTOR EventData[ARGUMENT_COUNT_sd];
 
     EventDataDescCreate(&EventData[0], 
-                        (Description != NULL) ? Description : "NULL",
-                        (Description != NULL) ? (ULONG)((strlen(Description) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
+                        (_Arg0 != NULL) ? _Arg0 : "NULL",
+                        (_Arg0 != NULL) ? (ULONG)((strlen(_Arg0) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
 
-    EventDataDescCreate(&EventData[1], &Depth, sizeof(const signed int)  );
+    EventDataDescCreate(&EventData[1], &_Arg1, sizeof(const signed int)  );
 
     return EventWrite(RegHandle, Descriptor, ARGUMENT_COUNT_sd, EventData);
 }
@@ -1220,11 +1448,11 @@ Template_sd(
 ETW_INLINE
 ULONG
 Template_sdf(
-    __in REGHANDLE RegHandle,
-    __in PCEVENT_DESCRIPTOR Descriptor,
-    __in_opt LPCSTR  Description,
-    __in const signed int  Depth,
-    __in const float  Duration__ms_
+    _In_ REGHANDLE RegHandle,
+    _In_ PCEVENT_DESCRIPTOR Descriptor,
+    _In_opt_ LPCSTR  _Arg0,
+    _In_ const signed int  _Arg1,
+    _In_ const float  _Arg2
     )
 {
 #define ARGUMENT_COUNT_sdf 3
@@ -1232,12 +1460,12 @@ Template_sdf(
     EVENT_DATA_DESCRIPTOR EventData[ARGUMENT_COUNT_sdf];
 
     EventDataDescCreate(&EventData[0], 
-                        (Description != NULL) ? Description : "NULL",
-                        (Description != NULL) ? (ULONG)((strlen(Description) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
+                        (_Arg0 != NULL) ? _Arg0 : "NULL",
+                        (_Arg0 != NULL) ? (ULONG)((strlen(_Arg0) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
 
-    EventDataDescCreate(&EventData[1], &Depth, sizeof(const signed int)  );
+    EventDataDescCreate(&EventData[1], &_Arg1, sizeof(const signed int)  );
 
-    EventDataDescCreate(&EventData[2], &Duration__ms_, sizeof(const float)  );
+    EventDataDescCreate(&EventData[2], &_Arg2, sizeof(const float)  );
 
     return EventWrite(RegHandle, Descriptor, ARGUMENT_COUNT_sdf, EventData);
 }
@@ -1251,9 +1479,9 @@ Template_sdf(
 ETW_INLINE
 ULONG
 Template_s(
-    __in REGHANDLE RegHandle,
-    __in PCEVENT_DESCRIPTOR Descriptor,
-    __in_opt LPCSTR  Description
+    _In_ REGHANDLE RegHandle,
+    _In_ PCEVENT_DESCRIPTOR Descriptor,
+    _In_opt_ LPCSTR  _Arg0
     )
 {
 #define ARGUMENT_COUNT_s 1
@@ -1261,8 +1489,8 @@ Template_s(
     EVENT_DATA_DESCRIPTOR EventData[ARGUMENT_COUNT_s];
 
     EventDataDescCreate(&EventData[0], 
-                        (Description != NULL) ? Description : "NULL",
-                        (Description != NULL) ? (ULONG)((strlen(Description) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
+                        (_Arg0 != NULL) ? _Arg0 : "NULL",
+                        (_Arg0 != NULL) ? (ULONG)((strlen(_Arg0) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
 
     return EventWrite(RegHandle, Descriptor, ARGUMENT_COUNT_s, EventData);
 }
@@ -1276,10 +1504,10 @@ Template_s(
 ETW_INLINE
 ULONG
 Template_sf(
-    __in REGHANDLE RegHandle,
-    __in PCEVENT_DESCRIPTOR Descriptor,
-    __in_opt LPCSTR  Description,
-    __in const float  Data_1
+    _In_ REGHANDLE RegHandle,
+    _In_ PCEVENT_DESCRIPTOR Descriptor,
+    _In_opt_ LPCSTR  _Arg0,
+    _In_ const float  _Arg1
     )
 {
 #define ARGUMENT_COUNT_sf 2
@@ -1287,10 +1515,10 @@ Template_sf(
     EVENT_DATA_DESCRIPTOR EventData[ARGUMENT_COUNT_sf];
 
     EventDataDescCreate(&EventData[0], 
-                        (Description != NULL) ? Description : "NULL",
-                        (Description != NULL) ? (ULONG)((strlen(Description) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
+                        (_Arg0 != NULL) ? _Arg0 : "NULL",
+                        (_Arg0 != NULL) ? (ULONG)((strlen(_Arg0) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
 
-    EventDataDescCreate(&EventData[1], &Data_1, sizeof(const float)  );
+    EventDataDescCreate(&EventData[1], &_Arg1, sizeof(const float)  );
 
     return EventWrite(RegHandle, Descriptor, ARGUMENT_COUNT_sf, EventData);
 }
@@ -1304,11 +1532,11 @@ Template_sf(
 ETW_INLINE
 ULONG
 Template_sff(
-    __in REGHANDLE RegHandle,
-    __in PCEVENT_DESCRIPTOR Descriptor,
-    __in_opt LPCSTR  Description,
-    __in const float  Data_1,
-    __in const float  Data_2
+    _In_ REGHANDLE RegHandle,
+    _In_ PCEVENT_DESCRIPTOR Descriptor,
+    _In_opt_ LPCSTR  _Arg0,
+    _In_ const float  _Arg1,
+    _In_ const float  _Arg2
     )
 {
 #define ARGUMENT_COUNT_sff 3
@@ -1316,12 +1544,12 @@ Template_sff(
     EVENT_DATA_DESCRIPTOR EventData[ARGUMENT_COUNT_sff];
 
     EventDataDescCreate(&EventData[0], 
-                        (Description != NULL) ? Description : "NULL",
-                        (Description != NULL) ? (ULONG)((strlen(Description) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
+                        (_Arg0 != NULL) ? _Arg0 : "NULL",
+                        (_Arg0 != NULL) ? (ULONG)((strlen(_Arg0) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
 
-    EventDataDescCreate(&EventData[1], &Data_1, sizeof(const float)  );
+    EventDataDescCreate(&EventData[1], &_Arg1, sizeof(const float)  );
 
-    EventDataDescCreate(&EventData[2], &Data_2, sizeof(const float)  );
+    EventDataDescCreate(&EventData[2], &_Arg2, sizeof(const float)  );
 
     return EventWrite(RegHandle, Descriptor, ARGUMENT_COUNT_sff, EventData);
 }
@@ -1335,12 +1563,12 @@ Template_sff(
 ETW_INLINE
 ULONG
 Template_sfff(
-    __in REGHANDLE RegHandle,
-    __in PCEVENT_DESCRIPTOR Descriptor,
-    __in_opt LPCSTR  Description,
-    __in const float  Data_1,
-    __in const float  Data_2,
-    __in const float  Data_3
+    _In_ REGHANDLE RegHandle,
+    _In_ PCEVENT_DESCRIPTOR Descriptor,
+    _In_opt_ LPCSTR  _Arg0,
+    _In_ const float  _Arg1,
+    _In_ const float  _Arg2,
+    _In_ const float  _Arg3
     )
 {
 #define ARGUMENT_COUNT_sfff 4
@@ -1348,14 +1576,14 @@ Template_sfff(
     EVENT_DATA_DESCRIPTOR EventData[ARGUMENT_COUNT_sfff];
 
     EventDataDescCreate(&EventData[0], 
-                        (Description != NULL) ? Description : "NULL",
-                        (Description != NULL) ? (ULONG)((strlen(Description) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
+                        (_Arg0 != NULL) ? _Arg0 : "NULL",
+                        (_Arg0 != NULL) ? (ULONG)((strlen(_Arg0) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
 
-    EventDataDescCreate(&EventData[1], &Data_1, sizeof(const float)  );
+    EventDataDescCreate(&EventData[1], &_Arg1, sizeof(const float)  );
 
-    EventDataDescCreate(&EventData[2], &Data_2, sizeof(const float)  );
+    EventDataDescCreate(&EventData[2], &_Arg2, sizeof(const float)  );
 
-    EventDataDescCreate(&EventData[3], &Data_3, sizeof(const float)  );
+    EventDataDescCreate(&EventData[3], &_Arg3, sizeof(const float)  );
 
     return EventWrite(RegHandle, Descriptor, ARGUMENT_COUNT_sfff, EventData);
 }
@@ -1369,13 +1597,13 @@ Template_sfff(
 ETW_INLINE
 ULONG
 Template_sffff(
-    __in REGHANDLE RegHandle,
-    __in PCEVENT_DESCRIPTOR Descriptor,
-    __in_opt LPCSTR  Description,
-    __in const float  Data_1,
-    __in const float  Data_2,
-    __in const float  Data_3,
-    __in const float  Data_4
+    _In_ REGHANDLE RegHandle,
+    _In_ PCEVENT_DESCRIPTOR Descriptor,
+    _In_opt_ LPCSTR  _Arg0,
+    _In_ const float  _Arg1,
+    _In_ const float  _Arg2,
+    _In_ const float  _Arg3,
+    _In_ const float  _Arg4
     )
 {
 #define ARGUMENT_COUNT_sffff 5
@@ -1383,16 +1611,16 @@ Template_sffff(
     EVENT_DATA_DESCRIPTOR EventData[ARGUMENT_COUNT_sffff];
 
     EventDataDescCreate(&EventData[0], 
-                        (Description != NULL) ? Description : "NULL",
-                        (Description != NULL) ? (ULONG)((strlen(Description) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
+                        (_Arg0 != NULL) ? _Arg0 : "NULL",
+                        (_Arg0 != NULL) ? (ULONG)((strlen(_Arg0) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
 
-    EventDataDescCreate(&EventData[1], &Data_1, sizeof(const float)  );
+    EventDataDescCreate(&EventData[1], &_Arg1, sizeof(const float)  );
 
-    EventDataDescCreate(&EventData[2], &Data_2, sizeof(const float)  );
+    EventDataDescCreate(&EventData[2], &_Arg2, sizeof(const float)  );
 
-    EventDataDescCreate(&EventData[3], &Data_3, sizeof(const float)  );
+    EventDataDescCreate(&EventData[3], &_Arg3, sizeof(const float)  );
 
-    EventDataDescCreate(&EventData[4], &Data_4, sizeof(const float)  );
+    EventDataDescCreate(&EventData[4], &_Arg4, sizeof(const float)  );
 
     return EventWrite(RegHandle, Descriptor, ARGUMENT_COUNT_sffff, EventData);
 }
@@ -1406,11 +1634,11 @@ Template_sffff(
 ETW_INLINE
 ULONG
 Template_sdd(
-    __in REGHANDLE RegHandle,
-    __in PCEVENT_DESCRIPTOR Descriptor,
-    __in_opt LPCSTR  Description,
-    __in const signed int  Data_1,
-    __in const signed int  Data_2
+    _In_ REGHANDLE RegHandle,
+    _In_ PCEVENT_DESCRIPTOR Descriptor,
+    _In_opt_ LPCSTR  _Arg0,
+    _In_ const signed int  _Arg1,
+    _In_ const signed int  _Arg2
     )
 {
 #define ARGUMENT_COUNT_sdd 3
@@ -1418,12 +1646,12 @@ Template_sdd(
     EVENT_DATA_DESCRIPTOR EventData[ARGUMENT_COUNT_sdd];
 
     EventDataDescCreate(&EventData[0], 
-                        (Description != NULL) ? Description : "NULL",
-                        (Description != NULL) ? (ULONG)((strlen(Description) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
+                        (_Arg0 != NULL) ? _Arg0 : "NULL",
+                        (_Arg0 != NULL) ? (ULONG)((strlen(_Arg0) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
 
-    EventDataDescCreate(&EventData[1], &Data_1, sizeof(const signed int)  );
+    EventDataDescCreate(&EventData[1], &_Arg1, sizeof(const signed int)  );
 
-    EventDataDescCreate(&EventData[2], &Data_2, sizeof(const signed int)  );
+    EventDataDescCreate(&EventData[2], &_Arg2, sizeof(const signed int)  );
 
     return EventWrite(RegHandle, Descriptor, ARGUMENT_COUNT_sdd, EventData);
 }
@@ -1437,12 +1665,12 @@ Template_sdd(
 ETW_INLINE
 ULONG
 Template_sddd(
-    __in REGHANDLE RegHandle,
-    __in PCEVENT_DESCRIPTOR Descriptor,
-    __in_opt LPCSTR  Description,
-    __in const signed int  Data_1,
-    __in const signed int  Data_2,
-    __in const signed int  Data_3
+    _In_ REGHANDLE RegHandle,
+    _In_ PCEVENT_DESCRIPTOR Descriptor,
+    _In_opt_ LPCSTR  _Arg0,
+    _In_ const signed int  _Arg1,
+    _In_ const signed int  _Arg2,
+    _In_ const signed int  _Arg3
     )
 {
 #define ARGUMENT_COUNT_sddd 4
@@ -1450,14 +1678,14 @@ Template_sddd(
     EVENT_DATA_DESCRIPTOR EventData[ARGUMENT_COUNT_sddd];
 
     EventDataDescCreate(&EventData[0], 
-                        (Description != NULL) ? Description : "NULL",
-                        (Description != NULL) ? (ULONG)((strlen(Description) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
+                        (_Arg0 != NULL) ? _Arg0 : "NULL",
+                        (_Arg0 != NULL) ? (ULONG)((strlen(_Arg0) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
 
-    EventDataDescCreate(&EventData[1], &Data_1, sizeof(const signed int)  );
+    EventDataDescCreate(&EventData[1], &_Arg1, sizeof(const signed int)  );
 
-    EventDataDescCreate(&EventData[2], &Data_2, sizeof(const signed int)  );
+    EventDataDescCreate(&EventData[2], &_Arg2, sizeof(const signed int)  );
 
-    EventDataDescCreate(&EventData[3], &Data_3, sizeof(const signed int)  );
+    EventDataDescCreate(&EventData[3], &_Arg3, sizeof(const signed int)  );
 
     return EventWrite(RegHandle, Descriptor, ARGUMENT_COUNT_sddd, EventData);
 }
@@ -1471,13 +1699,13 @@ Template_sddd(
 ETW_INLINE
 ULONG
 Template_sdddd(
-    __in REGHANDLE RegHandle,
-    __in PCEVENT_DESCRIPTOR Descriptor,
-    __in_opt LPCSTR  Description,
-    __in const signed int  Data_1,
-    __in const signed int  Data_2,
-    __in const signed int  Data_3,
-    __in const signed int  Data_4
+    _In_ REGHANDLE RegHandle,
+    _In_ PCEVENT_DESCRIPTOR Descriptor,
+    _In_opt_ LPCSTR  _Arg0,
+    _In_ const signed int  _Arg1,
+    _In_ const signed int  _Arg2,
+    _In_ const signed int  _Arg3,
+    _In_ const signed int  _Arg4
     )
 {
 #define ARGUMENT_COUNT_sdddd 5
@@ -1485,16 +1713,16 @@ Template_sdddd(
     EVENT_DATA_DESCRIPTOR EventData[ARGUMENT_COUNT_sdddd];
 
     EventDataDescCreate(&EventData[0], 
-                        (Description != NULL) ? Description : "NULL",
-                        (Description != NULL) ? (ULONG)((strlen(Description) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
+                        (_Arg0 != NULL) ? _Arg0 : "NULL",
+                        (_Arg0 != NULL) ? (ULONG)((strlen(_Arg0) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
 
-    EventDataDescCreate(&EventData[1], &Data_1, sizeof(const signed int)  );
+    EventDataDescCreate(&EventData[1], &_Arg1, sizeof(const signed int)  );
 
-    EventDataDescCreate(&EventData[2], &Data_2, sizeof(const signed int)  );
+    EventDataDescCreate(&EventData[2], &_Arg2, sizeof(const signed int)  );
 
-    EventDataDescCreate(&EventData[3], &Data_3, sizeof(const signed int)  );
+    EventDataDescCreate(&EventData[3], &_Arg3, sizeof(const signed int)  );
 
-    EventDataDescCreate(&EventData[4], &Data_4, sizeof(const signed int)  );
+    EventDataDescCreate(&EventData[4], &_Arg4, sizeof(const signed int)  );
 
     return EventWrite(RegHandle, Descriptor, ARGUMENT_COUNT_sdddd, EventData);
 }
@@ -1508,10 +1736,10 @@ Template_sdddd(
 ETW_INLINE
 ULONG
 Template_ss(
-    __in REGHANDLE RegHandle,
-    __in PCEVENT_DESCRIPTOR Descriptor,
-    __in_opt LPCSTR  Description,
-    __in_opt LPCSTR  Data_1
+    _In_ REGHANDLE RegHandle,
+    _In_ PCEVENT_DESCRIPTOR Descriptor,
+    _In_opt_ LPCSTR  _Arg0,
+    _In_opt_ LPCSTR  _Arg1
     )
 {
 #define ARGUMENT_COUNT_ss 2
@@ -1519,12 +1747,12 @@ Template_ss(
     EVENT_DATA_DESCRIPTOR EventData[ARGUMENT_COUNT_ss];
 
     EventDataDescCreate(&EventData[0], 
-                        (Description != NULL) ? Description : "NULL",
-                        (Description != NULL) ? (ULONG)((strlen(Description) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
+                        (_Arg0 != NULL) ? _Arg0 : "NULL",
+                        (_Arg0 != NULL) ? (ULONG)((strlen(_Arg0) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
 
     EventDataDescCreate(&EventData[1], 
-                        (Data_1 != NULL) ? Data_1 : "NULL",
-                        (Data_1 != NULL) ? (ULONG)((strlen(Data_1) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
+                        (_Arg1 != NULL) ? _Arg1 : "NULL",
+                        (_Arg1 != NULL) ? (ULONG)((strlen(_Arg1) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
 
     return EventWrite(RegHandle, Descriptor, ARGUMENT_COUNT_ss, EventData);
 }
@@ -1538,11 +1766,11 @@ Template_ss(
 ETW_INLINE
 ULONG
 Template_sss(
-    __in REGHANDLE RegHandle,
-    __in PCEVENT_DESCRIPTOR Descriptor,
-    __in_opt LPCSTR  Description,
-    __in_opt LPCSTR  Data_1,
-    __in_opt LPCSTR  Data_2
+    _In_ REGHANDLE RegHandle,
+    _In_ PCEVENT_DESCRIPTOR Descriptor,
+    _In_opt_ LPCSTR  _Arg0,
+    _In_opt_ LPCSTR  _Arg1,
+    _In_opt_ LPCSTR  _Arg2
     )
 {
 #define ARGUMENT_COUNT_sss 3
@@ -1550,16 +1778,16 @@ Template_sss(
     EVENT_DATA_DESCRIPTOR EventData[ARGUMENT_COUNT_sss];
 
     EventDataDescCreate(&EventData[0], 
-                        (Description != NULL) ? Description : "NULL",
-                        (Description != NULL) ? (ULONG)((strlen(Description) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
+                        (_Arg0 != NULL) ? _Arg0 : "NULL",
+                        (_Arg0 != NULL) ? (ULONG)((strlen(_Arg0) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
 
     EventDataDescCreate(&EventData[1], 
-                        (Data_1 != NULL) ? Data_1 : "NULL",
-                        (Data_1 != NULL) ? (ULONG)((strlen(Data_1) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
+                        (_Arg1 != NULL) ? _Arg1 : "NULL",
+                        (_Arg1 != NULL) ? (ULONG)((strlen(_Arg1) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
 
     EventDataDescCreate(&EventData[2], 
-                        (Data_2 != NULL) ? Data_2 : "NULL",
-                        (Data_2 != NULL) ? (ULONG)((strlen(Data_2) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
+                        (_Arg2 != NULL) ? _Arg2 : "NULL",
+                        (_Arg2 != NULL) ? (ULONG)((strlen(_Arg2) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
 
     return EventWrite(RegHandle, Descriptor, ARGUMENT_COUNT_sss, EventData);
 }
@@ -1573,21 +1801,21 @@ Template_sss(
 ETW_INLINE
 ULONG
 Template_ds(
-    __in REGHANDLE RegHandle,
-    __in PCEVENT_DESCRIPTOR Descriptor,
-    __in const signed int  ThreadID,
-    __in_opt LPCSTR  ThreadName
+    _In_ REGHANDLE RegHandle,
+    _In_ PCEVENT_DESCRIPTOR Descriptor,
+    _In_ const signed int  _Arg0,
+    _In_opt_ LPCSTR  _Arg1
     )
 {
 #define ARGUMENT_COUNT_ds 2
 
     EVENT_DATA_DESCRIPTOR EventData[ARGUMENT_COUNT_ds];
 
-    EventDataDescCreate(&EventData[0], &ThreadID, sizeof(const signed int)  );
+    EventDataDescCreate(&EventData[0], &_Arg0, sizeof(const signed int)  );
 
     EventDataDescCreate(&EventData[1], 
-                        (ThreadName != NULL) ? ThreadName : "NULL",
-                        (ThreadName != NULL) ? (ULONG)((strlen(ThreadName) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
+                        (_Arg1 != NULL) ? _Arg1 : "NULL",
+                        (_Arg1 != NULL) ? (ULONG)((strlen(_Arg1) + 1) * sizeof(CHAR)) : (ULONG)sizeof("NULL"));
 
     return EventWrite(RegHandle, Descriptor, ARGUMENT_COUNT_ds, EventData);
 }
@@ -1601,19 +1829,19 @@ Template_ds(
 ETW_INLINE
 ULONG
 Template_df(
-    __in REGHANDLE RegHandle,
-    __in PCEVENT_DESCRIPTOR Descriptor,
-    __in const signed int  Frame_number,
-    __in const float  Duration__ms_
+    _In_ REGHANDLE RegHandle,
+    _In_ PCEVENT_DESCRIPTOR Descriptor,
+    _In_ const signed int  _Arg0,
+    _In_ const float  _Arg1
     )
 {
 #define ARGUMENT_COUNT_df 2
 
     EVENT_DATA_DESCRIPTOR EventData[ARGUMENT_COUNT_df];
 
-    EventDataDescCreate(&EventData[0], &Frame_number, sizeof(const signed int)  );
+    EventDataDescCreate(&EventData[0], &_Arg0, sizeof(const signed int)  );
 
-    EventDataDescCreate(&EventData[1], &Duration__ms_, sizeof(const float)  );
+    EventDataDescCreate(&EventData[1], &_Arg1, sizeof(const float)  );
 
     return EventWrite(RegHandle, Descriptor, ARGUMENT_COUNT_df, EventData);
 }
@@ -1627,22 +1855,22 @@ Template_df(
 ETW_INLINE
 ULONG
 Template_ddd(
-    __in REGHANDLE RegHandle,
-    __in PCEVENT_DESCRIPTOR Descriptor,
-    __in const signed int  x,
-    __in const signed int  y,
-    __in const signed int  Button_Type
+    _In_ REGHANDLE RegHandle,
+    _In_ PCEVENT_DESCRIPTOR Descriptor,
+    _In_ const signed int  _Arg0,
+    _In_ const signed int  _Arg1,
+    _In_ const signed int  _Arg2
     )
 {
 #define ARGUMENT_COUNT_ddd 3
 
     EVENT_DATA_DESCRIPTOR EventData[ARGUMENT_COUNT_ddd];
 
-    EventDataDescCreate(&EventData[0], &x, sizeof(const signed int)  );
+    EventDataDescCreate(&EventData[0], &_Arg0, sizeof(const signed int)  );
 
-    EventDataDescCreate(&EventData[1], &y, sizeof(const signed int)  );
+    EventDataDescCreate(&EventData[1], &_Arg1, sizeof(const signed int)  );
 
-    EventDataDescCreate(&EventData[2], &Button_Type, sizeof(const signed int)  );
+    EventDataDescCreate(&EventData[2], &_Arg2, sizeof(const signed int)  );
 
     return EventWrite(RegHandle, Descriptor, ARGUMENT_COUNT_ddd, EventData);
 }
@@ -1656,19 +1884,19 @@ Template_ddd(
 ETW_INLINE
 ULONG
 Template_dd(
-    __in REGHANDLE RegHandle,
-    __in PCEVENT_DESCRIPTOR Descriptor,
-    __in const signed int  x,
-    __in const signed int  y
+    _In_ REGHANDLE RegHandle,
+    _In_ PCEVENT_DESCRIPTOR Descriptor,
+    _In_ const signed int  _Arg0,
+    _In_ const signed int  _Arg1
     )
 {
 #define ARGUMENT_COUNT_dd 2
 
     EVENT_DATA_DESCRIPTOR EventData[ARGUMENT_COUNT_dd];
 
-    EventDataDescCreate(&EventData[0], &x, sizeof(const signed int)  );
+    EventDataDescCreate(&EventData[0], &_Arg0, sizeof(const signed int)  );
 
-    EventDataDescCreate(&EventData[1], &y, sizeof(const signed int)  );
+    EventDataDescCreate(&EventData[1], &_Arg1, sizeof(const signed int)  );
 
     return EventWrite(RegHandle, Descriptor, ARGUMENT_COUNT_dd, EventData);
 }
@@ -1684,8 +1912,8 @@ Template_dd(
 ETW_INLINE
 ULONG
 TemplateEventDescriptor(
-    __in REGHANDLE RegHandle,
-    __in PCEVENT_DESCRIPTOR Descriptor
+    _In_ REGHANDLE RegHandle,
+    _In_ PCEVENT_DESCRIPTOR Descriptor
     )
 {
     return EventWrite(RegHandle, Descriptor, 0, NULL);

@@ -496,7 +496,7 @@ double MaximumError(struct QuantizedValue const *q, uint8 const *sample,
 	for(int i=0;i<ndims;i++)
 	{
 		int val2=sample[i];
-		int val1=(abs(val2-q->Mins[i])>abs(val2-q->Maxs[i]))?
+		int val1=(fabsf(val2-q->Mins[i])>fabsf(val2-q->Maxs[i]))?
 			q->Mins[i]:
 			q->Maxs[i];
 		err+=weights[i]*SQ(val2-val1);

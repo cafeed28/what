@@ -445,7 +445,7 @@ void CMapView2DBase::DrawGrid(CRender2D *pRender, int xAxis, int yAxis, float de
 			// dot drawing isn't precise enough in world space
 			// so we still do it in client space
 
-			int nNumPoints = 1+abs(xMax-xMin)/nGridSpacing;
+			int nNumPoints = 1+fabsf(xMax-xMin)/nGridSpacing;
 
 			meshBuilder.Begin( pMesh, MATERIAL_LINES, nNumPoints );
 

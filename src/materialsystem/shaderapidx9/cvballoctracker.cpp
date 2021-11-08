@@ -548,7 +548,7 @@ void CVBAllocTracker::UpdateData( const char * allocatorName, short allocatorKey
 		Assert( data.m_memCount  >= 0 );
 		data.m_vertCount += numVerts;
 		Assert( data.m_vertCount  >= 0 );
-		data.m_paddingCount += ( bufferSize < 0 ? -1 : +1 )*ComputeAlignmentWastage( abs( bufferSize ) );
+		data.m_paddingCount += ( bufferSize < 0 ? -1 : +1 )*ComputeAlignmentWastage( fabsf( bufferSize ) );
 		UpdateElements( data, fmt, numVerts, vertexSize, isDynamic, isCompressed );
 	}
 }

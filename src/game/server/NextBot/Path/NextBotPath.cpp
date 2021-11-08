@@ -478,8 +478,8 @@ void Path::Draw( const Path::Segment *start ) const
 		}
 
 		Vector to = next->pos - s->pos;
-		float horiz = MAX( abs(to.x), abs(to.y) );
-		float vert = abs( to.z );
+		float horiz = MAX( fabsf(to.x), fabsf(to.y) );
+		float vert = fabsf( to.z );
 
 		int r,g,b;
 		switch( s->type )

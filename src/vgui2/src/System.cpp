@@ -272,7 +272,7 @@ void CSystem::RunFrame()
 		int x, y;
 		g_pInput->GetCursorPos(x, y);
 		// allow a little slack for jittery mice, don't reset until it's moved more than fifty pixels
-		if (abs((x + y) - (m_iStaticMouseOldX + m_iStaticMouseOldY)) > 50)
+		if (fabsf((x + y) - (m_iStaticMouseOldX + m_iStaticMouseOldY)) > 50)
 		{
 			m_StaticLastComputerUseTime = GetTimeMillis() / 1000.0;
 			m_iStaticMouseOldX = x;

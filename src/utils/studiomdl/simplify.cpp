@@ -3377,7 +3377,7 @@ void MakeTransitions( )
 		{
 			for (j = 1; j <= g_numxnodes; j++)
 			{
-				g_xnode[i-1][j-1] = abs( g_xnode[i-1][j-1] );
+				g_xnode[i-1][j-1] = fabsf( g_xnode[i-1][j-1] );
 			}
 		}
 	}

@@ -92,7 +92,7 @@ void CClockDriftMgr::SetServerTick( int nTick )
 		// use the old behavior and slam the server's tick into the client tick.
 		if ( !IsClockCorrectionEnabled() ||
 			 clientTick == 0 || 
-			 abs(nTick - clientTick) > nMaxDriftTicks
+			 fabsf(nTick - clientTick) > nMaxDriftTicks
 			)
 		{
 			cl.SetClientTickCount( nTick - (g_ClientGlobalVariables.simTicksThisFrame - 1) );

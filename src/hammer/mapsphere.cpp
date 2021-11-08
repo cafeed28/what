@@ -225,7 +225,7 @@ bool CMapSphere::HitTest2D(CMapView2D *pView, const Vector2D &point, HitInfo_t &
 	Vector2D vecClientRadius;
 	pView->WorldToClient(vecClientRadius, vecRadius);
 
-	int nRadius = abs(vecClientRadius.x - vecClientOrigin.x);
+	int nRadius = fabsf(vecClientRadius.x - vecClientOrigin.x);
 
 	vecClientRadius.x = nRadius;
 	vecClientRadius.y = nRadius;

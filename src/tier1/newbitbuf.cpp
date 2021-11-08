@@ -152,8 +152,8 @@ void CBitWrite::WriteBytes( const void *pBuf, int nBytes )
 void CBitWrite::WriteBitCoord (const float f)
 {
 	int		signbit = (f <= -COORD_RESOLUTION);
-	int		intval = (int)abs(f);
-	int		fractval = abs((int)(f*COORD_DENOMINATOR)) & (COORD_DENOMINATOR-1);
+	int		intval = (int)fabsf(f);
+	int		fractval = fabsf((int)(f*COORD_DENOMINATOR)) & (COORD_DENOMINATOR-1);
 
 
 	// Send the bit flags that indicate whether we have an integer part and/or a fraction part.
@@ -184,10 +184,10 @@ void CBitWrite::WriteBitCoord (const float f)
 void CBitWrite::WriteBitCoordMP (const float f, bool bIntegral, bool bLowPrecision )
 {
 	int		signbit = (f <= -( bLowPrecision ? COORD_RESOLUTION_LOWPRECISION : COORD_RESOLUTION ));
-	int		intval = (int)abs(f);
+	int		intval = (int)fabsf(f);
 	int		fractval = bLowPrecision ? 
-		( abs((int)(f*COORD_DENOMINATOR_LOWPRECISION)) & (COORD_DENOMINATOR_LOWPRECISION-1) ) :
-		( abs((int)(f*COORD_DENOMINATOR)) & (COORD_DENOMINATOR-1) );
+		( fabsf((int)(f*COORD_DENOMINATOR_LOWPRECISION)) & (COORD_DENOMINATOR_LOWPRECISION-1) ) :
+		( fabsf((int)(f*COORD_DENOMINATOR)) & (COORD_DENOMINATOR-1) );
 
 	bool    bInBounds = intval < (1 << COORD_INTEGER_BITS_MP );
 
@@ -273,7 +273,7 @@ void CBitWrite::WriteBitNormal( float f )
 	int	signbit = (f <= -NORMAL_RESOLUTION);
 
 	// NOTE: Since +/-1 are valid values for a normal, I'm going to encode that as all ones
-	unsigned int fractval = abs( (int)(f*NORMAL_DENOMINATOR) );
+	unsigned int fractval = fabsf( (int)(f*NORMAL_DENOMINATOR) );
 
 	// clamp..
 	if (fractval > NORMAL_DENOMINATOR)

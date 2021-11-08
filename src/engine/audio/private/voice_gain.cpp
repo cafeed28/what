@@ -53,8 +53,8 @@ void CAutoGain::ProcessSamples(
 		for(int iSample=0; iSample < nToProcess; iSample++)
 		{
 			// Update running totals..
-			m_CurTotal += abs( pCurPos[iSample] );
-			m_CurMax = max( m_CurMax, (int)abs( pCurPos[iSample] ) );
+			m_CurTotal += fabsf( pCurPos[iSample] );
+			m_CurMax = max( m_CurMax, (int)fabsf( pCurPos[iSample] ) );
 
 			// Apply gain on this sample.
 			AGFixed gain = m_FixedCurrentGain + m_CurBlockOffset * m_GainMultiplier;

@@ -2449,7 +2449,7 @@ ConVar snd_music_selection(
 					pCSScorer->AddAccount( 2500 );
 
 					char strAmount[8];
-					Q_snprintf( strAmount, sizeof( strAmount ), "%d", abs( 2500 ) );
+					Q_snprintf( strAmount, sizeof( strAmount ), "%d", fabsf( 2500 ) );
 					ClientPrint( pCSScorer, HUD_PRINTTALK, "#Cstrike_TitlesTXT_Cash_Award_Kill_Teammate", strAmount );
 				}
 				else
@@ -8594,7 +8594,7 @@ void CCSGameRules::AddTeamAccount( int team, int reason, int amount, const char*
 	}
 
 	char strAmount[8];
-	Q_snprintf( strAmount, sizeof( strAmount ), "%s$%d", amount >= 0 ? "+" : "-", abs( amount ) );
+	Q_snprintf( strAmount, sizeof( strAmount ), "%s$%d", amount >= 0 ? "+" : "-", fabsf( amount ) );
 
 	for ( int i = 1; i <= gpGlobals->maxClients; i++ )
 	{

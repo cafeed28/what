@@ -800,7 +800,7 @@ void CFilteredComboBox::MeasureItem(LPMEASUREITEMSTRUCT pStruct)
 	{
 		LOGFONT logFont;
 		pActualFont->GetLogFont( &logFont );
-		pStruct->itemHeight = abs( logFont.lfHeight ) + 5;
+		pStruct->itemHeight = fabsf( logFont.lfHeight ) + 5;
 	}
 	else
 	{

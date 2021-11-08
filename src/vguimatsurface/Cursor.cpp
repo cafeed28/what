@@ -503,7 +503,7 @@ void CursorGetPos(void *hwnd, int &x, int &y)
 		if ( !s_bSoftwareCursorActive && (width != windowWidth || height != windowHeight )  )
 		{
 			// scale the x/y back into the co-ords of the back buffer, not the scaled up window 
-			//DevMsg( "Mouse x:%d y:%d %d %d %d %d\n", x, y, width, windowWidth, height, abs( height - windowHeight ) );
+			//DevMsg( "Mouse x:%d y:%d %d %d %d %d\n", x, y, width, windowWidth, height, fabsf( height - windowHeight ) );
 			x = x * (float)width/windowWidth;
 			y = y * (float)height/windowHeight;
 		}

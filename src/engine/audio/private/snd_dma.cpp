@@ -2616,7 +2616,7 @@ void SND_SetSpatialDelays()
 
 					// if separation is less than average, increase min
 
-					if (abs(d) < dmin/2)
+					if (fabsf(d) < dmin/2)
 					{
 						if (vl > vr)
 							vl += dmin/2 - d;
@@ -3399,8 +3399,8 @@ void DAS_SetTraceHeight( das_room_t *proom, trace_t *ptrU, trace_t *ptrD )
 	// NOTE: when tracing down through player's box, endpos and startpos are reversed and 
 	// startsolid and allsolid are true.
 
-	int zup = abs(ptrU->endpos.z - ptrU->startpos.z);		// height above player's head
-	int zdown = abs(ptrD->endpos.z - ptrD->startpos.z);		// distance to floor from player's head
+	int zup = fabsf(ptrU->endpos.z - ptrU->startpos.z);		// height above player's head
+	int zdown = fabsf(ptrD->endpos.z - ptrD->startpos.z);		// distance to floor from player's head
 	int h;
 	h = zup + zdown;
 	
@@ -3486,7 +3486,7 @@ bool DAS_StartTraceChecks( das_room_t *proom )
 
 	// if player jumping or in air, don't continue
 
-	if (trD.DidHit() && abs(trD.endpos.z - trD.startpos.z) > 72)
+	if (trD.DidHit() && fabsf(trD.endpos.z - trD.startpos.z) > 72)
 		return false;
 
 	v_dir = g_das_vec3[IVEC_UP];			// up - find ceiling

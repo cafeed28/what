@@ -309,7 +309,7 @@ bool CIncrementalLightInfo::IsLowerPriorityThan( CLightingPreviewThread *pLPV,
 				return true;
 
 			// if incremental states are close, do brightest
-			if ( abs( m_PartialResultsStage-other.m_PartialResultsStage)<=1 )
+			if ( fabsf( m_PartialResultsStage-other.m_PartialResultsStage)<=1 )
 				return ( m_fTotalContribution < other.m_fTotalContribution );
 
 			// else do least refined
@@ -370,7 +370,7 @@ void CLightingPreviewThread::InitIncrementalInformation( void )
 			for( int chk=0; chk <= linemod; chk++)
 				if ( m_LineMask[lvl] & ( 1 << chk ))
 				{
-					if (abs( chk-linemod ) < abs( closest_line-linemod ) )
+					if (fabsf( chk-linemod ) < fabsf( closest_line-linemod ) )
 						closest_line = chk;
 				}
 			m_ClosestLineOffset[lvl][linemod] = closest_line;

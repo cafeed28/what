@@ -233,7 +233,7 @@ bool PathFollower::IsAtGoal( INextBot *bot ) const
 			}
 
 			if ( DotProduct2D( toGoal.AsVector2D(), dividingPlane ) < 0.0001f &&
-				 abs( toGoal.z ) < body->GetStandHullHeight() )
+				fabsf( toGoal.z ) < body->GetStandHullHeight() )
 			{	
 				// only skip higher Z goal if next goal is directly reachable
 				// can't use this for positions below us because we need to be able

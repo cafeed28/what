@@ -61,7 +61,7 @@ extern ConVar cv_bot_chatter_friendlyfire_from_bots;
 #define DEG_TO_RAD( rad ) ((rad) * M_PI / 180.0)
 
 #define SIGN( num )	      (((num) < 0) ? -1 : 1)
-#define ABS( num )        (SIGN(num) * (num))
+#define fabsf( num )        (SIGN(num) * (num))
 
 
 #define CREATE_FAKE_CLIENT		( *g_engfuncs.pfnCreateFakeClient )

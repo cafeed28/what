@@ -134,7 +134,7 @@ void PlayerBody::Upkeep( void )
 	bool isSteady = true;
 
 	float actualPitchRate = AngleDiff( currentAngles.x, m_priorAngles.x );
-	if ( abs( actualPitchRate ) > nb_head_aim_steady_max_rate.GetFloat() * deltaT )
+	if ( fabsf( actualPitchRate ) > nb_head_aim_steady_max_rate.GetFloat() * deltaT )
 	{
 		isSteady = false;
 	}
@@ -142,7 +142,7 @@ void PlayerBody::Upkeep( void )
 	{
 		float actualYawRate = AngleDiff( currentAngles.y, m_priorAngles.y );
 
-		if ( abs( actualYawRate ) > nb_head_aim_steady_max_rate.GetFloat() * deltaT )
+		if ( fabsf( actualYawRate ) > nb_head_aim_steady_max_rate.GetFloat() * deltaT )
 		{
 			isSteady = false;
 		}

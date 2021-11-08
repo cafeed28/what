@@ -1863,9 +1863,9 @@ static bool TelemetryInitialize()
 		// Pass in 0 if you want to use the release mode DLL or 1 if you want to
 		// use the checked DLL.  The checked DLL is compiled with optimizations but
 		// does extra run time checks and reporting.
-		int nLoadTelemetry = tmLoadTelemetry( 0 );
+		int nLoadTelemetry = 0;//tmLoadTelemetry( 0 );
 
-		retVal = tmStartup();
+		retVal = TMERR_DISABLED;// tmStartup();
 		if ( retVal != TM_OK )
 		{
 			Warning( "TelemetryInit() failed: tmStartup() returned %d, tmLoadTelemetry() returned %d.\n", retVal, nLoadTelemetry );
@@ -1877,7 +1877,7 @@ static bool TelemetryInitialize()
 			g_pTmMemoryArena = new TmU8[ TELEMETRY_ARENA_SIZE ];
 		}
 
-		retVal = tmInitializeContext( &g_tmContext, g_pTmMemoryArena, TELEMETRY_ARENA_SIZE );
+		retVal = TMERR_DISABLED;//tmInitializeContext( &g_tmContext, g_pTmMemoryArena, TELEMETRY_ARENA_SIZE );
 		if ( retVal != TM_OK )
 		{
 			delete [] g_pTmMemoryArena;
@@ -1960,7 +1960,7 @@ static void TelemetryShutdown( bool InDtor = false )
 		g_tmContext = NULL;
 
 		tmShutdownContext( hShutdown ); 
-		tmShutdown();
+		//tmShutdown();
 		g_TelemetryLoaded = false;
 	}
 }

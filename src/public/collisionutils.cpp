@@ -2280,7 +2280,7 @@ static bool ComputeSeparatingPlane( const matrix3x4_t &worldToBox1, const matrix
 
 	// The projection of box1 onto this line = the absolute dot product of the box size
 	// against the line, which =
-	// AbsDot( box1Size, l1 ) = abs( -ez * box1.y ) + abs( ey * box1.z )
+	// AbsDot( box1Size, l1 ) = fabsf( -ez * box1.y ) + fabsf( ey * box1.z )
 
 	// To compute the projection of box2 onto this line, we'll do it in the space of box 2
 	//
@@ -2293,7 +2293,7 @@ static bool ComputeSeparatingPlane( const matrix3x4_t &worldToBox1, const matrix
 
 	// The projection of box2 onto this line = the absolute dot product of the box size
 	// against the line, which =
-	// AbsDot( box2Size, l2 ) = abs( fz * box2.y ) + abs ( fy * box2.z )
+	// AbsDot( box2Size, l2 ) = fabsf( fz * box2.y ) + abs ( fy * box2.z )
 
 	// The projection of the relative origin position on this line is done in the 
 	// space of box 1:
@@ -2562,12 +2562,12 @@ bool IsRayIntersectingOBB( const Ray_t &ray, const Vector& org, const QAngle& an
 
 	// The projection of the box onto this line = the absolute dot product of the box size
 	// against the line, which =
-	// AbsDot( vecBoxHalfDiagonal, l1 ) = abs( -dz * vecBoxHalfDiagonal.y ) + abs( dy * vecBoxHalfDiagonal.z )
+	// AbsDot( vecBoxHalfDiagonal, l1 ) = fabsf( -dz * vecBoxHalfDiagonal.y ) + fabsf( dy * vecBoxHalfDiagonal.z )
 
 	// Because the plane contains the sweep direction, the sweep will produce
 	// no extra projection onto the line normal to the plane. 
 	// Therefore all we need to do is project the ray extents onto this line also:
-	// AbsDot( ray.m_Extents, l1 ) = abs( -dz * ray.m_Extents.y ) + abs( dy * ray.m_Extents.z )
+	// AbsDot( ray.m_Extents, l1 ) = fabsf( -dz * ray.m_Extents.y ) + fabsf( dy * ray.m_Extents.z )
 
 	Vector vecPlaneNormal;
 
@@ -2640,7 +2640,7 @@ inline bool AxisTestEdgeCrossX2( float flEdgeZ, float flEdgeY, float flAbsEdgeZ,
 	float flDist1 = flEdgeZ * p1.y - flEdgeY * p1.z;
 	float flDist3 = flEdgeZ * p3.y - flEdgeY * p3.z;
 
-	// Extents are symmetric: dist = abs( normal.y ) * extents.y + abs( normal.z ) * extents.z
+	// Extents are symmetric: dist = fabsf( normal.y ) * extents.y + fabsf( normal.z ) * extents.z
 	float flDistBox = flAbsEdgeZ * vecExtents.y + flAbsEdgeY * vecExtents.z;
 
 	// Either dist1, dist3 is the closest point to the box, determine which and test of overlap with box(AABB).
@@ -2670,7 +2670,7 @@ inline bool AxisTestEdgeCrossX3( float flEdgeZ, float flEdgeY, float flAbsEdgeZ,
 	float flDist1 = flEdgeZ * p1.y - flEdgeY * p1.z;
 	float flDist2 = flEdgeZ * p2.y - flEdgeY * p2.z;
 
-	// Extents are symmetric: dist = abs( normal.y ) * extents.y + abs( normal.z ) * extents.z
+	// Extents are symmetric: dist = fabsf( normal.y ) * extents.y + fabsf( normal.z ) * extents.z
 	float flDistBox = flAbsEdgeZ * vecExtents.y + flAbsEdgeY * vecExtents.z;
 
 	// Either dist1, dist2 is the closest point to the box, determine which and test of overlap with box(AABB).
@@ -2699,7 +2699,7 @@ inline bool AxisTestEdgeCrossY2( float flEdgeZ, float flEdgeX, float flAbsEdgeZ,
 	float flDist1 = -flEdgeZ * p1.x + flEdgeX * p1.z;
 	float flDist3 = -flEdgeZ * p3.x + flEdgeX * p3.z;
 
-	// Extents are symmetric: dist = abs( normal.x ) * extents.x + abs( normal.z ) * extents.z
+	// Extents are symmetric: dist = fabsf( normal.x ) * extents.x + fabsf( normal.z ) * extents.z
 	float flDistBox = flAbsEdgeZ * vecExtents.x + flAbsEdgeX * vecExtents.z;
 
 	// Either dist1, dist3 is the closest point to the box, determine which and test of overlap with box(AABB).
@@ -2728,7 +2728,7 @@ inline bool AxisTestEdgeCrossY3( float flEdgeZ, float flEdgeX, float flAbsEdgeZ,
 	float flDist1 = -flEdgeZ * p1.x + flEdgeX * p1.z;
 	float flDist2 = -flEdgeZ * p2.x + flEdgeX * p2.z;
 
-	// Extents are symmetric: dist = abs( normal.x ) * extents.x + abs( normal.z ) * extents.z
+	// Extents are symmetric: dist = fabsf( normal.x ) * extents.x + fabsf( normal.z ) * extents.z
 	float flDistBox = flAbsEdgeZ * vecExtents.x + flAbsEdgeX * vecExtents.z;
 
 	// Either dist1, dist2 is the closest point to the box, determine which and test of overlap with box(AABB).
@@ -2757,7 +2757,7 @@ inline bool AxisTestEdgeCrossZ1( float flEdgeY, float flEdgeX, float flAbsEdgeY,
 	float flDist2 = flEdgeY * p2.x - flEdgeX * p2.y;
 	float flDist3 = flEdgeY * p3.x - flEdgeX * p3.y;
 
-	// Extents are symmetric: dist = abs( normal.x ) * extents.x + abs( normal.y ) * extents.y
+	// Extents are symmetric: dist = fabsf( normal.x ) * extents.x + fabsf( normal.y ) * extents.y
 	float flDistBox = flAbsEdgeY * vecExtents.x + flAbsEdgeX * vecExtents.y; 
 
 	// Either dist2, dist3 is the closest point to the box, determine which and test of overlap with box(AABB).
@@ -2786,7 +2786,7 @@ inline bool AxisTestEdgeCrossZ2( float flEdgeY, float flEdgeX, float flAbsEdgeY,
 	float flDist1 = flEdgeY * p1.x - flEdgeX * p1.y;
 	float flDist3 = flEdgeY * p3.x - flEdgeX * p3.y;
 
-	// Extents are symmetric: dist = abs( normal.x ) * extents.x + abs( normal.y ) * extents.y
+	// Extents are symmetric: dist = fabsf( normal.x ) * extents.x + fabsf( normal.y ) * extents.y
 	float flDistBox = flAbsEdgeY * vecExtents.x + flAbsEdgeX * vecExtents.y; 
 
 	// Either dist1, dist3 is the closest point to the box, determine which and test of overlap with box(AABB).

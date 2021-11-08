@@ -103,7 +103,7 @@ void DrawWater( in DrawWater_params_t i,
 	{
 		for(int iy=-2;iy<=2;iy++)
 		{
-			float weight=1; ///(1+abs(ix)+abs(iy));
+			float weight=1; ///(1+fabsf(ix)+fabsf(iy));
 			vRefractColor += weight*tex2D( RefractSampler, vRefractTexCoord+ix*ddx1+iy*ddy1);
 			sumweights+=weight;
 		}

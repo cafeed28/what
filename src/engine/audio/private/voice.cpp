@@ -1356,7 +1356,7 @@ int Voice_AddIncomingData(int nChannel, const char *pchData, int nCount, int iSe
 		// Find the highest value
 		for ( int i=0; i<nDecompressed; ++i )
 		{
-			g_VoiceTweakSpeakingVolume = max((int)abs(data[i]), g_VoiceTweakSpeakingVolume);
+			g_VoiceTweakSpeakingVolume = max((int)fabsf(data[i]), g_VoiceTweakSpeakingVolume);
 		}
 
 		// Smooth it out

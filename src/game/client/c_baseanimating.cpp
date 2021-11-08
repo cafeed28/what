@@ -2665,7 +2665,7 @@ bool C_BaseAnimating::ShouldSkipAnimationFrame( float currentTime )
 		return false;
 
 	int nFrameCount = gpGlobals->framecount;
-	if ( !m_nLastNonSkippedFrame || abs( nFrameCount - m_nLastNonSkippedFrame ) >= 2 )
+	if ( !m_nLastNonSkippedFrame || fabsf( nFrameCount - m_nLastNonSkippedFrame ) >= 2 )
 		return false;
 
 	if ( gpGlobals->frametime < FPS_TO_FRAMETIME_SECS(300.0f) )

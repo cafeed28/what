@@ -8,11 +8,11 @@ if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
 $ErrorActionPreference= 'silentlycontinue'
 # This is the path to your steamworks dev folder (depo). This should be the folder with hl2.exe inside of it.
 # Your local momentum folder will be sym linked INSIDE this folder as momentum
-$path = "E:\Steamworks\dev\csso"
+$path = "C:\Games\Counter-Strike Source"
 
 # Boot arguments
 $hl2exe = Join-Path $path hl2.exe 
-$hl2args = "-game csso -insecure -window -w 1600 -h 900 -novid +developer 2 -console "
+$hl2args = "-game csso -insecure -window -w 800 -h 600 -novid +developer 2 -console "
 
 $csso_sym = Join-Path $path csso # Writing as (steamworks path)/momentum
 $bin_sym = Join-Path $path bin

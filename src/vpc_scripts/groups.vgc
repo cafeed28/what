@@ -51,6 +51,11 @@ $Group "game"
     "vpklib"
 	"vstdlib"
 	"vtf"
+	"vmpi"
+	"replay_common"
+	"ServerBrowser"
+	"movieobjects"
+	"mxtoolkitwin32"
 }
 
 $Group "everything"
@@ -112,6 +117,11 @@ $Group "everything"
 	"vtex_launcher"
 	"vtf"
 	"vvis_dll"
+	"vmpi"
+	"replay_common"
+	"ServerBrowser"
+	"movieobjects"
+	"mxtoolkitwin32"
 }
 
 $Group "dedicated"
@@ -135,4 +145,3 @@ $Group "dedicated"
 	"vstdlib"
 	"vtf"
 }
-

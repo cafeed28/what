@@ -399,9 +399,9 @@ void CMapKeyFrame::RecalculateTimeFromSpeed( void )
 			if ( ang[i] > 180 )
 				ang[i] = ang[i] - 360;
 
-			if ( abs(ang[i]) > dist )
+			if ( fabsf(ang[i]) > dist )
 			{
-				dist = abs(ang[i]);
+				dist = fabsf(ang[i]);
 			}
 		}
 	}
