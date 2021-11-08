@@ -203,3 +203,6 @@ src/.vs/csso/v16/Browse.VC.db-wal
 src/UpgradeLog.htm
 src/materialsystem/stdshaders/filestocopy.txt
 src/materialsystem/stdshaders/uniquefilestocopy.txt
+
+# game binaries
+game/bin
