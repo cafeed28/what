@@ -16,6 +16,7 @@
 #include "tier2/tier2.h"
 #include "inputsystem/iinputsystem.h"
 #include "cheatcodes.h"
+#include "rocketui/rocketui.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -28,6 +29,7 @@ enum KeyUpTarget_t
 	KEY_UP_VGUI,
 	KEY_UP_TOOLS,
 	KEY_UP_CLIENT,
+	KEY_UP_ROCKETUI,
 };
 
 struct KeyInfo_t
@@ -552,6 +554,14 @@ static bool HandleToolKey( const InputEvent_t &event )
 	return toolsys && toolsys->TrapKey( (ButtonCode_t)event.m_nData, ( event.m_nType != IE_ButtonReleased ) );
 }
 
+//-----------------------------------------------------------------------------
+// Lets RocketUI have a whack at key events
+//-----------------------------------------------------------------------------
+static bool HandleRocketKey( const InputEvent_t& event )
+{
+	return g_pRocketUI->HandleInputEvent( event );
+}
+
 #endif // !SWDS
 
 //-----------------------------------------------------------------------------
@@ -743,6 +753,10 @@ void Key_Event( const InputEvent_t &event )
 	// Necessary because vgui has multiple input contexts, so vgui can't directly
 	// ask the input system for this information.
 	EngineVGui()->UpdateButtonState( event );
+
+	// RocketUI first
+	if ( FilterKey( event, KEY_UP_ROCKETUI, HandleRocketKey ) )
+		return;
 
 	// Let tools have a whack at keys
 	if ( FilterKey( event, KEY_UP_TOOLS, HandleToolKey ) )

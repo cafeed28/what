@@ -831,6 +831,9 @@ public:
 	}
 #endif
 
+	virtual void RenderRocketHUD() { Assert(0); }
+	virtual void RenderRocketMenu() { Assert(0); }
+
 #ifdef DX_TO_GL_ABSTRACTION
 	void									DoStartupShaderPreloading( void ) {};
 #endif

@@ -25,6 +25,8 @@
 #include "xbox/xboxstubs.h"
 #endif
 
+#include "rocketui/RocketMainMenu.h"
+
 enum
 {
 	DIALOG_STACK_IDX_STANDARD,
@@ -228,6 +230,14 @@ public:
 	void OnOpenLoadCommentaryDialog();
 	void OpenLoadSingleplayerCommentaryDialog();
 	void OnOpenAchievementsDialog();
+
+	void EnableRocketMainMenu(bool bEnable) { m_bRocketMainMenuEnabled = bEnable; }
+	bool IsRocketMainMenuEnabled(void) { return m_bRocketMainMenuEnabled; }
+
+	virtual void ShowRocketPauseMenu(bool bShow);
+	virtual bool IsRocketPauseMenuActive(void);
+	virtual bool IsRocketPauseMenuVisible(void);
+	bool IsRocketPauseMenuEnabled(void) { return m_bRocketPauseMenuEnabled; }
 
     //=============================================================================
     // HPE_BEGIN:
@@ -435,6 +445,9 @@ private:
 	// Used for rich presence updates on xbox360
 	bool m_bSinglePlayer;
 	uint m_iGameID;	// matches context value in hl2orange.spa.h
+
+	bool m_bRocketMainMenuEnabled;
+	bool m_bRocketPauseMenuEnabled;
 
 	// fading to game
 	MESSAGE_FUNC_CHARPTR( RunEngineCommand, "RunEngineCommand", command );

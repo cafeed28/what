@@ -2364,6 +2364,9 @@ public:
 		return false;	
 	}
 
+	virtual void RenderRocketHUD() { }
+	virtual void RenderRocketMenu() { }
+
 };
 
 

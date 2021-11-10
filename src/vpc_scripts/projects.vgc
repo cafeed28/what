@@ -146,6 +146,11 @@ $Project "raytrace"
 	"raytrace\raytrace.vpc" [$WIN32||$X360||$POSIX]
 }
 
+$Project "RocketUI"
+{
+	"rocketui\rocketui.vpc" [$WIN32||$X360||$POSIX]
+}
+
 $Project "replay_common"
 {
 	"replay\common\replay_common.vpc" [$WINDOWS||$POSIX]

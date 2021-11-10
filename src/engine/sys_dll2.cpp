@@ -98,6 +98,8 @@
 #include "xbox/xboxstubs.h"
 #endif
 
+#include "rocketui/rocketui.h"
+
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -112,6 +114,8 @@ ISourceVirtualReality *g_pSourceVR = NULL;
 #if defined( USE_SDL )
 ILauncherMgr *g_pLauncherMgr = NULL;
 #endif
+
+IRocketUI* g_pRocketUI = NULL;
 
 #ifndef SWDS
 extern CreateInterfaceFn g_ClientFactory;
@@ -1019,6 +1023,8 @@ bool CEngineAPI::Connect( CreateInterfaceFn factory )
 		return false;
 
 	g_pPhysics = (IPhysics*)factory( VPHYSICS_INTERFACE_VERSION, NULL );
+
+	g_pRocketUI = (IRocketUI*)factory( ROCKETUI_INTERFACE_VERSION, NULL );
 
 	if ( !g_pStudioRender || !g_pDataCache || !g_pPhysics || !g_pMDLCache || !g_pMatSystemSurface || !g_pInputSystem /* || !g_pVideo */ )
 	{

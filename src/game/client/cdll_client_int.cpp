@@ -163,6 +163,8 @@ extern vgui::IInputInternal *g_InputInternal;
 
 #include "achievements_and_stats_interface.h"
 
+#include "RocketUI/RocketMainMenu.h"
+
 //=============================================================================
 // HPE_END
 //=============================================================================
@@ -223,6 +225,7 @@ IReplaySystem *g_pReplay = NULL;
 #endif
 
 IHaptics* haptics = NULL;// NVNT haptics system interface singleton
+
 
 //=============================================================================
 // HPE_BEGIN

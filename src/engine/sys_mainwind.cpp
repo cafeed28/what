@@ -88,8 +88,7 @@
 
 #endif
 
-
-
+#include "rocketui/rocketui.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -103,8 +102,7 @@ void ClearIOStates( void );
 //-----------------------------------------------------------------------------
 enum GameInputEventType_t
 {
-	IE_Close = IE_FirstAppEvent,
-	IE_WindowMove,
+	IE_WindowMove = IE_FirstAppEvent,
 	IE_AppActivated,
 };
 
@@ -365,9 +363,16 @@ void CGame::DispatchInputEvent( const InputEvent_t &event )
 		Key_Event( event );
 		break;
 
+	case IE_AnalogValueChanged:
+		if ( g_pRocketUI && g_pRocketUI->HandleInputEvent( event ) )
+			break;
+
 	default:
 		// Let vgui have the first whack at events
 		if ( g_pMatSystemSurface && g_pMatSystemSurface->HandleInputEvent( event ) )
+			break;
+
+		if (g_pRocketUI && g_pRocketUI->HandleInputEvent(event))
 			break;
 
 		for ( int i=0; i < ARRAYSIZE( g_GameMessageHandlers ); i++ )

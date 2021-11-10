@@ -25,6 +25,7 @@
 #include "tier0/dbg.h"
 #include "../vgui2/src/vgui_key_translation.h"
 #include <vgui/IInputInternal.h>
+#include <inputsystem/InputEnums.h>
 #include "tier0/icommandline.h"
 #ifdef _X360
 #include "xbox/xbox_win32stubs.h"
@@ -34,27 +35,6 @@
 #include "tier0/memdbgon.h"
 
 using namespace vgui;
-
-//-----------------------------------------------------------------------------
-// Vgui input events
-//-----------------------------------------------------------------------------
-enum VguiInputEventType_t
-{
-	IE_Close = IE_FirstVguiEvent,
-	IE_LocateMouseClick,
-	IE_SetCursor,
-	IE_KeyTyped,
-	IE_KeyCodeTyped,
-	IE_InputLanguageChanged,
-	IE_IMESetWindow,
-	IE_IMEStartComposition,
-	IE_IMEComposition,
-	IE_IMEEndComposition,
-	IE_IMEShowCandidates,
-	IE_IMEChangeCandidates,
-	IE_IMECloseCandidates,
-	IE_IMERecomputeModes,
-};
 
 void InitInput()
 {

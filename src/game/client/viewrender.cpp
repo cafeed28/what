@@ -2336,6 +2336,8 @@ void CViewRender::RenderView( const CViewSetup &viewRender, int nClearFlags, int
 			}
 		}
 
+		pRenderContext->RenderRocketHUD();
+
 		pRenderContext->Flush();
 		pRenderContext.SafeRelease();
 	}

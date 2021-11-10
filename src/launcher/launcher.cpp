@@ -82,6 +82,8 @@ int MessageBox( HWND hWnd, const char *message, const char *header, unsigned uTy
 #define RELAUNCH_FILE "/tmp/hl2_relaunch"
 #endif
 
+#include "rocketui/rocketui.h"
+
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -670,6 +672,8 @@ bool CSourceAppSystemGroup::Create()
 		{ "vguimatsurface" DLL_EXT_STRING,	VGUI_SURFACE_INTERFACE_VERSION },
 		{ "vgui2" DLL_EXT_STRING,			VGUI_IVGUI_INTERFACE_VERSION },
 		{ "engine" DLL_EXT_STRING,			VENGINE_LAUNCHER_API_VERSION },
+
+		{ "rocketui" DLL_EXT_STRING,		ROCKETUI_INTERFACE_VERSION },
 
 		{ "", "" }							// Required to terminate the list
 	};

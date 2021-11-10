@@ -17,6 +17,7 @@
 #include "imaterialsysteminternal.h"
 #include "tier0/dbg.h"
 #include "tier2/tier2.h"
+#include "rocketui/rocketui.h"
 
 
 //-----------------------------------------------------------------------------

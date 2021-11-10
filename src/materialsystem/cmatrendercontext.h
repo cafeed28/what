@@ -564,6 +564,15 @@ public:
 	DELEGATE_TO_OBJECT_0V(					ResetLookupWeights, g_pColorCorrectionSystem );
 	DELEGATE_TO_OBJECT_2V(					SetResetable, ColorCorrectionHandle_t, bool, g_pColorCorrectionSystem );
 
+	virtual void RenderRocketHUD()
+	{
+		g_pRocketUI->RenderHUDFrame();
+	}
+	virtual void RenderRocketMenu()
+	{
+		g_pRocketUI->RenderMenuFrame();
+	}
+
 	virtual void							SetFullScreenDepthTextureValidityFlag( bool bIsValid );
 
 #if defined( _X360 )

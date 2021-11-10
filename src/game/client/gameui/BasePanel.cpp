@@ -731,6 +731,9 @@ CBaseModPanel::CBaseModPanel() : Panel(NULL, "BaseGameUIPanel")
 	m_iProductImageID = -1;
 	m_iLoadingImageID = -1;
 
+	m_bRocketMainMenuEnabled = true;
+	m_bRocketPauseMenuEnabled = true;
+
 	if ( GameUI().IsConsoleUI() )
 	{
 		m_pConsoleAnimationController = new AnimationController( this );
@@ -1049,6 +1052,8 @@ void CBaseModPanel::SetBackgroundRenderState(EBackgroundState state)
 
 	if ( m_eBackgroundState == BACKGROUND_INITIAL && ( state == BACKGROUND_DISCONNECTED || state == BACKGROUND_MAINMENU ) )
 	{
+		RocketMainMenu::ShowPanel(true);
+
 		ConVar* dev_loadtime_mainmenu = cvar->FindVar( "dev_loadtime_mainmenu" );
 		if (dev_loadtime_mainmenu) {
 			dev_loadtime_mainmenu->SetValue( frametime );
@@ -1794,6 +1799,7 @@ void CBaseModPanel::OnGameUIActivated()
 	}
 	else // not the pause menu, update presence
 	{
+		RocketMainMenu::ShowPanel(true);
 		if ( IsX360() )
 		{
 			UpdateRichPresenceInfo();

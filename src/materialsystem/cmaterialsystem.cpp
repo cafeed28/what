@@ -30,6 +30,8 @@
 #include "xbox/xbox_win32stubs.h"
 #endif
 
+#include "rocketui/rocketui.h"
+
 // NOTE: This must be the last file included!!!
 #include "tier0/memdbgon.h"
 
@@ -66,6 +68,8 @@ static ConVar mat_dxlevel("mat_dxlevel", "100", 0, "Current DirectX Level.");
 #endif
 
 IMaterialInternal *g_pErrorMaterial = NULL;
+
+extern IRocketUI* g_pRocketUI;
 
 CreateInterfaceFn g_fnMatSystemConnectCreateInterface = NULL;  
 
@@ -692,6 +696,8 @@ bool CMaterialSystem::Connect( CreateInterfaceFn factory )
 	// Remember the factory for connect
 	g_fnMatSystemConnectCreateInterface = factory;
 
+	g_pRocketUI = (IRocketUI*)m_ShaderAPIFactory( ROCKETUI_INTERFACE_VERSION, 0 );
+
 	return g_pShaderDeviceMgr->Connect( ShaderFactory );	
 }
 
@@ -712,6 +718,7 @@ void CMaterialSystem::Disconnect()
 	g_pHWConfig = NULL;
 	g_pShaderShadow = NULL;
 	g_pShaderDevice = NULL;
+	g_pRocketUI = NULL;
 	BaseClass::Disconnect();
 }
 

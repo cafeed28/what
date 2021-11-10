@@ -1,0 +1,70 @@
+//-----------------------------------------------------------------------------
+//	ROCKETUI.VPC
+//
+//	Project Script
+//-----------------------------------------------------------------------------
+
+$macro SRCDIR		".."
+$Macro OUTBINDIR	"$SRCDIR\..\game\bin"
+
+$include "$SRCDIR\vpc_scripts\source_dll_base.vpc"
+
+$IgnoreRedundancyWarning	"ON"
+
+//-----------------------------------------------------------------------------
+
+$Configuration
+{
+	$Compiler
+	{
+		$AdditionalIncludeDirectories	"$BASE;$SRCDIR\rocketui;$SRCDIR\thirdparty\RmlUi\Include;$SRCDIR\dx9sdk\include"
+
+		$EnableC++Exceptions			"Yes (/EHsc)"		
+	}
+
+	$Linker
+	{
+		$AdditionalDependencies			"$BASE RmlCore.lib tier2.lib tier3.lib" [$WINDOWS]
+		$AdditionalLibraryDirectories	"$BASE;$SRCDIR\lib\common" [$WINDOWS]
+	}
+}
+
+$Configuration "Debug"
+{	
+	$Linker
+	{
+		$AdditionalDependencies			"$BASE RmlDebugger.lib" [$WINDOWS]
+	}
+}
+
+$Project "RocketUI"
+{
+	$Folder	"Header Files"
+	{
+		$File	"RocketUIImpl.h"
+		$File	"RocketSystem.h"
+		$File	"RocketFilesystem.h"
+		$File	"RocketRenderDirectX.h"
+		$File	"RocketKeys.h"
+	}
+
+	$Folder	"Source Files"
+	{
+		$File	"RocketUIImpl.cpp"
+		$File	"RocketSystem.cpp"
+		$File	"RocketFilesystem.cpp"
+		$File	"RocketRenderDirectX.cpp"
+	}
+
+	$Folder	"Public Header Files"
+	{
+		$File	"$SRCDIR\public\rocketui\rocketui.h"
+		$File	"$SRCDIR\public\tier1\interface.h"
+	}
+	
+	$Folder	"Link Libraries"
+	{
+		$Lib	"tier2"
+		$Lib	"tier3"
+	}
+}

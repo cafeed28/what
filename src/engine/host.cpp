@@ -133,6 +133,8 @@
 #include "ixboxsystem.h"
 extern IXboxSystem *g_pXboxSystem;
 
+#include "rocketui/rocketui.h"
+
 extern ConVar cl_cloud_settings;
 extern ConVar cl_logofile;
 
@@ -3499,6 +3501,11 @@ void _Host_RunFrame (float time)
 #endif
 		}
 #endif	// SWDS
+
+		if (g_pRocketUI && shouldrender)
+		{
+			g_pRocketUI->RunFrame(g_ClientGlobalVariables.realtime);
+		}
 
 		g_Log.RunFrame();
 

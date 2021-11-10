@@ -598,6 +598,9 @@ public:
 	void									DoStartupShaderPreloading( void ) {};
 #endif
 
+	DEFINE_QUEUED_CALL_0( RenderRocketHUD, IMatRenderContext, m_pHardwareContext );
+	DEFINE_QUEUED_CALL_0( RenderRocketMenu, IMatRenderContext, m_pHardwareContext );
+
 private:
 	void QueueMatrixSync();
 

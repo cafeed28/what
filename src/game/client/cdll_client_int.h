@@ -15,7 +15,7 @@
 #include "utllinkedlist.h"
 #include "cdll_int.h"
 #include "eiface.h"
-
+#include "rocketui/rocketui.h"
 
 class IVModelRender;
 class IVEngineClient;
@@ -59,6 +59,7 @@ class IEngineReplay;
 class IEngineClientReplay;
 class IReplayScreenshotManager;
 class CSteamID;
+class IRocketUI;
 
 //=============================================================================
 // HPE_BEGIN
@@ -110,6 +111,7 @@ extern IReplayManager *g_pReplayManager;
 extern IReplayScreenshotManager *g_pReplayScreenshotManager;
 extern IEngineReplay *g_pEngineReplay;
 extern IEngineClientReplay *g_pEngineClientReplay;
+extern IRocketUI* g_pRocketUI;
 
 //=============================================================================
 // HPE_BEGIN
