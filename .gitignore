@@ -197,12 +197,10 @@ src/.vs/csso/v16/Browse.VC.db-shm
 src/.vs/csso/v16/Browse.VC.opendb
 src/.vs/csso/v16/Browse.VC.db-wal
 *.pdb
-*.lib
-*.exe
-*.dll
 src/UpgradeLog.htm
 src/materialsystem/stdshaders/filestocopy.txt
 src/materialsystem/stdshaders/uniquefilestocopy.txt
 
 # game binaries
 game/bin
+game/csso/bin
