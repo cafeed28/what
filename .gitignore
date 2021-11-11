@@ -28,8 +28,8 @@ ipch
 *.vcxproj.*
 
 # Windows build products
-src/*Release
-src/*Debug
+src/*Release*
+src/*Debug*
 
 # OSX/Linux build products
 *.mak
