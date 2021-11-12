@@ -24,16 +24,9 @@ $Configuration
 
 	$Linker
 	{
-		$AdditionalDependencies			"$BASE RmlCore.lib tier2.lib tier3.lib" [$WINDOWS]
-		$AdditionalLibraryDirectories	"$BASE;$SRCDIR\lib\common" [$WINDOWS]
-	}
-}
-
-$Configuration "Debug"
-{	
-	$Linker
-	{
-		$AdditionalDependencies			"$BASE RmlDebugger.lib" [$WINDOWS]
+		$ImportLibrary					"$LIBPUBLIC\$(TargetName).lib"					[$WINDOWS]
+		$AdditionalLibraryDirectories	"$BASE;$SRCDIR\lib\common;$SRCDIR\dx9sdk\lib"	[$WINDOWS]
+		$AdditionalDependencies			"$BASE RmlCore.lib RmlDebugger.lib tier2.lib tier3.lib d3d9.lib d3dx9.lib" [$WINDOWS]
 	}
 }
 

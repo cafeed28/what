@@ -12,7 +12,6 @@ protected:
 public:
 	static void LoadDialog(void);
 	static void UnloadDialog(void);
-	static void RestorePanel(void);
 	static void ShowPanel(bool bShow, bool immediate = false);
 	static bool IsActive() { return m_Instance != nullptr; }
 	static bool IsVisible() { return m_visible; }

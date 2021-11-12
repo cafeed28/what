@@ -113,7 +113,7 @@ private:
 
 	// Get definition for pointer types, or create one as needed.
 	// This will create a wrapper definition that forwards the call to the definition of the underlying type.
-	template<typename T, typename std::enable_if<PointerTraits<T>::is_pointer::value, int>::type = 0>
+	template<typename T, typename std::enable_if<true, int>::type = 0>
 	VariableDefinition* GetDefinitionDetail()
 	{
 		static_assert(PointerTraits<T>::is_pointer::value, "Invalid pointer type provided.");

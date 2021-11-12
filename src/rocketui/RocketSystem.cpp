@@ -11,6 +11,9 @@
 
 RocketSystem RocketSystem::m_Instance;
 
+//extern IGame* game;
+IGame* game = 0;
+
 double RocketSystem::GetElapsedTime()
 {
 	return (double)RocketUIImpl::m_Instance.GetTime();

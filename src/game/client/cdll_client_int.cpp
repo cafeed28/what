@@ -226,6 +226,8 @@ IReplaySystem *g_pReplay = NULL;
 
 IHaptics* haptics = NULL;// NVNT haptics system interface singleton
 
+IRocketUI* g_pRocketUI = NULL;
+
 
 //=============================================================================
 // HPE_BEGIN

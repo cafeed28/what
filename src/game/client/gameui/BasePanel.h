@@ -233,10 +233,6 @@ public:
 
 	void EnableRocketMainMenu(bool bEnable) { m_bRocketMainMenuEnabled = bEnable; }
 	bool IsRocketMainMenuEnabled(void) { return m_bRocketMainMenuEnabled; }
-
-	virtual void ShowRocketPauseMenu(bool bShow);
-	virtual bool IsRocketPauseMenuActive(void);
-	virtual bool IsRocketPauseMenuVisible(void);
 	bool IsRocketPauseMenuEnabled(void) { return m_bRocketPauseMenuEnabled; }
 
     //=============================================================================

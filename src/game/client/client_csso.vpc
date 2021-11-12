@@ -21,7 +21,8 @@ $Configuration
 
 	$Linker
 	{
-		$AdditionalDependencies			"$BASE Ws2_32.lib odbc32.lib odbccp32.lib Shlwapi.lib legacy_stdio_definitions.lib" [$WIN32]
+		$AdditionalLibraryDirectories	"$BASE;$SRCDIR\lib\common;" [$WINDOWS]
+		$AdditionalDependencies			"$BASE Ws2_32.lib odbc32.lib odbccp32.lib Shlwapi.lib RmlCore.lib RmlDebugger.lib RocketUI.lib legacy_stdio_definitions.lib" [$WIN32]
 		$SystemLibraries				"iconv;z" [$OSXALL]	
 		$SystemLibraries				"rt" [$LINUXALL && !$DEDICATED]
 		$GCC_ExtraLinkerFlags			"-L/usr/lib32 -L/usr/lib" [$LINUXALL && !$DEDICATED]
@@ -590,6 +591,7 @@ $Project "Client (CSSO)"
 		$Lib	tier3
 		$Lib	vgui_controls
 		$Lib	lunasvg
+		$Lib	rocketui
 		$Lib  	"$LIBCOMMON/libjpeg"		[!$DEDICATED]
 		$ImpLib	steam_api
 		$Lib libpng [!$VS2015&&!$DEDICATED]
@@ -597,5 +599,4 @@ $Project "Client (CSSO)"
 		$Lib libz [!$DEDICATED]
 		$ImpLib SDL2 [$SDL]
 	}
-
 }
