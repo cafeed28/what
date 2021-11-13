@@ -1037,6 +1037,8 @@ int CHLClient::Init( CreateInterfaceFn appSystemFactory, CreateInterfaceFn physi
 	// Initialize the console variables.
 	ConVar_Register( FCVAR_CLIENTDLL );
 
+	if ( ( g_pRocketUI = (IRocketUI *)appSystemFactory( ROCKETUI_INTERFACE_VERSION, NULL )) == NULL )
+		return false;
 	g_pcv_ThreadMode = g_pCVar->FindVar( "host_thread_mode" );
 
 	if (!Initializer::InitializeAllObjects())

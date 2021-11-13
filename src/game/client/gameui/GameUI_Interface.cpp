@@ -195,6 +195,7 @@ void CGameUI::Initialize( CreateInterfaceFn factory )
 	matchmaking = (IMatchmaking *)factory( VENGINE_MATCHMAKING_VERSION, NULL );
 	xboxsystem = (IXboxSystem *)factory( XBOXSYSTEM_INTERFACE_VERSION, NULL );
 	g_pEngineClientReplay = (IEngineClientReplay *)factory( ENGINE_REPLAY_CLIENT_INTERFACE_VERSION, NULL );
+	g_pRocketUI = (IRocketUI *)factory( ROCKETUI_INTERFACE_VERSION, NULL );
 
 	if ( ModInfo().SupportsVR() && CommandLine()->CheckParm( "-vr" ) )
 	{
@@ -202,7 +203,7 @@ void CGameUI::Initialize( CreateInterfaceFn factory )
 	}
 
 	// NOTE: g_pEngineReplay intentionally not checked here
-	if ( !enginesurfacefuncs || !gameuifuncs || !enginevguifuncs || !xboxsystem || (IsX360() && !matchmaking) )
+	if ( !enginesurfacefuncs || !gameuifuncs || !enginevguifuncs || !xboxsystem || (IsX360() && !matchmaking) && !g_pRocketUI )
 	{
 		Error( "CGameUI::Initialize() failed to get necessary interfaces\n" );
 	}
