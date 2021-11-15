@@ -19,9 +19,6 @@ class RocketUIImpl : public CTier3AppSystem<IRocketUI>
 {
 	typedef CTier3AppSystem<IRocketUI> BaseClass;
 
-public:
-	static RocketUIImpl m_Instance;
-
 protected:
 	IDirect3DDevice9    *m_pDevice;
 
@@ -97,24 +94,57 @@ public:
 		m_togglePauseMenuFunc = showPauseMenuFunc;
 	}
 
+	void AddDeviceDependentObject( IShaderDeviceDependentObject * pObject );
+	void RemoveDeviceDependentObject( IShaderDeviceDependentObject * pObject );
+
 	// Local Class Methods
-	RocketUIImpl(void);
 	void SetRenderingDevice(IDirect3DDevice9 *pDevice, D3DPRESENT_PARAMETERS *pPresentParameters, HWND hWnd);
-	void ToggleDebugger(void);
-	Rml::Context *GetCurrentContext()
-	{
-		return m_ctxCurrent;
-	}
+
+	void NotifyRenderingDeviceLost();
+
+	void ToggleDebugger();
+
+	Rml::Context *GetCurrentContext() { return m_ctxCurrent; }
+
+	inline static RocketUIImpl* GetInstance() { return &m_Instance; }
+
 private:
 	bool LoadFont(const char *filepath, const char *path);
 	bool LoadFonts();
 
 public:
-	inline const float GetTime()
-	{
-		return m_fTime;
-	}
+	static RocketUIImpl m_Instance;
+
+	inline const float GetTime() { return m_fTime; }
+
 	void SetViewport(int width, int height);
+};
+
+class DeviceCallbacks : public IShaderDeviceDependentObject
+{
+public:
+	int m_iRefCount;
+	RocketUIImpl* m_pRocketUI;
+
+	DeviceCallbacks( void ) :
+		m_iRefCount( 1 ), m_pRocketUI( NULL )
+	{
+	}
+
+	virtual void DeviceLost( void )
+	{
+		m_pRocketUI->NotifyRenderingDeviceLost();
+	}
+
+	virtual void DeviceReset( void *pDevice, void *pPresentParameters, void *pHWnd )
+	{
+		m_pRocketUI->SetRenderingDevice( (IDirect3DDevice9*)pDevice, (D3DPRESENT_PARAMETERS*)pPresentParameters, (HWND)pHWnd );
+	}
+
+	virtual void ScreenSizeChanged( int width, int height )
+	{
+		m_pRocketUI->SetViewport( width, height );
+	}
 };
 
 #endif

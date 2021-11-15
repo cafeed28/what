@@ -5,6 +5,9 @@
 
 class RocketSystem : public Rml::SystemInterface
 {
+private:
+	void* m_hWnd;
+
 public:
 	static RocketSystem m_Instance;
 
@@ -22,6 +25,11 @@ public:
 
 	// Get clipboard text.
 	void GetClipboardText(Rml::String& text) override;
+
+	inline void SetHWnd(void* hWnd)
+	{
+		m_hWnd = hWnd;
+	}
 };
 
 #endif

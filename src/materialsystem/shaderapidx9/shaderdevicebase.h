@@ -64,6 +64,11 @@ public:
 	virtual void AddModeChangeCallback( ShaderModeChangeCallbackFunc_t func );
 	virtual void RemoveModeChangeCallback( ShaderModeChangeCallbackFunc_t func );
 
+	virtual void AddDeviceDependentObject( IShaderDeviceDependentObject *pObject );
+	virtual void RemoveDeviceDependentObject( IShaderDeviceDependentObject *pObject );
+	virtual void InvokeDeviceLostNotifications();
+	virtual void InvokeDeviceResetNotifications( IDirect3DDevice9 *pDevice, D3DPRESENT_PARAMETERS *pPresentParameters, void *pHWnd );
+
 	// Reads in the hardware caps from the dxsupport.cfg file
 	void ReadHardwareCaps( HardwareCaps_t &caps, int nDxLevel );
 
@@ -118,6 +123,7 @@ protected:
 
 	// Installed mode change callbacks
 	CUtlVector< ShaderModeChangeCallbackFunc_t > m_ModeChangeCallbacks;
+	CUtlVector< IShaderDeviceDependentObject* > m_DeviceDependentObjects;
 
 	KeyValues *m_pDXSupport;
 };

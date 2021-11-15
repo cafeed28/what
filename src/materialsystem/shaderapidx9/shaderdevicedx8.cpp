@@ -2247,7 +2247,10 @@ IDirect3DDevice9* CShaderDeviceDx8::InvokeCreateDevice( void* hWnd, int nAdapter
 			(VD3DHWND)hWnd, deviceCreationFlags, &m_PresentParameters, &pD3DDevice );
 	}
 	if ( !FAILED( hr ) && pD3DDevice )
+	{
+		g_pShaderDeviceMgr->InvokeDeviceResetNotifications( pD3DDevice, &m_PresentParameters, hWnd );
 		return pD3DDevice;
+	}
 
 	const char *pszMoreInfo = NULL;
 	switch ( hr )
@@ -2775,6 +2778,10 @@ bool CShaderDeviceDx8::ResizeWindow( const ShaderDeviceInfo_t &info )
 
 	g_pShaderDeviceMgr->InvokeModeChangeCallbacks();
 
+	SetPresentParameters( (VD3DHWND)m_hWnd, m_DisplayAdapter, info );
+
+	g_pShaderDeviceMgr->InvokeDeviceLostNotifications();
+
 	ReleaseResources();
 
 	SetPresentParameters( (VD3DHWND)m_hWnd, m_DisplayAdapter, info );
@@ -2864,6 +2871,7 @@ void CShaderDeviceDx8::CheckDeviceLost( bool bOtherAppInitializing )
 		{
 			// purge unreferenced materials
 			g_pShaderUtil->UncacheUnusedMaterials( true );
+			g_pShaderDeviceMgr->InvokeDeviceLostNotifications();
 
 			// We were ok, now we're not. Release resources
 			ReleaseResources();
@@ -2873,6 +2881,7 @@ void CShaderDeviceDx8::CheckDeviceLost( bool bOtherAppInitializing )
 		{
 			// purge unreferenced materials
 			g_pShaderUtil->UncacheUnusedMaterials( true );
+			g_pShaderDeviceMgr->InvokeDeviceLostNotifications();
 
 			// We were ok, now we're not. Release resources
 			ReleaseResources();
@@ -2926,7 +2935,9 @@ void CShaderDeviceDx8::CheckDeviceLost( bool bOtherAppInitializing )
 		}
 		else if ( !bOtherAppInitializing )
 		{
-			m_DeviceState = DEVICE_STATE_OK; 
+			m_DeviceState = DEVICE_STATE_OK;
+
+			g_pShaderDeviceMgr->InvokeDeviceResetNotifications( Dx9Device(), &m_PresentParameters, m_hWnd );
 
 			// We were bad, now we're ok. Restore resources and reset render state.
 			ReacquireResourcesInternal( true, true, "OtherAppInit" );

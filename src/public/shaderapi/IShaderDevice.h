@@ -139,6 +139,20 @@ public:
 //-----------------------------------------------------------------------------
 typedef void (*ShaderModeChangeCallbackFunc_t)( void );
 
+//-----------------------------------------------------------------------------
+// Used by the RocketUI to manage when then device is lost or reset, or when
+// the mode changes
+//-----------------------------------------------------------------------------
+
+class IShaderDevice;
+
+abstract_class IShaderDeviceDependentObject
+{
+public:
+	virtual void DeviceLost( void ) = 0;
+	virtual void DeviceReset( void *pDevice, void *pPresentParameters, void *pHWnd ) = 0;
+	virtual void ScreenSizeChanged( int width, int height ) = 0;
+};
 
 //-----------------------------------------------------------------------------
 // Methods related to discovering and selecting devices
@@ -177,6 +191,9 @@ public:
 	// Installs a callback to get called 
 	virtual void AddModeChangeCallback( ShaderModeChangeCallbackFunc_t func ) = 0;
 	virtual void RemoveModeChangeCallback( ShaderModeChangeCallbackFunc_t func ) = 0;
+
+	virtual void AddDeviceDependentObject( IShaderDeviceDependentObject *pObject ) = 0;
+	virtual void RemoveDeviceDependentObject( IShaderDeviceDependentObject *pObject ) = 0;
 };
 
 

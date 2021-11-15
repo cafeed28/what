@@ -874,6 +874,42 @@ void CShaderDeviceMgrBase::InvokeModeChangeCallbacks()
 	}
 }
 
+void CShaderDeviceMgrBase::AddDeviceDependentObject( IShaderDeviceDependentObject *pObject )
+{
+	if ( pObject )
+	{
+		LOCK_SHADERAPI();
+		Assert( pObject && m_DeviceDependentObjects.Find( pObject ) < 0 );
+		m_DeviceDependentObjects.AddToTail( pObject );
+	}
+}
+
+void CShaderDeviceMgrBase::RemoveDeviceDependentObject( IShaderDeviceDependentObject *pObject )
+{
+	if ( pObject )
+	{
+		LOCK_SHADERAPI();
+		m_DeviceDependentObjects.FindAndRemove( pObject );
+	}
+}
+
+void CShaderDeviceMgrBase::InvokeDeviceLostNotifications( void )
+{
+	int nCount = m_DeviceDependentObjects.Count();
+	for ( int i = 0; i < nCount; ++i )
+	{
+		m_DeviceDependentObjects[i]->DeviceLost();
+	}
+}
+
+void CShaderDeviceMgrBase::InvokeDeviceResetNotifications( IDirect3DDevice9 *pDevice, D3DPRESENT_PARAMETERS *pPresentParameters, void *pHWnd )
+{
+	int nCount = m_DeviceDependentObjects.Count();
+	for ( int i = 0; i < nCount; ++i )
+	{
+		m_DeviceDependentObjects[i]->DeviceReset( (void *)pDevice, (void *)pPresentParameters, pHWnd );
+	}
+}
 
 //-----------------------------------------------------------------------------
 // Factory to return from SetMode

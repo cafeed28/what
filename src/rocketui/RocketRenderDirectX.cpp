@@ -1,12 +1,10 @@
 #include "RocketRenderDirectX.h"
 
-#include <RmlUi/Core/FileInterface.h>
-
-// Most code from https://github.com/libRocket/libRocket/blob/master/Samples/basic/directx/src/RenderInterfaceDirectX.cpp
-
 RocketRenderDirectX RocketRenderDirectX::m_Instance;
 
-struct D3D9CompiledGeometry
+// This structure is created for each set of geometry that Rocket compiles. It stores the vertex and index buffers and
+// the texture associated with the geometry, if one was specified.
+struct RocketD3D9CompiledGeometry
 {
 	LPDIRECT3DVERTEXBUFFER9 vertices;
 	DWORD num_vertices;
@@ -17,7 +15,9 @@ struct D3D9CompiledGeometry
 	LPDIRECT3DTEXTURE9 texture;
 };
 
-struct D3D9Vertex
+// The internal format of the vertex we use for rendering Rocket geometry. We could optimise space by having a second
+// untextured vertex for use when rendering coloured borders and backgrounds.
+struct RocketD3D9Vertex
 {
 	FLOAT x, y, z;
 	DWORD colour;
@@ -26,20 +26,10 @@ struct D3D9Vertex
 
 DWORD vertex_fvf = D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1;
 
-RocketRenderDirectX::RocketRenderDirectX()
-{
-	g_pD3D = NULL;
-	g_pD3DDevice = NULL;
-	m_context = NULL;
-}
-
 // Called by Rocket when it wants to render geometry that it does not wish to optimise.
 void RocketRenderDirectX::RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, const Rml::TextureHandle texture, const Rml::Vector2f& translation)
 {
-	if (g_pD3DDevice == NULL)
-	{
-		return;
-	}
+	if (m_pRenderDevice == NULL) return;
 
 	Rml::CompiledGeometryHandle geom = this->CompileGeometry(vertices, num_vertices, indices, num_indices, texture);
 	this->RenderCompiledGeometry(geom, translation);
@@ -49,19 +39,19 @@ void RocketRenderDirectX::RenderGeometry(Rml::Vertex* vertices, int num_vertices
 // Called by Rocket when it wants to compile geometry it believes will be static for the forseeable future.
 Rml::CompiledGeometryHandle RocketRenderDirectX::CompileGeometry(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture)
 {
-	if (g_pD3DDevice == NULL)
+	if (m_pRenderDevice == NULL)
 	{
 		return false;
 	}
 
-	// Construct a new D3D9CompiledGeometry structure, which will be returned as the handle, and the buffers to
+	// Construct a new RocketD3D9CompiledGeometry structure, which will be returned as the handle, and the buffers to
 	// store the geometry.
-	D3D9CompiledGeometry* geometry = new D3D9CompiledGeometry();
-	g_pD3DDevice->CreateVertexBuffer(num_vertices * sizeof(D3D9Vertex), D3DUSAGE_WRITEONLY, vertex_fvf, D3DPOOL_DEFAULT, &geometry->vertices, NULL);
-	g_pD3DDevice->CreateIndexBuffer(num_indices * sizeof(unsigned int), D3DUSAGE_WRITEONLY, D3DFMT_INDEX32, D3DPOOL_DEFAULT, &geometry->indices, NULL);
+	RocketD3D9CompiledGeometry* geometry = new RocketD3D9CompiledGeometry();
+	m_pRenderDevice->CreateVertexBuffer(num_vertices * sizeof(RocketD3D9Vertex), D3DUSAGE_WRITEONLY, vertex_fvf, D3DPOOL_DEFAULT, &geometry->vertices, NULL);
+	m_pRenderDevice->CreateIndexBuffer(num_indices * sizeof(unsigned int), D3DUSAGE_WRITEONLY, D3DFMT_INDEX32, D3DPOOL_DEFAULT, &geometry->indices, NULL);
 
 	// Fill the vertex buffer.
-	D3D9Vertex* d3d9_vertices;
+	RocketD3D9Vertex* d3d9_vertices;
 	geometry->vertices->Lock(0, 0, (void**)&d3d9_vertices, 0);
 	for (int i = 0; i < num_vertices; ++i)
 	{
@@ -90,10 +80,11 @@ Rml::CompiledGeometryHandle RocketRenderDirectX::CompileGeometry(Rml::Vertex* ve
 	return (Rml::CompiledGeometryHandle)geometry;
 }
 
+// https://cdn.discordapp.com/attachments/856161367995056128/909673358713577494/VID_20211115_121642_520.mp4
 // Called by Rocket when it wants to render application-compiled geometry.
 void RocketRenderDirectX::RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, const Rml::Vector2f& translation)
 {
-	if (g_pD3DDevice == NULL)
+	if (m_pRenderDevice == NULL)
 	{
 		return;
 	}
@@ -101,29 +92,29 @@ void RocketRenderDirectX::RenderCompiledGeometry(Rml::CompiledGeometryHandle geo
 	// Build and set the transform matrix.
 	D3DXMATRIX world_transform;
 	D3DXMatrixTranslation(&world_transform, translation.x, translation.y, 0);
-	g_pD3DDevice->SetTransform(D3DTS_WORLD, &world_transform);
+	m_pRenderDevice->SetTransform(D3DTS_WORLD, &world_transform);
 
-	D3D9CompiledGeometry* d3d9_geometry = (D3D9CompiledGeometry*)geometry;
+	RocketD3D9CompiledGeometry* d3d9_geometry = (RocketD3D9CompiledGeometry*)geometry;
 
 	// Set the vertex format for the Rocket vertices, and bind the vertex and index buffers.
-	g_pD3DDevice->SetFVF(vertex_fvf);
-	g_pD3DDevice->SetStreamSource(0, d3d9_geometry->vertices, 0, sizeof(D3D9Vertex));
-	g_pD3DDevice->SetIndices(d3d9_geometry->indices);
+	m_pRenderDevice->SetFVF(vertex_fvf);
+	m_pRenderDevice->SetStreamSource(0, d3d9_geometry->vertices, 0, sizeof(RocketD3D9Vertex));
+	m_pRenderDevice->SetIndices(d3d9_geometry->indices);
 
 	// Set the texture, if this geometry has one.
 	if (d3d9_geometry->texture != NULL)
-		g_pD3DDevice->SetTexture(0, d3d9_geometry->texture);
+		m_pRenderDevice->SetTexture(0, d3d9_geometry->texture);
 	else
-		g_pD3DDevice->SetTexture(0, NULL);
+		m_pRenderDevice->SetTexture(0, NULL);
 
 	// Draw the primitives.
-	g_pD3DDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, d3d9_geometry->num_vertices, 0, d3d9_geometry->num_primitives);
+	m_pRenderDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, d3d9_geometry->num_vertices, 0, d3d9_geometry->num_primitives);
 }
 
 // Called by Rocket when it wants to release application-compiled geometry.
 void RocketRenderDirectX::ReleaseCompiledGeometry(Rml::CompiledGeometryHandle geometry)
 {
-	D3D9CompiledGeometry* d3d9_geometry = (D3D9CompiledGeometry*)geometry;
+	RocketD3D9CompiledGeometry* d3d9_geometry = (RocketD3D9CompiledGeometry*)geometry;
 
 	d3d9_geometry->vertices->Release();
 	d3d9_geometry->indices->Release();
@@ -134,18 +125,18 @@ void RocketRenderDirectX::ReleaseCompiledGeometry(Rml::CompiledGeometryHandle ge
 // Called by Rocket when it wants to enable or disable scissoring to clip content.
 void RocketRenderDirectX::EnableScissorRegion(bool enable)
 {
-	if (g_pD3DDevice == NULL)
+	if (m_pRenderDevice == NULL)
 	{
 		return;
 	}
 
-	g_pD3DDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, enable);
+	m_pRenderDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, enable);
 }
 
 // Called by Rocket when it wants to change the scissor region.
 void RocketRenderDirectX::SetScissorRegion(int x, int y, int width, int height)
 {
-	if (g_pD3DDevice == NULL)
+	if (m_pRenderDevice == NULL)
 	{
 		return;
 	}
@@ -156,7 +147,7 @@ void RocketRenderDirectX::SetScissorRegion(int x, int y, int width, int height)
 	scissor_rect.top = y;
 	scissor_rect.bottom = y + height;
 
-	g_pD3DDevice->SetScissorRect(&scissor_rect);
+	m_pRenderDevice->SetScissorRect(&scissor_rect);
 }
 
 // Set to byte packing, or the compiler will expand our struct, which means it won't read correctly from file
@@ -182,7 +173,7 @@ struct TGAHeader
 // Called by Rocket when a texture is required by the library.
 bool RocketRenderDirectX::LoadTexture(Rml::TextureHandle& texture_handle, Rml::Vector2i& texture_dimensions, const Rml::String& source)
 {
-	if (g_pD3DDevice == NULL)
+	if (m_pRenderDevice == NULL)
 	{
 		return false;
 	}
@@ -256,7 +247,7 @@ bool RocketRenderDirectX::LoadTexture(Rml::TextureHandle& texture_handle, Rml::V
 // Called by Rocket when a texture is required to be built from an internally-generated sequence of pixels.
 bool RocketRenderDirectX::GenerateTexture(Rml::TextureHandle& texture_handle, const byte* source, const Rml::Vector2i& source_dimensions)
 {
-	if (g_pD3DDevice == NULL)
+	if (m_pRenderDevice == NULL)
 	{
 		return false;
 	}
@@ -264,7 +255,7 @@ bool RocketRenderDirectX::GenerateTexture(Rml::TextureHandle& texture_handle, co
 	// Create a Direct3DTexture9, which will be set as the texture handle. Note that we only create one surface for
 	// this texture; because we're rendering in a 2D context, mip-maps are not required.
 	LPDIRECT3DTEXTURE9 d3d9_texture;
-	if (g_pD3DDevice->CreateTexture(source_dimensions.x, source_dimensions.y, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &d3d9_texture, NULL) != D3D_OK)
+	if (m_pRenderDevice->CreateTexture(source_dimensions.x, source_dimensions.y, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &d3d9_texture, NULL) != D3D_OK)
 		return false;
 
 	// Lock the top surface and write the pixel data onto it.
@@ -294,16 +285,4 @@ bool RocketRenderDirectX::GenerateTexture(Rml::TextureHandle& texture_handle, co
 void RocketRenderDirectX::ReleaseTexture(Rml::TextureHandle texture_handle)
 {
 	((LPDIRECT3DTEXTURE9)texture_handle)->Release();
-}
-
-// Returns the native horizontal texel offset for the renderer.
-float RocketRenderDirectX::GetHorizontalTexelOffset()
-{
-	return -0.5f;
-}
-
-// Returns the native vertical texel offset for the renderer.
-float RocketRenderDirectX::GetVerticalTexelOffset()
-{
-	return -0.5f;
 }

@@ -3,16 +3,12 @@
 #include <windows.h>
 
 #include <tier3/tier3.h>
-#include "../engine/igame.h"
 #include "vgui/ISystem.h"
 #include "vgui/Cursor.h"
 
 #include "RocketUIImpl.h"
 
 RocketSystem RocketSystem::m_Instance;
-
-//extern IGame* game;
-IGame* game = 0;
 
 double RocketSystem::GetElapsedTime()
 {
@@ -23,23 +19,21 @@ bool RocketSystem::LogMessage(Rml::Log::Type type, const Rml::String &message)
 {
 	switch (type) {
 	case Rml::Log::LT_ERROR:
-		Error("[RocketUI]%s\n", message.c_str());
+		Error("[RocketUI] %s\n", message.c_str());
 		return true;
 
 	case Rml::Log::LT_WARNING:
-		Warning("[RocketUI]%s\n", message.c_str());
+		Warning("[RocketUI] %s\n", message.c_str());
 		return false;
 
 	default:
-		Msg("[RocketUI]%s\n", message.c_str());
+		Msg("[RocketUI] %s\n", message.c_str());
 		return false;
 	}
 }
 
 void RocketSystem::SetMouseCursor(const Rml::String &cursor_name)
 {
-	HWND hWnd = (HWND)game->GetMainWindow();
-
 	HCURSOR cursor = nullptr;
 
 	if (cursor_name.empty() || cursor_name == "arrow")
@@ -59,8 +53,9 @@ void RocketSystem::SetMouseCursor(const Rml::String &cursor_name)
 
 	if (!cursor) return;
 
-	SetCursor(cursor);
-	SetClassLongPtrA(hWnd, GCLP_HCURSOR, (LONG_PTR)cursor);
+	// TODO: implement
+	// SetCursor(cursor);
+	// SetClassLongPtrA((HWND)m_hWnd, GCLP_HCURSOR, (LONG_PTR)cursor);
 }
 
 void RocketSystem::SetClipboardText(const Rml::String& text)

@@ -12,7 +12,7 @@
 #include <RmlUi/Debugger.h>
 
 RocketUIImpl RocketUIImpl::m_Instance;
-EXPOSE_SINGLE_INTERFACE_GLOBALVAR(RocketUIImpl, IRocketUI, ROCKETUI_INTERFACE_VERSION, RocketUIImpl::m_Instance)
+EXPOSE_SINGLE_INTERFACE_GLOBALVAR( RocketUIImpl, IRocketUI, ROCKETUI_INTERFACE_VERSION, RocketUIImpl::m_Instance )
 
 ConVar rocket_enable("rocket_enable", "1", 0, "Enables RocketUI");
 ConVar rocket_verbose("rocket_verbose", "0", 0, "Enables more logging");
@@ -33,8 +33,6 @@ CON_COMMAND_F(rocket_debug, "Open/Close the RocketUI Debugger", FCVAR_NONE)
 {
 	RocketUIImpl::m_Instance.ToggleDebugger();
 }
-
-RocketUIImpl::RocketUIImpl() { }
 
 bool RocketUIImpl::Connect(CreateInterfaceFn factory)
 {
@@ -207,8 +205,6 @@ InitReturnVal_t RocketUIImpl::Init(void)
 	m_ctxMenu = Rml::CreateContext("menu", Rml::Vector2i(1024, 768));
 	m_ctxHud = Rml::CreateContext("hud", Rml::Vector2i(1024, 768));
 
-	RocketRenderDirectX::m_Instance.SetContext(m_ctxMenu);
-
 	if (!m_ctxMenu || !m_ctxHud)
 	{
 		Warning("RocketUI: Failed to create Hud/Menu context\n");
@@ -315,6 +311,11 @@ bool RocketUIImpl::HandleInputEvent(const InputEvent_t &event)
 	// Some edge cases
 	if (event.m_nType == IE_ButtonPressed)
 	{
+		if (event.m_nData == KEY_BACKQUOTE)
+		{
+			m_pEngine->ClientCmd_Unrestricted("toggleconsole");
+		}
+
 		// Check for debugger. Toggle on F8.
 		if (event.m_nData == KEY_F8)
 		{
@@ -448,7 +449,9 @@ void RocketUIImpl::RenderMenuFrame()
 	//TODO: don't update here. update only after input or new elements
 	//m_ctxMenu->Update();
 
+	RocketRenderDirectX::m_Instance.PrepareRenderBuffer();
 	m_ctxMenu->Render();
+	RocketRenderDirectX::m_Instance.PresentRenderBuffer();
 }
 
 bool RocketUIImpl::ReloadDocuments()
@@ -496,16 +499,35 @@ bool RocketUIImpl::ReloadDocuments()
 	return true;
 }
 
+void RocketUIImpl::AddDeviceDependentObject( IShaderDeviceDependentObject *pObject )
+{
+	if ( m_pShaderDeviceMgr ) 
+		m_pShaderDeviceMgr->AddDeviceDependentObject( pObject );
+}
+
+void RocketUIImpl::RemoveDeviceDependentObject( IShaderDeviceDependentObject *pObject )
+{
+	if ( m_pShaderDeviceMgr )
+		m_pShaderDeviceMgr->RemoveDeviceDependentObject( pObject );
+}
+
 void RocketUIImpl::SetRenderingDevice(IDirect3DDevice9 *pDevice, D3DPRESENT_PARAMETERS *pPresentParameters, HWND hWnd)
 {
-	if (!pDevice || m_pDevice != pDevice)
-	{
+	if ( !pDevice || m_pDevice != pDevice )
 		m_pDevice = pDevice;
-	}
 
 	D3DVIEWPORT9 viewport;
-	pDevice->GetViewport(&viewport);
-	SetViewport(viewport.Width, viewport.Height);
+	pDevice->GetViewport( &viewport );
+	SetViewport( viewport.Width, viewport.Height );
+	RocketRenderDirectX::m_Instance.SetRenderingDevice( pDevice );
+}
+
+void RocketUIImpl::NotifyRenderingDeviceLost()
+{
+	if ( m_pDevice == NULL ) return;
+
+	m_pDevice->Release();
+	m_pDevice = NULL;
 }
 
 void RocketUIImpl::SetViewport(int width, int height)

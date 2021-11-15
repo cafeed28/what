@@ -7,7 +7,6 @@ class RocketFilesystem : public Rml::FileInterface
 {
 public:
 	static RocketFilesystem m_Instance;
-	RocketFilesystem();
 
 	// Opens a file.
 	virtual Rml::FileHandle Open(const Rml::String& path) override;

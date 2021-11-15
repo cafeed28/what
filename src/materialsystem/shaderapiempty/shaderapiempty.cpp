@@ -355,6 +355,8 @@ public:
 	virtual CreateInterfaceFn SetMode( void *hWnd, int nAdapter, const ShaderDeviceInfo_t& mode );
 	virtual void AddModeChangeCallback( ShaderModeChangeCallbackFunc_t func ) {}
 	virtual void RemoveModeChangeCallback( ShaderModeChangeCallbackFunc_t func ) {}
+	virtual void AddDeviceDependentObject( IShaderDeviceDependentObject *pObject ) {}
+	virtual void RemoveDeviceDependentObject( IShaderDeviceDependentObject *pObject ) {}
 };
 
 static CShaderDeviceMgrEmpty s_ShaderDeviceMgrEmpty;

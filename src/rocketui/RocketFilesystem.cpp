@@ -4,8 +4,6 @@
 
 RocketFilesystem RocketFilesystem::m_Instance;
 
-RocketFilesystem::RocketFilesystem() { }
-
 Rml::FileHandle RocketFilesystem::Open(const Rml::String &path)
 {
 	return (Rml::FileHandle)g_pFullFileSystem->Open(("rocketui/" + path).c_str(), "r", "GAME");
