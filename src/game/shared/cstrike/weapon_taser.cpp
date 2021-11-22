@@ -21,6 +21,11 @@
 #define TASER_BIRTHDAY_PARTICLES	"weapon_confetti"
 #define TASER_BIRTHDAY_SOUND		"Weapon_PartyHorn.Single"
 
+ConVar mp_taser_recharge_time(
+	"mp_taser_recharge_time", "-1",
+	FCVAR_REPLICATED, "Determines recharge time for taser. -1 = disabled.",
+	true, -1, false, 99999 );
+
 class CWeaponTaser : public CWeaponCSBaseGun
 {
 public:
@@ -95,7 +100,7 @@ void CWeaponTaser::PrimaryAttack( void )
 
 bool CWeaponTaser::Holster( CBaseCombatWeapon *pSwitchingTo )
 {
-	if ( HasAmmo() == false )
+	if ( HasAmmo() == false && mp_taser_recharge_time.GetInt() == -1 )
 	{
 		// just drop it if it's out of ammo and we're trying to switch away
 		GetPlayerOwner()->CSWeaponDrop( this );
@@ -107,11 +112,26 @@ bool CWeaponTaser::Holster( CBaseCombatWeapon *pSwitchingTo )
 void CWeaponTaser::ItemPostFrame()
 {
 	const float kTaserDropDelay = 0.5f;
+	const int kTaserRechargeTime = mp_taser_recharge_time.GetInt();
 	BaseClass::ItemPostFrame();
 
-	if ( HasAmmo() == false && gpGlobals->curtime >= m_fFireTime + kTaserDropDelay )
-	{
-		GetPlayerOwner()->CSWeaponDrop( this );
+	if ( HasAmmo() == false ) {
+		// drop
+		if ( kTaserRechargeTime == -1 && gpGlobals->curtime >= m_fFireTime + kTaserDropDelay )
+		{
+			GetPlayerOwner()->CSWeaponDrop( this );
+		}
+		// recharging
+		else if ( kTaserRechargeTime >= 0 && gpGlobals->curtime < kTaserRechargeTime )
+		{
+			// idk ._.
+		}
+		// recharge time ended
+		else if ( kTaserRechargeTime >= 0 && gpGlobals->curtime >= m_fFireTime + kTaserRechargeTime )
+		{
+			SendWeaponAnim( ACT_VM_IDLE );
+			m_iClip1 = 1;
+		}
 	}
 }
 
