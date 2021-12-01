@@ -144,13 +144,13 @@ $Project "Client (CSSO)"
 							"gameui\LogoFile.cpp" [!$POSIX] \
 							"gameui\ModInfo.cpp" \
 							"gameui\MouseMessageForwardingPanel.cpp" \
-							"$SRCDIR\Tracker\common\msgbuffer.cpp" [!$POSIX] \
-							"$SRCDIR\Tracker\common\netapi.cpp" [!$POSIX] \
+							"$SRCDIR\tracker\common\msgbuffer.cpp" [!$POSIX] \
+							"$SRCDIR\tracker\common\netapi.cpp" [!$POSIX] \
 							"$SRCDIR\common\GameUI\ObjectList.cpp" \
 							"gameui\PanelListPanel.cpp" \
 							"gameui\RunGameEngine.cpp" \
 							"$SRCDIR\common\GameUI\scriptobject.cpp" \
-							"$SRCDIR\Tracker\common\Socket.cpp" [!$POSIX] \
+							"$SRCDIR\tracker\common\Socket.cpp" [!$POSIX] \
 							"gameui\Sys_Utils.cpp" \
 							"gameui\TextEntryBox.cpp" \
 							"gameui\TGAImagePanel.cpp" \
@@ -214,7 +214,7 @@ $Project "Client (CSSO)"
 					$File	"$SRCDIR\common\IVGuiModuleLoader.h"
 					$File	"$SRCDIR\common\GameUI\ObjectList.h"
 					$File	"$SRCDIR\public\savegame_version.h"
-					$File	"$SRCDIR\Tracker\common\TrackerMessageFlags.h"
+					$File	"$SRCDIR\tracker\common\TrackerMessageFlags.h"
 					$File	"$SRCDIR\common\ValveCDKeyGameAndTerritoryCodes.h"
 					$File	"$SRCDIR\common\language.h"		
 					$File	"$SRCDIR\common\imageutils.h"		
