@@ -1927,6 +1927,8 @@ ConVar snd_music_selection(
 	// Add the ability to ignore the world trace
 	void CCSGameRules::RadiusDamage( const CTakeDamageInfo &info, const Vector &vecSrcIn, float flRadius, int iClassIgnore, bool bIgnoreWorld )
 	{
+		if ( mp_disable_damage.GetInt() == 1 ) return;
+
 		CBaseEntity *pEntity = NULL;
 		trace_t		tr;
 		float		falloff, damagePercentage;
@@ -2616,6 +2618,8 @@ ConVar snd_music_selection(
 
 	float CCSGameRules::FlPlayerFallDamage( CBasePlayer *pPlayer )
 	{
+		if ( mp_disable_damage.GetInt() == 1 ) return 0;
+
 		float fFallVelocity = pPlayer->m_Local.m_flFallVelocity - CS_PLAYER_MAX_SAFE_FALL_SPEED;
 		float fallDamage = fFallVelocity * CS_DAMAGE_FOR_FALL_SPEED * 1.25;
 
@@ -7813,6 +7817,8 @@ const CViewVectors* CCSGameRules::GetViewVectors() const
 //=========================================================
 bool CCSGameRules::FPlayerCanTakeDamage( CBasePlayer *pPlayer, CBaseEntity *pAttacker, const CTakeDamageInfo &info )
 {
+	if ( mp_disable_damage.GetInt() == 1 ) return false;
+
 	CCSPlayer *pCSAttacker = ToCSPlayer( pAttacker );
 	if ( pCSAttacker && PlayerRelationship( pPlayer, pCSAttacker ) == GR_TEAMMATE && !pCSAttacker->IsOtherEnemy( pPlayer->entindex() ) )
 	{
@@ -8261,6 +8267,11 @@ bool CCSGameRules::FAllowNPCs( void )
 bool CCSGameRules::IsFriendlyFireOn( void )
 {
 	return friendlyfire.GetBool();
+}
+
+bool CCSGameRules::IsDamageDisabled( void )
+{
+	return mp_disable_damage.GetBool();
 }
 
 bool CCSGameRules::IsLastRoundBeforeHalfTime( void )

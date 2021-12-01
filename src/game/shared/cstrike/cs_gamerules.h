@@ -665,6 +665,7 @@ public:
 	bool GetSwapTeamsOnRestart( void ) { return m_bSwapTeamsOnRestart; }
 
 	bool IsFriendlyFireOn();
+	bool IsDamageDisabled();
 
 	bool	IsLastRoundBeforeHalfTime( void );
 
