@@ -3160,7 +3160,7 @@ int CCSPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 	float flArmorBonus = 0.5f;
 	float flArmorRatio = 0.5f;
 	float flDamage = info.GetDamage();
-
+	
 	if ( CSGameRules()->IsDamageDisabled() ) return 0;
 
 	bool bFriendlyFireEnabled = CSGameRules()->IsFriendlyFireOn();
