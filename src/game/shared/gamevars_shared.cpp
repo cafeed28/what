@@ -48,6 +48,13 @@ ConVar friendlyfire(
 	"Allows team members to injure other members of their team"
 	);
 
+ConVar mp_disable_damage(
+	"mp_disable_damage",
+	"0",
+	FCVAR_REPLICATED | FCVAR_NOTIFY,
+	"When set, any damage is disabled"
+);
+
 ConVar mp_teammates_are_enemies(
 	"mp_teammates_are_enemies",
 	"0",
