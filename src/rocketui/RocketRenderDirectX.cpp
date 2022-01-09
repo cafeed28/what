@@ -85,14 +85,24 @@ Rml::CompiledGeometryHandle RocketRenderDirectX::CompileGeometry(Rml::Vertex* ve
 void RocketRenderDirectX::RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, const Rml::Vector2f& translation)
 {
 	if (m_pRenderDevice == NULL)
-	{
 		return;
-	}
 
-	// Build and set the transform matrix.
-	D3DXMATRIX world_transform;
-	D3DXMatrixTranslation(&world_transform, translation.x, translation.y, 0);
-	m_pRenderDevice->SetTransform(D3DTS_WORLD, &world_transform);
+IDirect3DStateBlock9* pStateBlock = NULL;
+ 
+ ​    ​if​ (m_pRenderDevice​->​CreateStateBlock​(D3DSBT_ALL, &pStateBlock) < ​0​)
+return;
+
+ 
+ ​    ​if​ (pStateBlock->​Capture​() < ​0​) 
+ ​    { 
+ ​        pStateBlock->​Release​(); 
+ ​        ​return​; 
+ ​    }
+ 
+ ​    D3DMATRIX last_world, last_view, last_projection; 
+ ​    m_pRenderDevice->​GetTransform​(D3DTS_WORLD, &last_world); 
+ ​    m_pRenderDevice​->​GetTransform​(D3DTS_VIEW, &last_view); 
+ ​    m_pRenderDevice​->​GetTransform​(D3DTS_PROJECTION, &last_projection);
 
 	RocketD3D9CompiledGeometry* d3d9_geometry = (RocketD3D9CompiledGeometry*)geometry;
 
@@ -107,8 +117,85 @@ void RocketRenderDirectX::RenderCompiledGeometry(Rml::CompiledGeometryHandle geo
 	else
 		m_pRenderDevice->SetTexture(0, NULL);
 
+// кароч я это спиздил из имгуи мне похуй я завтра починю
+
+ ​    ​//​ Setup viewport 
+ ​    D3DVIEWPORT9 vp; 
+ ​    vp.​X​ = vp.​Y​ = ​0​; 
+ ​    vp.​Width​ = (DWORD)draw_data->​DisplaySize​.​x​; 
+ ​    vp.​Height​ = (DWORD)draw_data->​DisplaySize​.​y​; 
+ ​    vp.​MinZ​ = ​0​.​0f​; 
+ ​    vp.​MaxZ​ = ​1​.​0f​; 
+ ​    bd->​pd3dDevice​->​SetViewport​(&vp); 
+  
+ ​    ​//​ Setup render state: fixed-pipeline, alpha-blending, no face culling, no depth testing, shade mode (for gradient) 
+ ​    bd->​pd3dDevice​->​SetPixelShader​(​NULL​); 
+ ​    bd->​pd3dDevice​->​SetVertexShader​(​NULL​); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_FILLMODE, D3DFILL_SOLID); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_SHADEMODE, D3DSHADE_GOURAUD); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_ZWRITEENABLE, ​FALSE​); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_ALPHATESTENABLE, ​FALSE​); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_CULLMODE, D3DCULL_NONE); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_ZENABLE, ​FALSE​); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_ALPHABLENDENABLE, ​TRUE​); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_BLENDOP, D3DBLENDOP_ADD); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_SEPARATEALPHABLENDENABLE, ​TRUE​); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_SRCBLENDALPHA, D3DBLEND_ONE); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_DESTBLENDALPHA, D3DBLEND_INVSRCALPHA); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_SCISSORTESTENABLE, ​TRUE​); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_FOGENABLE, ​FALSE​); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_RANGEFOGENABLE, ​FALSE​); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_SPECULARENABLE, ​FALSE​); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_STENCILENABLE, ​FALSE​); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_CLIPPING, ​TRUE​); 
+ ​    bd->​pd3dDevice​->​SetRenderState​(D3DRS_LIGHTING, ​FALSE​); 
+ ​    bd->​pd3dDevice​->​SetTextureStageState​(​0​, D3DTSS_COLOROP, D3DTOP_MODULATE); 
+ ​    bd->​pd3dDevice​->​SetTextureStageState​(​0​, D3DTSS_COLORARG1, D3DTA_TEXTURE); 
+ ​    bd->​pd3dDevice​->​SetTextureStageState​(​0​, D3DTSS_COLORARG2, D3DTA_DIFFUSE); 
+ ​    bd->​pd3dDevice​->​SetTextureStageState​(​0​, D3DTSS_ALPHAOP, D3DTOP_MODULATE); 
+ ​    bd->​pd3dDevice​->​SetTextureStageState​(​0​, D3DTSS_ALPHAARG1, D3DTA_TEXTURE); 
+ ​    bd->​pd3dDevice​->​SetTextureStageState​(​0​, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE); 
+ ​    bd->​pd3dDevice​->​SetTextureStageState​(​1​, D3DTSS_COLOROP, D3DTOP_DISABLE); 
+ ​    bd->​pd3dDevice​->​SetTextureStageState​(​1​, D3DTSS_ALPHAOP, D3DTOP_DISABLE); 
+ ​    bd->​pd3dDevice​->​SetSamplerState​(​0​, D3DSAMP_MINFILTER, D3DTEXF_LINEAR); 
+ ​    bd->​pd3dDevice​->​SetSamplerState​(​0​, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR); 
+  
+ ​    ​//​ Setup orthographic projection matrix 
+ ​    ​//​ Our visible imgui space lies from draw_data->DisplayPos (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right). DisplayPos is (0,0) for single viewport apps. 
+ ​    ​//​ Being agnostic of whether <d3dx9.h> or <DirectXMath.h> can be used, we aren't relying on D3DXMatrixIdentity()/D3DXMatrixOrthoOffCenterLH() or DirectX::XMMatrixIdentity()/DirectX::XMMatrixOrthographicOffCenterLH() 
+ ​    { 
+ ​        ​float​ L = draw_data->​DisplayPos​.​x​ + ​0​.​5f​; 
+ ​        ​float​ R = draw_data->​DisplayPos​.​x​ + draw_data->​DisplaySize​.​x​ + ​0​.​5f​; 
+ ​        ​float​ T = draw_data->​DisplayPos​.​y​ + ​0​.​5f​; 
+ ​        ​float​ B = draw_data->​DisplayPos​.​y​ + draw_data->​DisplaySize​.​y​ + ​0​.​5f​; 
+ ​        D3DMATRIX mat_identity = { { { ​1​.​0f​, ​0​.​0f​, ​0​.​0f​, ​0​.​0f​,  ​0​.​0f​, ​1​.​0f​, ​0​.​0f​, ​0​.​0f​,  ​0​.​0f​, ​0​.​0f​, ​1​.​0f​, ​0​.​0f​,  ​0​.​0f​, ​0​.​0f​, ​0​.​0f​, ​1​.​0f​ } } }; 
+ ​        D3DMATRIX mat_projection = 
+ ​        { { { 
+ ​            ​2​.​0f​/(R-L),   ​0​.​0f​,         ​0​.​0f​,  ​0​.​0f​, 
+ ​            ​0​.​0f​,         ​2​.​0f​/(T-B),   ​0​.​0f​,  ​0​.​0f​, 
+ ​            ​0​.​0f​,         ​0​.​0f​,         ​0​.​5f​,  ​0​.​0f​, 
+ ​            (L+R)/(L-R),  (T+B)/(B-T),  ​0​.​5f​,  ​1​.​0f 
+ ​        } } }; 
+ ​        bd->​pd3dDevice​->​SetTransform​(D3DTS_WORLD, &mat_identity); 
+ ​        bd->​pd3dDevice​->​SetTransform​(D3DTS_VIEW, &mat_identity); 
+ ​        bd->​pd3dDevice​->​SetTransform​(D3DTS_PROJECTION, &mat_projection); 
+ ​    }
+
 	// Draw the primitives.
 	m_pRenderDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, d3d9_geometry->num_vertices, 0, d3d9_geometry->num_primitives);
+
+// ну и это тоже
+
+ ​    ​//​ Restore the DX9 transform 
+ ​    bd->​pd3dDevice​->​SetTransform​(D3DTS_WORLD, &last_world); 
+ ​    bd->​pd3dDevice​->​SetTransform​(D3DTS_VIEW, &last_view); 
+ ​    bd->​pd3dDevice​->​SetTransform​(D3DTS_PROJECTION, &last_projection); 
+  
+ ​    ​//​ Restore the DX9 state 
+ ​    d3d9_state_block->​Apply​(); 
+ ​    d3d9_state_block->​Release​();
 }
 
 // Called by Rocket when it wants to release application-compiled geometry.
